@@ -1,6 +1,6 @@
 # LocalHire
 
-A minimal coming-soon page for LocalHire, built with Vue 3 and ASP.NET Core.
+A minimal coming-soon page for LocalHire, built with Vue 3 and ASP.NET Core. 
 
 ## Run the frontend
 
