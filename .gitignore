@@ -1,0 +1,8 @@
+**/node_modules/
+.pnpm-store/
+**/dist/
+**/bin/
+**/obj/
+*.log
+backend/wwwroot/
+!.gitkeep
