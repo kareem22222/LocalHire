@@ -6,16 +6,16 @@ A minimal coming-soon page for LocalHire, built with Vue 3 and ASP.NET Core.
 
 ```powershell
 cd frontend
-pnpm install
-pnpm dev
+npm install
+npm dev
 ```
 
 ## Build and serve with .NET
 
 ```powershell
 cd frontend
-pnpm install
-pnpm build
+npm install
+npm build
 cd ../backend
 dotnet run
 ```
