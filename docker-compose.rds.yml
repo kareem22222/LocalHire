@@ -1,0 +1,22 @@
+services:
+  api:
+    container_name: localhire-api-rds
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: >-
+        Host=${RDS_HOST};
+        Port=${RDS_PORT:-5432};
+        Database=${RDS_DATABASE};
+        Username=${RDS_USERNAME};
+        Password=${RDS_PASSWORD};
+        SSL Mode=VerifyFull;
+        Root Certificate=/app/certs/global-bundle.pem;
+        Trust Server Certificate=false;
+        Timeout=15;
+        Command Timeout=30
+    restart: unless-stopped
