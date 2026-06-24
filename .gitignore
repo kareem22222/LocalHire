@@ -3,6 +3,9 @@
 **/dist/
 **/bin/
 **/obj/
+**/.vs/
 *.log
 backend/wwwroot/
 !.gitkeep
+.env
+.env.rds

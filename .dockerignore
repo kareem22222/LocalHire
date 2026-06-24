@@ -1,0 +1,9 @@
+.git
+.agents
+.pnpm-store
+.env
+**/node_modules
+**/bin
+**/obj
+backend/wwwroot
+*.log
