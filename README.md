@@ -52,7 +52,13 @@ dotnet run
 ```
 
 The Development connection string in `backend/appsettings.Development.json`
-uses the local database on port `5433`.
+uses the default local database values on port `5433`.
+
+If you change `LOCAL_DB_NAME`, `LOCAL_DB_USERNAME`, or `LOCAL_DB_PASSWORD` in
+`.env`, Docker Compose will create PostgreSQL with those overridden values.
+Update `backend/appsettings.Development.json` to match, or override
+`ConnectionStrings:DefaultConnection` with an environment variable or .NET
+user secret before running the backend from your IDE.
 
 Reset all local database data:
 

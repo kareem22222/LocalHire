@@ -5,7 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException(
-        "Connection string 'DefaultConnection' is missing. Set ConnectionStrings__DefaultConnection.");
+        "Connection string 'DefaultConnection' is missing. Configure it in appsettings, .NET user secrets, or the ConnectionStrings__DefaultConnection environment variable.");
 
 builder.Services.AddDbContext<LocalHireDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -41,15 +41,26 @@ app.MapGet("/api/health/database", async (
 {
     try
     {
-        await database.Database.OpenConnectionAsync(cancellationToken);
-        await database.Database.CloseConnectionAsync();
+        var canConnect = await database.Database.CanConnectAsync(cancellationToken);
 
-        return Results.Ok(new
+        if (canConnect)
         {
-            database = "PostgreSQL",
-            status = "connected",
-            timestamp = DateTimeOffset.UtcNow
-        });
+            return Results.Ok(new
+            {
+                database = "PostgreSQL",
+                status = "connected",
+                timestamp = DateTimeOffset.UtcNow
+            });
+        }
+
+        loggerFactory
+            .CreateLogger("LocalHire.DatabaseHealth")
+            .LogWarning("PostgreSQL health check could not establish a connection.");
+
+        return Results.Problem(
+            title: "Database connection failed",
+            detail: "The API could not connect to PostgreSQL. Check the database host, port, credentials, database name, and SSL settings.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
     }
     catch (Exception exception)
     {
