@@ -34,6 +34,7 @@ Start both services:
 
 ```powershell
 Copy-Item .env.example .env
+# Edit .env and set JWT_SECRET to a unique random value of at least 32 bytes.
 docker compose up --build
 ```
 
@@ -47,12 +48,19 @@ To run the API directly while keeping PostgreSQL in Docker:
 
 ```powershell
 docker compose up -d database
+dotnet user-secrets set "Jwt:Secret" "YOUR_UNIQUE_RANDOM_SECRET_OF_AT_LEAST_32_BYTES" --project .\backend\LocalHire.Api.csproj
 cd backend
 dotnet run
 ```
 
 The Development connection string in `backend/appsettings.Development.json`
 uses the default local database values on port `5433`.
+
+The JWT signing key is intentionally not stored in `appsettings` or committed
+to Git. For Visual Studio and `dotnet run`, configure `Jwt:Secret` once with
+.NET user secrets as shown above. Docker Compose reads `JWT_SECRET` from the
+ignored `.env` file. Use a different, securely generated secret in every
+environment.
 
 If you change `LOCAL_DB_NAME`, `LOCAL_DB_USERNAME`, or `LOCAL_DB_PASSWORD` in
 `.env`, Docker Compose will create PostgreSQL with those overridden values.
@@ -66,6 +74,51 @@ Reset all local database data:
 docker compose down --volumes
 docker compose up --build
 ```
+
+## Database Migrations
+
+Migrations are managed with EF Core CLI tools. Make sure PostgreSQL is running first.
+
+### Apply migrations (bring the database up to date)
+
+```powershell
+cd backend
+dotnet ef database update
+```
+
+### Create a new migration after changing models
+
+```powershell
+cd backend
+dotnet ef migrations add <MigrationName> --output-dir Data/Migrations
+```
+
+### Remove the last unapplied migration
+
+```powershell
+cd backend
+dotnet ef migrations remove
+```
+
+### Reset the database (drop and recreate)
+
+```powershell
+cd backend
+dotnet ef database drop --force
+dotnet ef database update
+```
+
+### Prerequisites
+
+Install the EF Core CLI tools globally (one-time):
+
+```powershell
+dotnet tool install --global dotnet-ef
+```
+
+The `Microsoft.EntityFrameworkCore.Design` package is already included in the project.
+
+---
 
 ## Explicitly connect to AWS RDS
 
