@@ -67,6 +67,51 @@ docker compose down --volumes
 docker compose up --build
 ```
 
+## Database Migrations
+
+Migrations are managed with EF Core CLI tools. Make sure PostgreSQL is running first.
+
+### Apply migrations (bring the database up to date)
+
+```powershell
+cd backend
+dotnet ef database update
+```
+
+### Create a new migration after changing models
+
+```powershell
+cd backend
+dotnet ef migrations add <MigrationName> --output-dir Data/Migrations
+```
+
+### Remove the last unapplied migration
+
+```powershell
+cd backend
+dotnet ef migrations remove
+```
+
+### Reset the database (drop and recreate)
+
+```powershell
+cd backend
+dotnet ef database drop --force
+dotnet ef database update
+```
+
+### Prerequisites
+
+Install the EF Core CLI tools globally (one-time):
+
+```powershell
+dotnet tool install --global dotnet-ef
+```
+
+The `Microsoft.EntityFrameworkCore.Design` package is already included in the project.
+
+---
+
 ## Explicitly connect to AWS RDS
 
 Do this only when you intentionally need to verify an integration against RDS.

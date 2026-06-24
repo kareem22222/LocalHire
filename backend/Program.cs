@@ -1,8 +1,17 @@
+using System.Text;
+using FluentValidation;
 using LocalHire.Api.Data;
+using LocalHire.Api.Endpoints;
+using LocalHire.Api.Middleware;
+using LocalHire.Api.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// --- Database ---
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException(
         "Connection string 'DefaultConnection' is missing. Configure it in appsettings, .NET user secrets, or the ConnectionStrings__DefaultConnection environment variable.");
@@ -10,10 +19,67 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<LocalHireDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+// --- JWT Authentication ---
+var jwtSection = builder.Configuration.GetSection("Jwt");
+builder.Services.Configure<JwtSettings>(jwtSection);
+
+var jwtSettings = jwtSection.Get<JwtSettings>()
+    ?? throw new InvalidOperationException("JWT configuration section 'Jwt' is missing.");
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSettings.Issuer,
+            ValidAudience = jwtSettings.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret)),
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+// --- Caching ---
+builder.Services.AddMemoryCache();
+
+// --- Dependency Injection ---
+builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+
+// --- Validation ---
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+
+// --- Swagger ---
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Enter the token from /api/auth/login"
+    });
+
+    options.AddSecurityRequirement(document =>
+    {
+        var requirement = new OpenApiSecurityRequirement();
+        requirement[new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>();
+        return requirement;
+    });
+});
 
 var app = builder.Build();
+
+// --- Middleware Pipeline ---
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -24,6 +90,10 @@ if (app.Environment.IsDevelopment())
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+app.UseAuthentication();
+app.UseAuthorization();
+
+// --- Health Endpoints ---
 app.MapGet("/api/health", () => Results.Ok(new
 {
     service = "LocalHire",
@@ -78,6 +148,9 @@ app.MapGet("/api/health/database", async (
 .WithTags("Health")
 .Produces(StatusCodes.Status200OK)
 .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
+
+// --- Auth Endpoints ---
+app.MapAuthEndpoints();
 
 app.MapFallbackToFile("index.html");
 
