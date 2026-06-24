@@ -3,11 +3,14 @@ using System.Security.Claims;
 using FluentValidation;
 using LocalHire.Api.DTOs;
 using LocalHire.Api.Services;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace LocalHire.Api.Endpoints;
 
 public static class AuthEndpoints
 {
+    public const string AnonymousAuthRateLimitPolicy = "anonymous-auth";
+
     public static void MapAuthEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/auth").WithTags("Auth");
@@ -34,6 +37,7 @@ public static class AuthEndpoints
         .WithName("Register")
         .Produces<AuthResponse>(StatusCodes.Status201Created)
         .ProducesValidationProblem()
+        .RequireRateLimiting(AnonymousAuthRateLimitPolicy)
         .AllowAnonymous();
 
         group.MapPost("/login", async (
@@ -58,6 +62,7 @@ public static class AuthEndpoints
         .WithName("Login")
         .Produces<AuthResponse>()
         .ProducesValidationProblem()
+        .RequireRateLimiting(AnonymousAuthRateLimitPolicy)
         .AllowAnonymous();
 
         group.MapGet("/me", async (

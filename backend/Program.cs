@@ -1,10 +1,12 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using FluentValidation;
 using LocalHire.Api.Data;
 using LocalHire.Api.Endpoints;
 using LocalHire.Api.Middleware;
 using LocalHire.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -21,10 +23,33 @@ builder.Services.AddDbContext<LocalHireDbContext>(options =>
 
 // --- JWT Authentication ---
 var jwtSection = builder.Configuration.GetSection("Jwt");
-builder.Services.Configure<JwtSettings>(jwtSection);
-
 var jwtSettings = jwtSection.Get<JwtSettings>()
     ?? throw new InvalidOperationException("JWT configuration section 'Jwt' is missing.");
+
+var invalidJwtSettings = new List<string>();
+
+if (string.IsNullOrWhiteSpace(jwtSettings.Secret))
+    invalidJwtSettings.Add("Jwt:Secret");
+else if (Encoding.UTF8.GetByteCount(jwtSettings.Secret) < 32)
+    invalidJwtSettings.Add("Jwt:Secret (must be at least 32 bytes)");
+
+if (string.IsNullOrWhiteSpace(jwtSettings.Issuer))
+    invalidJwtSettings.Add("Jwt:Issuer");
+
+if (string.IsNullOrWhiteSpace(jwtSettings.Audience))
+    invalidJwtSettings.Add("Jwt:Audience");
+
+if (jwtSettings.ExpirationMinutes <= 0)
+    invalidJwtSettings.Add("Jwt:ExpirationMinutes (must be greater than zero)");
+
+if (invalidJwtSettings.Count > 0)
+{
+    throw new InvalidOperationException(
+        $"JWT configuration is missing or invalid: {string.Join(", ", invalidJwtSettings)}. " +
+        "Configure sensitive values with .NET user secrets or environment variables.");
+}
+
+builder.Services.Configure<JwtSettings>(jwtSection);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -43,6 +68,24 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+
+// --- Rate Limiting ---
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy(AuthEndpoints.AnonymousAuthRateLimitPolicy, context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                AutoReplenishment = true
+            }));
+});
 
 // --- Caching ---
 builder.Services.AddMemoryCache();
@@ -90,6 +133,7 @@ if (app.Environment.IsDevelopment())
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

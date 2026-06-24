@@ -33,6 +33,9 @@ public sealed class ExceptionHandlingMiddleware
 
     private static async Task WriteErrorResponse(HttpContext context, int statusCode, string message)
     {
+        if (context.Response.HasStarted)
+            return;
+
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/json";
 

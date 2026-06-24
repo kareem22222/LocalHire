@@ -4,6 +4,7 @@ using LocalHire.Api.Middleware;
 using LocalHire.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Npgsql;
 
 namespace LocalHire.Api.Services;
 
@@ -38,7 +39,15 @@ public sealed class AuthService : IAuthService
         };
 
         _db.Users.Add(user);
-        await _db.SaveChangesAsync(ct);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException exception) when (IsDuplicateEmailViolation(exception))
+        {
+            _db.Entry(user).State = EntityState.Detached;
+            throw new ConflictException("A user with this email already exists.");
+        }
 
         var token = _tokenService.GenerateToken(user);
         return new AuthResponse(token);
@@ -71,5 +80,14 @@ public sealed class AuthService : IAuthService
         _cache.Set(cacheKey, profile, TimeSpan.FromMinutes(5));
 
         return profile;
+    }
+
+    private static bool IsDuplicateEmailViolation(DbUpdateException exception)
+    {
+        return exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "IX_Users_Email"
+        };
     }
 }
