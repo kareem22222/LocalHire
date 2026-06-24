@@ -62,6 +62,52 @@ to Git. For Visual Studio and `dotnet run`, configure `Jwt:Secret` once with
 ignored `.env` file. Use a different, securely generated secret in every
 environment.
 
+## JWT authentication setup
+
+There are two different values involved:
+
+- **JWT secret:** A private key used by the backend to sign and validate tokens.
+
+### Generate a local JWT secret
+
+Generate the secret once per developer machine. Do not generate a new value
+each time the application starts.
+
+```powershell
+$bytes = New-Object byte[] 48
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($bytes)
+$rng.Dispose()
+[Convert]::ToBase64String($bytes)
+```
+
+Copy the generated value.
+
+For Visual Studio or `dotnet run`, store it in .NET user secrets:
+
+```powershell
+dotnet user-secrets set "Jwt:Secret" "PASTE_GENERATED_VALUE_HERE" --project .\backend\LocalHire.Api.csproj
+```
+
+Confirm that it is configured:
+
+```powershell
+dotnet user-secrets list --project .\backend\LocalHire.Api.csproj
+```
+
+For Docker Compose, put the value in your ignored `.env` file:
+
+```env
+JWT_SECRET=PASTE_GENERATED_VALUE_HERE
+```
+
+Each developer may use a different local secret. Production must use a
+different, stable secret shared by all production API instances and stored in
+a secure service such as AWS Secrets Manager.
+
+Changing a JWT secret invalidates every token signed with the previous secret.
+
+
 If you change `LOCAL_DB_NAME`, `LOCAL_DB_USERNAME`, or `LOCAL_DB_PASSWORD` in
 `.env`, Docker Compose will create PostgreSQL with those overridden values.
 Update `backend/appsettings.Development.json` to match, or override
