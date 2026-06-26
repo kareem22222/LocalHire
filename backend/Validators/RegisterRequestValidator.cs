@@ -1,10 +1,13 @@
 using FluentValidation;
 using LocalHire.Api.DTOs;
+using LocalHire.Api.Models;
 
 namespace LocalHire.Api.Validators;
 
 public sealed class RegisterRequestValidator : AbstractValidator<RegisterRequest>
 {
+    private static readonly string[] AllowedRoles = Enum.GetNames<UserRole>();
+
     public RegisterRequestValidator()
     {
         RuleFor(x => x.Name)
@@ -24,5 +27,10 @@ public sealed class RegisterRequestValidator : AbstractValidator<RegisterRequest
             .Matches(@"[a-z]").WithMessage("Password must contain at least one lowercase letter.")
             .Matches(@"\d").WithMessage("Password must contain at least one digit.")
             .Matches(@"[\W_]").WithMessage("Password must contain at least one special character.");
+
+        RuleFor(x => x.Role)
+            .NotEmpty()
+            .Must(r => AllowedRoles.Contains(r))
+            .WithMessage($"Role must be one of: {string.Join(", ", AllowedRoles)}.");
     }
 }

@@ -35,6 +35,7 @@ public sealed class AuthService : IAuthService
             Name = request.Name.Trim(),
             Email = emailNormalized,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, workFactor: 12),
+            Role = Enum.Parse<UserRole>(request.Role),
             CreatedAt = DateTimeOffset.UtcNow
         };
 
@@ -75,7 +76,7 @@ public sealed class AuthService : IAuthService
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct)
             ?? throw new NotFoundException("User not found.");
 
-        var profile = new UserProfile(user.Id, user.Name, user.Email, user.CreatedAt);
+        var profile = new UserProfile(user.Id, user.Name, user.Email, user.Role, user.CreatedAt);
 
         _cache.Set(cacheKey, profile, TimeSpan.FromMinutes(5));
 
