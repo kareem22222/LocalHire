@@ -7,7 +7,7 @@ A minimal coming-soon page for LocalHire, built with Vue 3 and ASP.NET Core.
 ```powershell
 cd frontend
 npm install
-npm dev
+npm run dev
 ```
 
 ## Build and serve with .NET
@@ -15,7 +15,7 @@ npm dev
 ```powershell
 cd frontend
 npm install
-npm build
+npm run build
 cd ../backend
 dotnet run
 ```
@@ -114,10 +114,16 @@ Update `backend/appsettings.Development.json` to match, or override
 `ConnectionStrings:DefaultConnection` with an environment variable or .NET
 user secret before running the backend from your IDE.
 
+Remove the local Compose containers, network, and volumes:
+
+```powershell
+docker compose down --volumes --remove-orphans
+```
+
 Reset all local database data:
 
 ```powershell
-docker compose down --volumes
+docker compose down --volumes --remove-orphans
 docker compose up --build
 ```
 

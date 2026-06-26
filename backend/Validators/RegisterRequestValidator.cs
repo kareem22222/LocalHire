@@ -24,5 +24,10 @@ public sealed class RegisterRequestValidator : AbstractValidator<RegisterRequest
             .Matches(@"[a-z]").WithMessage("Password must contain at least one lowercase letter.")
             .Matches(@"\d").WithMessage("Password must contain at least one digit.")
             .Matches(@"[\W_]").WithMessage("Password must contain at least one special character.");
+
+        RuleFor(x => x.Role)
+            .NotEmpty()
+            .Must(r => r is "LookingForWork" or "Hiring")
+            .WithMessage("Role must be either 'LookingForWork' or 'Hiring'.");
     }
 }

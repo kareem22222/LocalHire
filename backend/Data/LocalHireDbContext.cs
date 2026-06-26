@@ -17,6 +17,7 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
             entity.Property(u => u.Email).HasMaxLength(256);
             entity.Property(u => u.Name).HasMaxLength(100);
             entity.Property(u => u.PasswordHash).HasMaxLength(256);
+            entity.Property(u => u.Role).HasMaxLength(50).IsRequired().HasConversion<string>();
         });
     }
 }
