@@ -2,10 +2,10 @@ FROM node:22-alpine AS frontend-build
 WORKDIR /src/frontend
 
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci --registry=https://registry.npmjs.org/
-
 COPY frontend/ ./
-RUN npm run build -- --outDir /app/frontend-dist --emptyOutDir
+RUN rm -rf node_modules \
+    && npm ci --registry=https://registry.npmjs.org/ --no-audit --no-fund \
+    && npm run build -- --outDir /app/frontend-dist --emptyOutDir
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend-build
 WORKDIR /src
