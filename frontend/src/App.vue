@@ -11,7 +11,9 @@ import { isAuthenticated, clearAuth } from './api'
 gsap.registerPlugin(ScrollTrigger)
 
 const showModal = ref(false)
-const isAuth = ref(isAuthenticated())
+const isAuth = ref(null)
+const authEmail = ref('')
+const ctaEmail = ref('')
 
 const headerRef = ref(null)
 const heroRef = ref(null)
@@ -24,7 +26,8 @@ const footerRef = ref(null)
 let ctx
 let onScroll
 
-function openModal() {
+function openModal(email = '') {
+  authEmail.value = typeof email === 'string' ? email : ''
   showModal.value = true
 }
 
@@ -33,13 +36,20 @@ function onAuthSuccess() {
   showModal.value = false
 }
 
-function handleLogout() {
-  clearAuth()
+async function handleLogout() {
+  await clearAuth()
   isAuth.value = false
   window.location.reload()
 }
 
-onMounted(() => {
+function handleCtaSubmit() {
+  openModal(ctaEmail.value.trim())
+}
+
+onMounted(async () => {
+  isAuth.value = await isAuthenticated()
+  if (isAuth.value) return
+
   // Header scroll effect
   onScroll = () => {
     if (headerRef.value) {
@@ -125,10 +135,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <AuthModal v-if="showModal" @close="showModal = false" @success="onAuthSuccess" />
-  <AppDashboard v-if="isAuth" @logout="handleLogout" />
+  <AuthModal v-if="showModal" :initial-email="authEmail" @close="showModal = false" @success="onAuthSuccess" />
+  <AppDashboard v-if="isAuth === true" @logout="handleLogout" />
 
-  <div v-if="!isAuth" class="app-shell">
+  <div v-if="isAuth === false" class="app-shell">
     <NetworkBackground />
 
     <!-- Header -->
@@ -218,8 +228,8 @@ onUnmounted(() => {
       <div class="cta-card">
         <h2 class="cta-title">Ready to build<br />your local future?</h2>
         <p class="cta-desc">Join thousands who've already signed up. We're launching in your city soon.</p>
-        <form class="cta-form" @submit.prevent>
-          <input type="email" class="cta-input" placeholder="Enter your email" aria-label="Email address" />
+        <form class="cta-form" @submit.prevent="handleCtaSubmit">
+          <input v-model="ctaEmail" type="email" class="cta-input" placeholder="Enter your email" aria-label="Email address" required />
           <button type="submit" class="btn btn--primary btn--lg">Get early access</button>
         </form>
       </div>

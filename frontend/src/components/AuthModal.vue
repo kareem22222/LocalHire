@@ -1,17 +1,24 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import api, { setAuth } from '../api'
 
+const props = defineProps({
+  initialEmail: {
+    type: String,
+    default: '',
+  },
+})
 const emit = defineEmits(['close', 'success'])
 
 const mode = ref('register')
 const loading = ref(false)
 const serverError = ref('')
 const fieldErrors = ref({})
+const modalRef = ref(null)
 
 const form = ref({
   name: '',
-  email: '',
+  email: props.initialEmail,
   password: '',
   role: 'LookingForWork',
 })
@@ -25,7 +32,40 @@ function toggleMode() {
 }
 
 function handleOverlayClick(e) {
-  if (e.target === e.currentTarget) emit('close')
+  if (e.target === e.currentTarget) close()
+}
+
+function close() {
+  emit('close')
+}
+
+let previousFocus
+const focusableSelector = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+
+function handleKeydown(e) {
+  if (e.key === 'Escape') {
+    close()
+    return
+  }
+
+  if (e.key !== 'Tab') return
+
+  const focusable = [...(modalRef.value?.querySelectorAll(focusableSelector) || [])]
+  if (!focusable.length) {
+    e.preventDefault()
+    modalRef.value?.focus()
+    return
+  }
+
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault()
+    last.focus()
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault()
+    first.focus()
+  }
 }
 
 async function handleSubmit() {
@@ -39,22 +79,10 @@ async function handleSubmit() {
       ? { name: form.value.name, email: form.value.email, password: form.value.password, role: form.value.role }
       : { email: form.value.email, password: form.value.password }
 
-    const { data } = await api.post(endpoint, payload)
+    await api.post(endpoint, payload)
 
-    // Decode JWT to get basic user info
-    const payloadBase64 = data.token.split('.')[1]
-    const decoded = JSON.parse(atob(payloadBase64))
-
-    const roleClaim = decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role']
-    const user = {
-      id: decoded.sub,
-      name: decoded.name,
-      email: decoded.email,
-      role: roleClaim,
-    }
-
-    setAuth(data.token, user)
-    emit('success', user)
+    setAuth()
+    emit('success')
   } catch (err) {
     if (err.response?.status === 429) {
       serverError.value = 'Too many attempts. Please wait a moment and try again.'
@@ -71,15 +99,28 @@ async function handleSubmit() {
     loading.value = false
   }
 }
+
+onMounted(() => {
+  previousFocus = document.activeElement
+  document.addEventListener('keydown', handleKeydown)
+  nextTick(() => {
+    modalRef.value?.querySelector('input, select, button')?.focus()
+  })
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
+  previousFocus?.focus?.()
+})
 </script>
 
 <template>
   <div class="auth-overlay" @click="handleOverlayClick">
-    <div class="auth-modal">
-      <button class="auth-modal__close" @click="emit('close')" aria-label="Close">&times;</button>
+    <div ref="modalRef" class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title" tabindex="-1">
+      <button class="auth-modal__close" @click="close" aria-label="Close">&times;</button>
 
       <div class="auth-modal__header">
-        <h2 class="auth-modal__title">{{ isRegister ? 'Create your account' : 'Welcome back' }}</h2>
+        <h2 id="auth-modal-title" class="auth-modal__title">{{ isRegister ? 'Create your account' : 'Welcome back' }}</h2>
         <p class="auth-modal__subtitle">
           {{ isRegister
             ? 'Join LocalHire and find the right opportunities near you.'

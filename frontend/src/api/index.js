@@ -3,20 +3,21 @@ import axios from 'axios'
 const api = axios.create({
   baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 })
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
   return config
 })
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const url = error.config?.url || ''
+    const isAuthFlowRequest = ['/auth/login', '/auth/register', '/auth/logout']
+      .some((path) => url.startsWith(path))
+
+    if (error.response?.status === 401 && !isAuthFlowRequest && !error.config?.skipAuthReload) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       window.location.reload()
@@ -25,27 +26,27 @@ api.interceptors.response.use(
   },
 )
 
-export function setAuth(token, user) {
-  localStorage.setItem('token', token)
-  localStorage.setItem('user', JSON.stringify(user))
-}
-
-export function clearAuth() {
+export function setAuth() {
   localStorage.removeItem('token')
   localStorage.removeItem('user')
 }
 
-export function getStoredUser() {
+export async function clearAuth() {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
   try {
-    const raw = localStorage.getItem('user')
-    return raw ? JSON.parse(raw) : null
+    await api.post('/auth/logout', null, { skipAuthReload: true })
   } catch {
-    return null
   }
 }
 
-export function isAuthenticated() {
-  return !!localStorage.getItem('token')
+export async function isAuthenticated() {
+  try {
+    await api.get('/auth/me', { skipAuthReload: true })
+    return true
+  } catch {
+    return false
+  }
 }
 
 export default api

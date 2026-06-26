@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import * as THREE from 'three'
 
 const canvasRef = ref(null)
-let renderer, scene, camera, nodes, edges, animId
+let renderer, scene, camera, nodes, edges, animId, nodeGeometry, edgeGeometry, edgeMaterial
 let mouse = { x: 0, y: 0 }
 let windowSize = { w: window.innerWidth, h: window.innerHeight }
 
@@ -23,7 +23,7 @@ function createScene() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
   // Nodes — small spheres representing people/jobs
-  const geo = new THREE.SphereGeometry(0.06, 12, 12)
+  nodeGeometry = new THREE.SphereGeometry(0.06, 12, 12)
   const colors = [0x4f46e5, 0x7c3aed, 0x06b6d4, 0x10b981, 0xf59e0b]
   nodes = []
 
@@ -33,7 +33,7 @@ function createScene() {
       transparent: true,
       opacity: 0.7
     })
-    const mesh = new THREE.Mesh(geo, mat)
+    const mesh = new THREE.Mesh(nodeGeometry, mat)
     mesh.position.set(
       (Math.random() - 0.5) * 12,
       (Math.random() - 0.5) * 8,
@@ -51,18 +51,18 @@ function createScene() {
   }
 
   // Edges — dynamic lines between nearby nodes
-  const edgeGeo = new THREE.BufferGeometry()
+  edgeGeometry = new THREE.BufferGeometry()
   const maxEdges = NODE_COUNT * NODE_COUNT
   const positions = new Float32Array(maxEdges * 6)
-  edgeGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-  edgeGeo.setDrawRange(0, 0)
+  edgeGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+  edgeGeometry.setDrawRange(0, 0)
 
-  const edgeMat = new THREE.LineBasicMaterial({
+  edgeMaterial = new THREE.LineBasicMaterial({
     color: 0x4f46e5,
     transparent: true,
     opacity: 0.12
   })
-  edges = new THREE.LineSegments(edgeGeo, edgeMat)
+  edges = new THREE.LineSegments(edgeGeometry, edgeMaterial)
   scene.add(edges)
 }
 
@@ -149,6 +149,10 @@ function onResize() {
 
 onMounted(() => {
   createScene()
+  renderer.render(scene, camera)
+
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
   animate()
   window.addEventListener('mousemove', onMouseMove, { passive: true })
   window.addEventListener('resize', onResize, { passive: true })
@@ -158,6 +162,11 @@ onUnmounted(() => {
   cancelAnimationFrame(animId)
   window.removeEventListener('mousemove', onMouseMove)
   window.removeEventListener('resize', onResize)
+  nodes?.forEach(node => node.material.dispose())
+  nodeGeometry?.dispose()
+  edgeGeometry?.dispose()
+  edgeMaterial?.dispose()
+  scene?.clear()
   renderer?.dispose()
 })
 </script>

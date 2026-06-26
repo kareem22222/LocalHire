@@ -1,10 +1,13 @@
 using FluentValidation;
 using LocalHire.Api.DTOs;
+using LocalHire.Api.Models;
 
 namespace LocalHire.Api.Validators;
 
 public sealed class RegisterRequestValidator : AbstractValidator<RegisterRequest>
 {
+    private static readonly string[] AllowedRoles = Enum.GetNames<UserRole>();
+
     public RegisterRequestValidator()
     {
         RuleFor(x => x.Name)
@@ -27,7 +30,7 @@ public sealed class RegisterRequestValidator : AbstractValidator<RegisterRequest
 
         RuleFor(x => x.Role)
             .NotEmpty()
-            .Must(r => r is "LookingForWork" or "Hiring")
-            .WithMessage("Role must be either 'LookingForWork' or 'Hiring'.");
+            .Must(r => AllowedRoles.Contains(r))
+            .WithMessage($"Role must be one of: {string.Join(", ", AllowedRoles)}.");
     }
 }

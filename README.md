@@ -10,6 +10,10 @@ npm install
 npm run dev
 ```
 
+The frontend dev server runs at http://localhost:5173. Start the backend
+separately (`cd backend` then `dotnet run`) for login and registration; Vite
+proxies `/api` to the ASP.NET Core app at http://localhost:5180.
+
 ## Build and serve with .NET
 
 ```powershell

@@ -5,7 +5,7 @@
    Background: #ffffff
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap');
+@import "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap";
 
 /* ---------- Reset & Base ---------- */
 :root {
@@ -13,7 +13,7 @@
   color: #12324a;
   background: #ffffff;
   font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  text-rendering: optimizelegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -79,7 +79,7 @@ input { font: inherit; }
 .brand__mark { width: 38px; height: 38px; }
 
 .brand__word {
-  font-family: 'Manrope', sans-serif;
+  font-family: Manrope, sans-serif;
   font-size: 23px;
   font-weight: 800;
   letter-spacing: -1.2px;
@@ -153,7 +153,7 @@ input { font: inherit; }
 }
 
 .hero-title {
-  font-family: 'Manrope', sans-serif;
+  font-family: Manrope, sans-serif;
   font-size: clamp(56px, 7vw, 104px);
   font-weight: 800;
   line-height: 0.96;
@@ -275,7 +275,7 @@ input { font: inherit; }
   height: 6px;
   border-radius: 50%;
   background: linear-gradient(135deg, #07559a, #21a947);
-  animation: scrollPulse 2.2s ease-in-out infinite;
+  animation: scroll-pulse 2.2s ease-in-out infinite;
 }
 
 .hero-scroll__label {
@@ -315,7 +315,7 @@ input { font: inherit; }
 .stat-card:hover { transform: translateY(-4px); }
 
 .stat-card__num {
-  font-family: 'Manrope', sans-serif;
+  font-family: Manrope, sans-serif;
   font-size: clamp(36px, 4vw, 56px);
   font-weight: 800;
   line-height: 1;
@@ -353,7 +353,7 @@ input { font: inherit; }
 }
 
 .section-title {
-  font-family: 'Manrope', sans-serif;
+  font-family: Manrope, sans-serif;
   font-size: clamp(32px, 4vw, 52px);
   font-weight: 800;
   line-height: 1.08;
@@ -384,7 +384,7 @@ input { font: inherit; }
 }
 
 .step-card__num {
-  font-family: 'Manrope', sans-serif;
+  font-family: Manrope, sans-serif;
   font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.05em;
@@ -394,7 +394,7 @@ input { font: inherit; }
 }
 
 .step-card__title {
-  font-family: 'Manrope', sans-serif;
+  font-family: Manrope, sans-serif;
   font-size: 20px;
   font-weight: 700;
   color: #0b3658;
@@ -426,7 +426,7 @@ input { font: inherit; }
 }
 
 .cta-title {
-  font-family: 'Manrope', sans-serif;
+  font-family: Manrope, sans-serif;
   font-size: clamp(28px, 3.5vw, 44px);
   font-weight: 800;
   line-height: 1.08;
@@ -536,7 +536,7 @@ input { font: inherit; }
   background: rgba(11, 54, 88, 0.5);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  animation: authFadeIn 0.25s ease;
+  animation: auth-fade-in 0.25s ease;
 }
 
 .auth-modal {
@@ -547,7 +547,7 @@ input { font: inherit; }
   border-radius: 24px;
   padding: 40px 36px 32px;
   box-shadow: 0 32px 64px rgba(11, 54, 88, 0.2);
-  animation: authSlideUp 0.3s ease;
+  animation: auth-slide-up 0.3s ease;
   max-height: 90vh;
   overflow-y: auto;
 }
@@ -580,7 +580,7 @@ input { font: inherit; }
 }
 
 .auth-modal__title {
-  font-family: 'Manrope', sans-serif;
+  font-family: Manrope, sans-serif;
   font-size: 24px;
   font-weight: 800;
   color: #0b3658;
@@ -686,7 +686,7 @@ input { font: inherit; }
   border: 2.5px solid rgba(255, 255, 255, 0.3);
   border-top-color: #ffffff;
   border-radius: 50%;
-  animation: authSpin 0.6s linear infinite;
+  animation: auth-spin 0.6s linear infinite;
 }
 
 .auth-modal__footer {
@@ -710,17 +710,17 @@ input { font: inherit; }
 
 .auth-modal__toggle:hover { color: #0966ad; text-decoration: underline; }
 
-@keyframes authFadeIn {
+@keyframes auth-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
-@keyframes authSlideUp {
+@keyframes auth-slide-up {
   from { opacity: 0; transform: translateY(20px) scale(0.97); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-@keyframes authSpin {
+@keyframes auth-spin {
   to { transform: rotate(360deg); }
 }
 
@@ -781,7 +781,7 @@ input { font: inherit; }
 }
 
 .dash-welcome__title {
-  font-family: 'Manrope', sans-serif;
+  font-family: Manrope, sans-serif;
   font-size: clamp(28px, 3.5vw, 36px);
   font-weight: 800;
   color: #0b3658;
@@ -835,7 +835,7 @@ input { font: inherit; }
 }
 
 .dash-card__title {
-  font-family: 'Manrope', sans-serif;
+  font-family: Manrope, sans-serif;
   font-size: 18px;
   font-weight: 700;
   color: #0b3658;
@@ -856,7 +856,7 @@ input { font: inherit; }
 }
 
 /* ---------- Animations ---------- */
-@keyframes scrollPulse {
+@keyframes scroll-pulse {
   0%, 100% { opacity: 0.4; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.3); }
 }

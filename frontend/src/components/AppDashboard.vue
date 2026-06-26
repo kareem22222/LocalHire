@@ -1,24 +1,21 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import api, { clearAuth, getStoredUser } from '../api'
+import api from '../api'
 import BrandLogo from './BrandLogo.vue'
 
 const emit = defineEmits(['logout'])
 
-const user = ref(getStoredUser())
+const user = ref(null)
 
 async function fetchProfile() {
   try {
     const { data } = await api.get('/auth/me')
     user.value = data
-    localStorage.setItem('user', JSON.stringify(data))
   } catch {
-    // fallback to stored user
   }
 }
 
 function handleLogout() {
-  clearAuth()
   emit('logout')
 }
 

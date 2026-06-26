@@ -16,7 +16,7 @@ namespace LocalHire.Api.Data.Migrations
                 type: "character varying(50)",
                 maxLength: 50,
                 nullable: false,
-                defaultValue: "");
+                defaultValue: "LookingForWork");
         }
 
         /// <inheritdoc />
