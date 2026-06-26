@@ -5,11 +5,13 @@ using LocalHire.Api.Data;
 using LocalHire.Api.Endpoints;
 using LocalHire.Api.Middleware;
 using LocalHire.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -65,19 +67,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret)),
             ClockSkew = TimeSpan.Zero
         };
-        options.Events = new JwtBearerEvents
-        {
-            OnMessageReceived = context =>
-            {
-                if (string.IsNullOrEmpty(context.Token)
-                    && context.Request.Cookies.TryGetValue(AuthEndpoints.AuthCookieName, out var token))
-                {
-                    context.Token = token;
-                }
-
-                return Task.CompletedTask;
-            }
-        };
     });
 
 builder.Services.AddAuthorization();
@@ -124,12 +113,7 @@ builder.Services.AddSwaggerGen(options =>
         Description = "Enter the token from /api/auth/login"
     });
 
-    options.AddSecurityRequirement(document =>
-    {
-        var requirement = new OpenApiSecurityRequirement();
-        requirement[new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>();
-        return requirement;
-    });
+    options.OperationFilter<RequireAuthorizationOperationFilter>();
 });
 
 var app = builder.Build();
@@ -218,3 +202,20 @@ app.MapAuthEndpoints();
 app.MapFallbackToFile("index.html");
 
 app.Run();
+
+internal sealed class RequireAuthorizationOperationFilter : IOperationFilter
+{
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
+    {
+        var metadata = context.ApiDescription.ActionDescriptor.EndpointMetadata;
+
+        if (metadata.OfType<IAllowAnonymous>().Any() || !metadata.OfType<IAuthorizeData>().Any())
+            return;
+
+        operation.Security ??= new List<OpenApiSecurityRequirement>();
+
+        var requirement = new OpenApiSecurityRequirement();
+        requirement[new OpenApiSecuritySchemeReference("Bearer", context.Document)] = new List<string>();
+        operation.Security.Add(requirement);
+    }
+}

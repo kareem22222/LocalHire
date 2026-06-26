@@ -79,9 +79,14 @@ async function handleSubmit() {
       ? { name: form.value.name, email: form.value.email, password: form.value.password, role: form.value.role }
       : { email: form.value.email, password: form.value.password }
 
-    await api.post(endpoint, payload)
+    const { data } = await api.post(endpoint, payload)
 
-    setAuth()
+    if (!data?.token) {
+      serverError.value = 'Invalid authentication response. Please try again.'
+      return
+    }
+
+    setAuth(data.token)
     emit('success')
   } catch (err) {
     if (err.response?.status === 429) {

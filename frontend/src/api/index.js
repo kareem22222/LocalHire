@@ -3,10 +3,12 @@ import axios from 'axios'
 const api = axios.create({
   baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
-  withCredentials: true,
 })
 
+let accessToken = ''
+
 api.interceptors.request.use((config) => {
+  if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`
   return config
 })
 
@@ -18,7 +20,7 @@ api.interceptors.response.use(
       .some((path) => url.startsWith(path))
 
     if (error.response?.status === 401 && !isAuthFlowRequest && !error.config?.skipAuthReload) {
-      localStorage.removeItem('token')
+      accessToken = ''
       localStorage.removeItem('user')
       window.location.reload()
     }
@@ -26,13 +28,13 @@ api.interceptors.response.use(
   },
 )
 
-export function setAuth() {
-  localStorage.removeItem('token')
+export function setAuth(token) {
+  accessToken = token
   localStorage.removeItem('user')
 }
 
 export async function clearAuth() {
-  localStorage.removeItem('token')
+  accessToken = ''
   localStorage.removeItem('user')
   try {
     await api.post('/auth/logout', null, { skipAuthReload: true })
