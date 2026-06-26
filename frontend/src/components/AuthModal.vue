@@ -146,7 +146,7 @@ onUnmounted(() => {
         </div>
 
         <div v-if="isRegister" class="auth-field">
-          <label class="auth-field__label" for="auth-role">I am a</label>
+          <label class="auth-field__label" for="auth-role">I am</label>
           <select
             id="auth-role"
             v-model="form.role"

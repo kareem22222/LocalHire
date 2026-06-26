@@ -3,7 +3,7 @@ services:
     container_name: localhire-api-rds
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
     environment:
