@@ -134,6 +134,12 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var database = scope.ServiceProvider.GetRequiredService<LocalHireDbContext>();
+    await database.Database.MigrateAsync();
+}
+
 // --- Middleware Pipeline ---
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 

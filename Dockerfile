@@ -24,6 +24,10 @@ RUN dotnet publish backend/LocalHire.Api.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=backend-build /app/publish ./
 COPY certs/global-bundle.pem ./certs/global-bundle.pem
 
