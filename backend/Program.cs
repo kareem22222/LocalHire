@@ -69,7 +69,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("HiringOnly", policy =>
+        policy.RequireRole("Hiring"));
+    options.AddPolicy("LookingForWorkOnly", policy =>
+        policy.RequireRole("LookingForWork"));
+});
 
 // --- Rate Limiting ---
 builder.Services.AddRateLimiter(options =>
@@ -198,6 +204,12 @@ app.MapGet("/api/health/database", async (
 
 // --- Auth Endpoints ---
 app.MapAuthEndpoints();
+
+// --- Profile Endpoints ---
+app.MapProfileEndpoints();
+
+// --- Job Endpoints ---
+app.MapJobEndpoints();
 
 app.MapFallbackToFile("index.html");
 

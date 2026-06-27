@@ -1,8 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LocalHire.Api.Data.Migrations
+namespace LocalHire.Api.Migrations
 {
     /// <inheritdoc />
     public partial class AddUserRole : Migration
