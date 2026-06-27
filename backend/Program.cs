@@ -20,8 +20,15 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
     ?? throw new InvalidOperationException(
         "Connection string 'DefaultConnection' is missing. Configure it in appsettings, .NET user secrets, or the ConnectionStrings__DefaultConnection environment variable.");
 
-builder.Services.AddDbContext<LocalHireDbContext>(options =>
-    options.UseNpgsql(connectionString));
+if (builder.Environment.IsEnvironment("Test"))
+{
+    builder.Services.AddDbContext<LocalHireDbContext>();
+}
+else
+{
+    builder.Services.AddDbContext<LocalHireDbContext>(options =>
+        options.UseNpgsql(connectionString));
+}
 
 // --- JWT Authentication ---
 var jwtSection = builder.Configuration.GetSection("Jwt");
@@ -78,22 +85,25 @@ builder.Services.AddAuthorization(options =>
 });
 
 // --- Rate Limiting ---
-builder.Services.AddRateLimiter(options =>
+if (!builder.Environment.IsEnvironment("Test"))
 {
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    options.AddPolicy(AuthEndpoints.AnonymousAuthRateLimitPolicy, context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            factory: _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 5,
-                Window = TimeSpan.FromMinutes(1),
-                QueueLimit = 0,
-                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                AutoReplenishment = true
-            }));
-});
+        options.AddPolicy(AuthEndpoints.AnonymousAuthRateLimitPolicy, context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 5,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    AutoReplenishment = true
+                }));
+    });
+}
 
 // --- Caching ---
 builder.Services.AddMemoryCache();
@@ -124,8 +134,9 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+if (!app.Environment.IsEnvironment("Test"))
 {
+    using var scope = app.Services.CreateScope();
     var database = scope.ServiceProvider.GetRequiredService<LocalHireDbContext>();
     await database.Database.MigrateAsync();
 }
@@ -142,7 +153,8 @@ if (app.Environment.IsDevelopment())
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.UseRateLimiter();
+if (!app.Environment.IsEnvironment("Test"))
+    app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -214,6 +226,8 @@ app.MapJobEndpoints();
 app.MapFallbackToFile("index.html");
 
 app.Run();
+
+public partial class Program;
 
 internal sealed class RequireAuthorizationOperationFilter : IOperationFilter
 {
