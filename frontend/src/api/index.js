@@ -5,10 +5,13 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-let accessToken = ''
+function getStoredToken() {
+  return localStorage.getItem('lh_token') || ''
+}
 
 api.interceptors.request.use((config) => {
-  if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`
+  const token = getStoredToken()
+  if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
@@ -20,8 +23,7 @@ api.interceptors.response.use(
       .some((path) => url.startsWith(path))
 
     if (error.response?.status === 401 && !isAuthFlowRequest && !error.config?.skipAuthReload) {
-      accessToken = ''
-      localStorage.removeItem('user')
+      localStorage.removeItem('lh_token')
       window.location.reload()
     }
     return Promise.reject(error)
@@ -29,13 +31,11 @@ api.interceptors.response.use(
 )
 
 export function setAuth(token) {
-  accessToken = token
-  localStorage.removeItem('user')
+  localStorage.setItem('lh_token', token)
 }
 
 export async function clearAuth() {
-  accessToken = ''
-  localStorage.removeItem('user')
+  localStorage.removeItem('lh_token')
   try {
     await api.post('/auth/logout', null, { skipAuthReload: true })
   } catch {
@@ -43,10 +43,12 @@ export async function clearAuth() {
 }
 
 export async function isAuthenticated() {
+  if (!getStoredToken()) return false
   try {
     await api.get('/auth/me', { skipAuthReload: true })
     return true
   } catch {
+    localStorage.removeItem('lh_token')
     return false
   }
 }

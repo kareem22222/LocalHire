@@ -17,4 +17,8 @@ export default defineConfig({
     outDir: resolve(__dirname, '../backend/wwwroot'),
     emptyOutDir: true,
   },
+  test: {
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.js',
+  },
 })

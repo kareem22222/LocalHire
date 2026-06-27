@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -17,4 +17,9 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
   </ItemGroup>
-</Project>
+
+  <ItemGroup>
+    <Compile Remove="LocalHire.Api.Tests\**" />
+    <Content Remove="LocalHire.Api.Tests\**" />
+    <None Remove="LocalHire.Api.Tests\**" />
+  </ItemGroup></Project>

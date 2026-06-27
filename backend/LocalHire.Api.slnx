@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="LocalHire.Api.csproj" />
+  <Project Path="LocalHire.Api.Tests/LocalHire.Api.Tests.csproj" />
 </Solution>

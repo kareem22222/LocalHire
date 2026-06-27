@@ -74,11 +74,11 @@ async function handleSubmit() {
   fieldErrors.value = {}
 
   try {
-    const endpoint = isRegister.value ? '/auth/register' : '/auth/login'
     const payload = isRegister.value
       ? { name: form.value.name, email: form.value.email, password: form.value.password, role: form.value.role }
-      : { email: form.value.email, password: form.value.password }
+      : { email: form.value.email, password: form.value.password, role: form.value.role }
 
+    const endpoint = isRegister.value ? '/auth/register' : '/auth/login'
     const { data } = await api.post(endpoint, payload)
 
     if (!data?.token) {
@@ -94,9 +94,9 @@ async function handleSubmit() {
     } else if (err.response?.status === 400 && err.response?.data?.errors) {
       fieldErrors.value = err.response.data.errors
     } else if (err.response?.data?.title === 'Conflict') {
-      fieldErrors.value = { email: ['An account with this email already exists.'] }
+      fieldErrors.value = { email: ['An account with this email and role already exists.'] }
     } else if (err.response?.data?.title === 'Unauthorized') {
-      serverError.value = 'Invalid email or password.'
+      serverError.value = 'Invalid email, password, or role.'
     } else {
       serverError.value = err.response?.data?.message || 'Something went wrong. Please try again.'
     }
@@ -150,7 +150,7 @@ onUnmounted(() => {
           <span v-if="fieldErrors.name" class="auth-field__error">{{ fieldErrors.name[0] }}</span>
         </div>
 
-        <div v-if="isRegister" class="auth-field">
+        <div class="auth-field">
           <label class="auth-field__label" for="auth-role">I am</label>
           <select
             id="auth-role"

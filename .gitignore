@@ -9,3 +9,4 @@ backend/wwwroot/
 !.gitkeep
 .env
 .env.rds
+.csproj.user
