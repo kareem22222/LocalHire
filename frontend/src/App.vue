@@ -4,6 +4,7 @@ import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import BrandLogo from './components/BrandLogo.vue'
 import NetworkBackground from './components/NetworkBackground.vue'
+import HeroArtwork from './components/HeroArtwork.vue'
 import AuthModal from './components/AuthModal.vue'
 import AppDashboard from './components/AppDashboard.vue'
 import { isAuthenticated, clearAuth } from './api'
@@ -13,6 +14,7 @@ gsap.registerPlugin(ScrollTrigger)
 const showModal = ref(false)
 const isAuth = ref(null)
 const authEmail = ref('')
+const authRole = ref('LookingForWork')
 const ctaEmail = ref('')
 
 const headerRef = ref(null)
@@ -21,14 +23,21 @@ const statsRef = ref(null)
 const stepsRef = ref(null)
 const ctaRef = ref(null)
 const heroContentRef = ref(null)
+const heroVisualRef = ref(null)
+const tickerRef = ref(null)
 const footerRef = ref(null)
 
 let ctx
 let onScroll
 
-function openModal(email = '') {
+function openModal(email = '', role = 'LookingForWork') {
   authEmail.value = typeof email === 'string' ? email : ''
+  authRole.value = role
   showModal.value = true
+}
+
+function openHiringModal() {
+  openModal('', 'Hiring')
 }
 
 function onAuthSuccess() {
@@ -58,6 +67,7 @@ onMounted(async () => {
   }
   window.addEventListener('scroll', onScroll, { passive: true })
   onScroll()
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   ctx = gsap.context(() => {
     // Hero entrance
@@ -69,6 +79,34 @@ onMounted(async () => {
       ease: 'power3.out',
       delay: 0.3
     })
+
+    if (!reduceMotion) {
+      gsap.from(heroVisualRef.value, {
+        x: 70,
+        y: 30,
+        opacity: 0,
+        rotate: 3,
+        duration: 1.3,
+        ease: 'power3.out',
+        delay: 0.55
+      })
+
+      gsap.to(heroVisualRef.value, {
+        y: -18,
+        rotate: -1.2,
+        duration: 4.5,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut'
+      })
+
+      gsap.to(tickerRef.value, {
+        xPercent: -50,
+        duration: 22,
+        repeat: -1,
+        ease: 'none'
+      })
+    }
 
     // Stats reveal
     gsap.from(statsRef.value?.children, {
@@ -135,7 +173,13 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <AuthModal v-if="showModal" :initial-email="authEmail" @close="showModal = false" @success="onAuthSuccess" />
+  <AuthModal
+    v-if="showModal"
+    :initial-email="authEmail"
+    :initial-role="authRole"
+    @close="showModal = false"
+    @success="onAuthSuccess"
+  />
   <AppDashboard v-if="isAuth === true" @logout="handleLogout" />
 
   <div v-if="isAuth === false" class="app-shell">
@@ -146,7 +190,7 @@ onUnmounted(() => {
       <BrandLogo />
       <nav class="nav-links">
         <a href="#" class="nav-link" @click.prevent="openModal">For Candidates</a>
-        <a href="#" class="nav-link" @click.prevent="openModal">For Employers</a>
+        <a href="#" class="nav-link" @click.prevent="openHiringModal">For Employers</a>
         <a href="#" class="nav-link nav-link--primary" @click.prevent="openModal">Get Early Access</a>
       </nav>
     </header>
@@ -165,13 +209,34 @@ onUnmounted(() => {
         </p>
         <div class="hero-actions">
           <a href="#" class="btn btn--primary" @click.prevent="openModal">I'm looking for work</a>
-          <a href="#" class="btn btn--stroke" @click.prevent="openModal">I'm hiring locally</a>
+          <a href="#" class="btn btn--stroke" @click.prevent="openHiringModal">I'm hiring locally</a>
         </div>
         <div class="hero-meta">
           <div class="avatar-stack" aria-hidden="true">
             <span>A</span><span>R</span><span>S</span><span>K</span>
           </div>
           <span class="hero-meta__text"><strong>2,400+</strong> early signups across <strong>18</strong> cities</span>
+        </div>
+      </div>
+      <div ref="heroVisualRef" class="hero-visual">
+        <HeroArtwork />
+      </div>
+      <div class="role-ticker" aria-hidden="true">
+        <div ref="tickerRef" class="role-ticker__track">
+          <div class="role-ticker__group">
+            <span>Retail associates</span>
+            <span>Delivery partners</span>
+            <span>Kitchen staff</span>
+            <span>Salon experts</span>
+            <span>Front desk teams</span>
+          </div>
+          <div class="role-ticker__group">
+            <span>Retail associates</span>
+            <span>Delivery partners</span>
+            <span>Kitchen staff</span>
+            <span>Salon experts</span>
+            <span>Front desk teams</span>
+          </div>
         </div>
       </div>
       <div class="hero-scroll">

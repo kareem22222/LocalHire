@@ -7,6 +7,7 @@ A minimal coming-soon page for LocalHire, built with Vue 3 and ASP.NET Core.
 ```powershell
 cd frontend
 npm install
+# Edit .env and set JWT_SECRET to a unique random value of at least 32 bytes.
 npm run dev
 ```
 
@@ -20,7 +21,9 @@ proxies `/api` to the ASP.NET Core app at http://localhost:5180.
 cd frontend
 npm install
 npm run build
+#open in new terminal
 cd ../backend
+dotnet user-secrets set "Jwt:Secret" "YOUR_UNIQUE_RANDOM_SECRET_OF_AT_LEAST_32_BYTES" --project .\LocalHire.Api.csproj
 dotnet run
 ```
 
@@ -68,7 +71,7 @@ environment.
 
 ## JWT authentication setup
 
-There are two different values involved:
+There is one value involved:
 
 - **JWT secret:** A private key used by the backend to sign and validate tokens.
 
