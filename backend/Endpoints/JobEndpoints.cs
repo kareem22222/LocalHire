@@ -74,14 +74,13 @@ public static class JobEndpoints
             var userId = GetUserId(user);
             var jobs = await db.JobPosts
                 .Where(j => j.EmployerId == userId)
-                .OrderByDescending(j => j.CreatedAt)
                 .Select(j => new JobPostResponse(
                     j.Id, j.Title, j.Description, j.WorkplaceName,
                     j.CityArea, j.Latitude, j.Longitude,
                     j.IsActive, j.CreatedAt, j.Applications.Count))
                 .ToListAsync(ct);
 
-            return Results.Ok(jobs);
+            return Results.Ok(jobs.OrderByDescending(j => j.CreatedAt));
         })
         .WithName("GetMyJobPosts");
 
@@ -98,12 +97,11 @@ public static class JobEndpoints
 
             var applications = await db.JobApplications
                 .Where(a => a.JobPostId == id)
-                .OrderByDescending(a => a.CreatedAt)
                 .Select(a => new ApplicantResponse(
                     a.Id, a.Worker.Name, a.Status.ToString(), a.CreatedAt))
                 .ToListAsync(ct);
 
-            return Results.Ok(applications);
+            return Results.Ok(applications.OrderByDescending(a => a.AppliedAt));
         })
         .WithName("GetJobApplications");
 
@@ -137,14 +135,13 @@ public static class JobEndpoints
             }
 
             var allJobs = await query
-                .OrderByDescending(j => j.CreatedAt)
                 .Select(j => new JobPostResponse(
                     j.Id, j.Title, j.Description, j.WorkplaceName,
                     j.CityArea, j.Latitude, j.Longitude,
                     j.IsActive, j.CreatedAt, j.Applications.Count))
                 .ToListAsync(ct);
 
-            return Results.Ok(allJobs);
+            return Results.Ok(allJobs.OrderByDescending(j => j.CreatedAt));
         })
         .WithName("GetNearbyJobs");
 
@@ -200,14 +197,13 @@ public static class JobEndpoints
             var userId = GetUserId(user);
             var applications = await db.JobApplications
                 .Where(a => a.WorkerId == userId)
-                .OrderByDescending(a => a.CreatedAt)
                 .Select(a => new JobApplicationResponse(
                     a.Id, a.JobPostId, a.JobPost.Title,
                     a.JobPost.WorkplaceName, a.JobPost.CityArea,
                     a.Status.ToString(), a.CreatedAt))
                 .ToListAsync(ct);
 
-            return Results.Ok(applications);
+            return Results.Ok(applications.OrderByDescending(a => a.CreatedAt));
         })
         .WithName("GetMyApplications");
     }

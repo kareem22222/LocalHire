@@ -23,7 +23,7 @@ public sealed class LocalHireApiTests
             .IsValid);
 
         Assert.False(new CreateJobPostRequestValidator()
-            .Validate(new CreateJobPostRequest("", "", "", "", 91, null))
+            .Validate(new CreateJobPostRequest("Cashier", "Front desk", "Corner Shop", "Bandra", 91, 0))
             .IsValid);
 
         Assert.False(new UpdateLocationRequestValidator()
@@ -78,13 +78,20 @@ public sealed class LocalHireApiTests
         Assert.Equal(HttpStatusCode.Created, createJob.StatusCode);
         var job = await createJob.Content.ReadFromJsonAsync<JobPostResponse>();
 
+        var createFarJob = await client.PostAsJsonAsync("/api/hiring/jobs",
+            new CreateJobPostRequest("Remote cashier", "Back office", "Far Shop", "Far Town", 80, 0));
+        Assert.Equal(HttpStatusCode.Created, createFarJob.StatusCode);
+
         var badJob = await client.PostAsJsonAsync("/api/hiring/jobs",
-            new CreateJobPostRequest("", "", "", "", 91, null));
+            new CreateJobPostRequest("Cashier", "Front desk", "Corner Shop", "Bandra", 91, 0));
         Assert.Equal(HttpStatusCode.BadRequest, badJob.StatusCode);
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", workerToken);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/hiring/jobs")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/work/jobs/nearby")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync("/api/me/location", new UpdateLocationRequest(0, 0))).StatusCode);
+
+        var nearby = await client.GetFromJsonAsync<List<JobPostResponse>>("/api/work/jobs/nearby?lat=0&lng=0");
+        Assert.Equal(job!.Id, nearby![0].Id);
 
         var badLocation = await client.PutAsJsonAsync("/api/me/location", new UpdateLocationRequest(91, 0));
         Assert.Equal(HttpStatusCode.BadRequest, badLocation.StatusCode);

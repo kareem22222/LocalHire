@@ -1,6 +1,7 @@
 using LocalHire.Api.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,7 +11,8 @@ namespace LocalHire.Api.Tests;
 
 public sealed class ApiFactory : WebApplicationFactory<Program>
 {
-    private readonly string _databaseName = $"localhire-{Guid.NewGuid()}";
+    private readonly SqliteConnection _connection = new("Data Source=:memory:");
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Test");
@@ -28,9 +30,25 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
+            _connection.Open();
+            using var command = _connection.CreateCommand();
+            command.CommandText = "PRAGMA foreign_keys=ON;";
+            command.ExecuteNonQuery();
+
             services.RemoveAll<DbContextOptions<LocalHireDbContext>>();
             services.AddDbContext<LocalHireDbContext>(options =>
-                options.UseInMemoryDatabase(_databaseName));
+                options.UseSqlite(_connection));
+
+            using var provider = services.BuildServiceProvider();
+            using var scope = provider.CreateScope();
+            scope.ServiceProvider.GetRequiredService<LocalHireDbContext>().Database.EnsureCreated();
         });
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (disposing)
+            _connection.Dispose();
     }
 }

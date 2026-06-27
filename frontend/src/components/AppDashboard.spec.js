@@ -21,6 +21,10 @@ function mountDashboard() {
 
 describe('AppDashboard', () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
+    api.get.mockReset()
+    api.post.mockReset()
+    api.put.mockReset()
     api.get.mockResolvedValue({ data: [] })
     api.post.mockResolvedValue({ data: {} })
     api.put.mockResolvedValue({ data: {} })

@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AuthModal from './AuthModal.vue'
 import api, { setAuth } from '../api'
@@ -10,6 +10,8 @@ vi.mock('../api', () => ({
 
 describe('AuthModal', () => {
   beforeEach(() => {
+    api.post.mockReset()
+    setAuth.mockReset()
     api.post.mockResolvedValue({ data: { token: 'token' } })
   })
 
@@ -21,6 +23,7 @@ describe('AuthModal', () => {
     await wrapper.find('#auth-email').setValue('person@example.com')
     await wrapper.find('#auth-password').setValue('Password1!')
     await wrapper.find('form').trigger('submit')
+    await flushPromises()
 
     expect(api.post).toHaveBeenCalledWith('/auth/register', {
       name: 'Person',
@@ -39,6 +42,7 @@ describe('AuthModal', () => {
     await wrapper.find('#auth-email').setValue('person@example.com')
     await wrapper.find('#auth-password').setValue('Password1!')
     await wrapper.find('form').trigger('submit')
+    await flushPromises()
 
     expect(api.post).toHaveBeenCalledWith('/auth/login', {
       email: 'person@example.com',
