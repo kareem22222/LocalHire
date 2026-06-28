@@ -139,7 +139,7 @@ Install the EF Core CLI once:
 dotnet tool install --global dotnet-ef
 ```
 
-Apply migrations:
+Apply the migrations:
 
 ```powershell
 cd backend
