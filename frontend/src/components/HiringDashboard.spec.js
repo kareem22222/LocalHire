@@ -36,6 +36,14 @@ function mockPincodeLookup(postOffices = [
   })
 }
 
+function createDeferred() {
+  let resolve
+  const promise = new Promise((done) => {
+    resolve = done
+  })
+  return { promise, resolve }
+}
+
 describe('HiringDashboard', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
@@ -48,6 +56,42 @@ describe('HiringDashboard', () => {
     await wrapper.find('input[aria-label="Search candidates"]').setValue('routes')
     expect(wrapper.findAll('.candidate-card')).toHaveLength(0)
     expect(wrapper.text()).toContain('No talent found')
+  })
+
+  it('filters candidates provided through props', async () => {
+    const wrapper = mountHiringDashboard({
+      candidates: [
+        {
+          id: 1,
+          name: 'Ananya Rao',
+          role: 'Store Associate',
+          area: 'Indiranagar',
+          city: 'Bengaluru',
+          availability: 'Immediate',
+          experience: '2 yrs',
+          match: 96,
+          rate: 'Rs 22k/mo',
+          skills: ['Billing'],
+        },
+        {
+          id: 2,
+          name: 'Rahul Mehta',
+          role: 'Delivery Partner',
+          area: 'Madhapur',
+          city: 'Hyderabad',
+          availability: 'This week',
+          experience: '3 yrs',
+          match: 91,
+          rate: 'Rs 28k/mo',
+          skills: ['Routes'],
+        },
+      ],
+    })
+
+    await wrapper.find('input[aria-label="Search candidates"]').setValue('routes')
+
+    expect(wrapper.findAll('.candidate-card h3').map((item) => item.text())).toEqual(['Rahul Mehta'])
+    expect(wrapper.findAll('.hiring-search-panel select')[0].text()).toContain('Delivery Partner')
   })
 
   it('shows an empty state instead of fallback demo roles', () => {
@@ -129,6 +173,30 @@ describe('HiringDashboard', () => {
     expect(wrapper.emitted('create-job')).toHaveLength(1)
     expect(wrapper.emitted('view-applications')).toEqual([[7]])
   })
+
+  it('ignores stale pincode responses after the input becomes invalid', async () => {
+    const deferredJson = createDeferred()
+    fetch.mockResolvedValue({ json: vi.fn(() => deferredJson.promise) })
+    const jobForm = createJobForm()
+    const wrapper = mountHiringDashboard({ jobForm, showCreateForm: true })
+
+    await wrapper.find('input[inputmode="numeric"]').setValue('400050')
+    await flushPromises()
+    await wrapper.find('input[inputmode="numeric"]').setValue('')
+
+    deferredJson.resolve([{
+      Status: 'Success',
+      PostOffice: [
+        { Name: 'Bandra West', Block: 'Mumbai', District: 'Mumbai', State: 'Maharashtra' },
+      ],
+    }])
+    await flushPromises()
+
+    expect(jobForm.pincode).toBe('')
+    expect(jobForm.state).toBe('')
+    expect(jobForm.cityArea).toBe('')
+  })
+
 
   it('emits shortlist without changing the search filter', async () => {
     const wrapper = mountHiringDashboard()

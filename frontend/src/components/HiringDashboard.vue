@@ -7,6 +7,7 @@ const props = defineProps({
   jobFormError: { type: String, default: '' },
   creating: { type: Boolean, default: false },
   myJobs: { type: Array, default: () => [] },
+  candidates: { type: Array, default: () => [] },
   showCreateForm: { type: Boolean, default: false },
 })
 
@@ -20,9 +21,9 @@ const pincodeError = ref('')
 const areaOptions = ref([])
 let pincodeRequestId = 0
 
-const candidates = []
+const candidates = computed(() => props.candidates)
 
-const roles = computed(() => ['All', ...new Set(candidates.map((candidate) => candidate.role))])
+const roles = computed(() => ['All', ...new Set(candidates.value.map((candidate) => candidate.role))])
 const availabilityOptions = ['All', 'Immediate', 'This week', 'Next week']
 const indianStates = [
   'Andhra Pradesh',
@@ -81,7 +82,7 @@ const openRoles = computed(() => {
 
 const filteredCandidates = computed(() => {
   const text = search.value.trim().toLowerCase()
-  return candidates.filter((candidate) => {
+  return candidates.value.filter((candidate) => {
     const matchesText = !text || [
       candidate.name,
       candidate.role,
@@ -102,6 +103,7 @@ function shortlist(candidate) {
 watch(
   () => props.jobForm.pincode,
   async (value) => {
+    const requestId = ++pincodeRequestId
     const pincode = String(value || '').replace(/\D/g, '').slice(0, 6)
     if (pincode !== value) {
       props.jobForm.pincode = pincode
@@ -123,7 +125,6 @@ watch(
       return
     }
 
-    const requestId = ++pincodeRequestId
     pincodeStatus.value = 'loading'
 
     try {
