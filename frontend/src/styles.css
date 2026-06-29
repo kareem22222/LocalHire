@@ -933,8 +933,6 @@ input { font: inherit; }
   .hero-title { font-size: 34px; }
   .stats-section { grid-template-columns: 1fr; }
 }
-  
-No assets dir, appending inline
 /* ============================================================
    Dashboard â€” Job Features (role-based)
    ============================================================ */

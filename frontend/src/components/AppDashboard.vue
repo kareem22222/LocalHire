@@ -74,6 +74,36 @@ async function loadMyJobs() {
   }
 }
 
+function hasValidCoordinates(latitude, longitude) {
+  if (latitude == null || longitude == null || latitude === '' || longitude === '') return false
+  const lat = Number(latitude)
+  const lng = Number(longitude)
+  return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
+}
+
+function getCurrentCoordinates() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Please allow location access before posting a job.'))
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const latitude = Math.round(pos.coords.latitude * 1000) / 1000
+        const longitude = Math.round(pos.coords.longitude * 1000) / 1000
+        if (hasValidCoordinates(latitude, longitude)) {
+          resolve({ latitude, longitude })
+        } else {
+          reject(new Error('Could not read valid job coordinates.'))
+        }
+      },
+      () => reject(new Error('Please allow location access before posting a job.')),
+      { enableHighAccuracy: false, timeout: 10000 },
+    )
+  })
+}
+
 async function createJob() {
   jobFormError.value = ''
   if (!jobForm.value.title.trim() || !jobForm.value.description.trim() || !jobForm.value.workplaceName.trim() || !jobForm.value.cityArea.trim()) {
@@ -91,23 +121,27 @@ async function createJob() {
 
   creating.value = true
   try {
+    if (!hasValidCoordinates(jobForm.value.latitude, jobForm.value.longitude)) {
+      const coordinates = await getCurrentCoordinates()
+      jobForm.value.latitude = coordinates.latitude
+      jobForm.value.longitude = coordinates.longitude
+    }
+
     const location = `${jobForm.value.cityArea.trim()}, ${jobForm.value.state.trim()} - ${jobForm.value.pincode.trim()}`
     const payload = {
       title: jobForm.value.title.trim(),
       description: jobForm.value.description.trim(),
       workplaceName: jobForm.value.workplaceName.trim(),
       cityArea: location,
-    }
-    if (jobForm.value.latitude != null && jobForm.value.longitude != null) {
-      payload.latitude = jobForm.value.latitude
-      payload.longitude = jobForm.value.longitude
+      latitude: Number(jobForm.value.latitude),
+      longitude: Number(jobForm.value.longitude),
     }
     await api.post('/hiring/jobs', payload)
     jobForm.value = { title: '', description: '', workplaceName: '', cityArea: '', pincode: '', state: '', latitude: null, longitude: null }
     showCreateForm.value = false
     await loadMyJobs()
   } catch (err) {
-    jobFormError.value = err.response?.data?.message || 'Failed to create job post.'
+    jobFormError.value = err.response?.data?.message || err.message || 'Failed to create job post.'
   } finally {
     creating.value = false
   }
@@ -223,9 +257,9 @@ function hasApplied(jobId) {
     />
 
     <div v-if="selectedJobApplications !== null" class="auth-overlay" @click.self="closeApplications">
-      <div class="auth-modal" style="max-width: 520px;">
-        <button class="auth-modal__close" @click="closeApplications">&times;</button>
-        <h2 class="auth-modal__title" style="margin-bottom: 20px;">Applicants</h2>
+      <div class="auth-modal" style="max-width: 520px;" role="dialog" aria-modal="true" aria-labelledby="applicants-dialog-title">
+        <button class="auth-modal__close" @click="closeApplications" aria-label="Close applicants dialog">&times;</button>
+        <h2 id="applicants-dialog-title" class="auth-modal__title" style="margin-bottom: 20px;">Applicants</h2>
         <div v-if="selectedJobApplications.length === 0" class="dash-empty">No applications yet.</div>
         <div v-for="app in selectedJobApplications" :key="app.id" class="applicant-row">
           <div class="applicant-row__info">

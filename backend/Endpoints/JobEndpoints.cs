@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using FluentValidation;
 using LocalHire.Api.Data;
@@ -11,6 +12,8 @@ namespace LocalHire.Api.Endpoints;
 
 public static class JobEndpoints
 {
+    private const double NearbyRadiusKm = 50;
+
     public static void MapJobEndpoints(this WebApplication app)
     {
         var hiringGroup = app.MapGroup("/api/hiring")
@@ -41,7 +44,9 @@ public static class JobEndpoints
                 return Results.ValidationProblem(errors);
             }
 
-            var userId = GetUserId(user);
+            if (!TryGetUserId(user, out var userId))
+                return Results.Unauthorized();
+
             var jobPost = new JobPost
             {
                 Id = Guid.NewGuid(),
@@ -71,7 +76,9 @@ public static class JobEndpoints
             LocalHireDbContext db,
             CancellationToken ct) =>
         {
-            var userId = GetUserId(user);
+            if (!TryGetUserId(user, out var userId))
+                return Results.Unauthorized();
+
             var jobs = await db.JobPosts
                 .Where(j => j.EmployerId == userId)
                 .Select(j => new JobPostResponse(
@@ -90,7 +97,9 @@ public static class JobEndpoints
             LocalHireDbContext db,
             CancellationToken ct) =>
         {
-            var userId = GetUserId(user);
+            if (!TryGetUserId(user, out var userId))
+                return Results.Unauthorized();
+
             var jobPost = await db.JobPosts.FirstOrDefaultAsync(j => j.Id == id && j.EmployerId == userId, ct);
             if (jobPost is null)
                 throw new NotFoundException("Job post not found.");
@@ -115,20 +124,45 @@ public static class JobEndpoints
         {
             var query = db.JobPosts.Where(j => j.IsActive);
 
+            if (lat.HasValue != lng.HasValue)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["coordinates"] = new[] { "Latitude and longitude are required together." }
+                });
+            }
+
             if (lat is not null && lng is not null)
             {
-                var jobs = await query.ToListAsync(ct);
+                if (!IsValidCoordinates(lat.Value, lng.Value))
+                {
+                    return Results.ValidationProblem(new Dictionary<string, string[]>
+                    {
+                        ["coordinates"] = new[] { "Latitude must be between -90 and 90, and longitude must be between -180 and 180." }
+                    });
+                }
+
+                var jobs = await query
+                    .Select(j => new
+                    {
+                        Response = new JobPostResponse(
+                            j.Id, j.Title, j.Description, j.WorkplaceName,
+                            j.CityArea, j.Latitude, j.Longitude,
+                            j.IsActive, j.CreatedAt, j.Applications.Count),
+                        j.Latitude,
+                        j.Longitude
+                    })
+                    .ToListAsync(ct);
+
                 var nearby = jobs
                     .Select(j => new
                     {
-                        Job = j,
+                        j.Response,
                         Distance = HaversineDistance(lat.Value, lng.Value, j.Latitude, j.Longitude)
                     })
+                    .Where(x => x.Distance <= NearbyRadiusKm)
                     .OrderBy(x => x.Distance)
-                    .Select(x => new JobPostResponse(
-                        x.Job.Id, x.Job.Title, x.Job.Description, x.Job.WorkplaceName,
-                        x.Job.CityArea, x.Job.Latitude, x.Job.Longitude,
-                        x.Job.IsActive, x.Job.CreatedAt, x.Job.Applications.Count))
+                    .Select(x => x.Response)
                     .ToList();
 
                 return Results.Ok(nearby);
@@ -151,7 +185,8 @@ public static class JobEndpoints
             LocalHireDbContext db,
             CancellationToken ct) =>
         {
-            var userId = GetUserId(user);
+            if (!TryGetUserId(user, out var userId))
+                return Results.Unauthorized();
 
             var jobPost = await db.JobPosts.FirstOrDefaultAsync(j => j.Id == id && j.IsActive, ct)
                 ?? throw new NotFoundException("Job post not found or no longer active.");
@@ -194,7 +229,9 @@ public static class JobEndpoints
             LocalHireDbContext db,
             CancellationToken ct) =>
         {
-            var userId = GetUserId(user);
+            if (!TryGetUserId(user, out var userId))
+                return Results.Unauthorized();
+
             var applications = await db.JobApplications
                 .Where(a => a.WorkerId == userId)
                 .Select(a => new JobApplicationResponse(
@@ -208,12 +245,17 @@ public static class JobEndpoints
         .WithName("GetMyApplications");
     }
 
-    private static Guid GetUserId(ClaimsPrincipal user)
+    private static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)
     {
-        var claim = user.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)
-            ?? user.FindFirst(ClaimTypes.NameIdentifier);
-        return Guid.Parse(claim!.Value);
+        var claim = user.FindFirstValue(JwtRegisteredClaimNames.Sub)
+            ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(claim, out userId);
     }
+
+    private static bool IsValidCoordinates(double lat, double lng) =>
+        double.IsFinite(lat) && double.IsFinite(lng) &&
+        lat is >= -90.0 and <= 90.0 &&
+        lng is >= -180.0 and <= 180.0;
 
     private static double HaversineDistance(double lat1, double lon1, double? lat2, double? lon2)
     {

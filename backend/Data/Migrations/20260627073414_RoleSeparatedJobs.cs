@@ -35,12 +35,22 @@ namespace LocalHire.Api.Migrations
                 type: "timestamp with time zone",
                 nullable: true);
 
+            migrationBuilder.AddCheckConstraint(
+                name: "CK_Users_Location_CompleteAndValid",
+                table: "Users",
+                sql: @"(""Latitude"" IS NULL AND ""Longitude"" IS NULL) OR (""Latitude"" BETWEEN -90.0 AND 90.0 AND ""Longitude"" BETWEEN -180.0 AND 180.0)");
+
             // New composite unique index — same email allowed once per role
             migrationBuilder.CreateIndex(
                 name: "IX_Users_Email_Role",
                 table: "Users",
                 columns: new[] { "Email", "Role" },
                 unique: true);
+
+            migrationBuilder.AddUniqueConstraint(
+                name: "AK_Users_Id_Role",
+                table: "Users",
+                columns: new[] { "Id", "Role" });
 
             // ---------- JobPosts ----------
             migrationBuilder.CreateTable(
@@ -49,6 +59,7 @@ namespace LocalHire.Api.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     EmployerId = table.Column<Guid>(type: "uuid", nullable: false),
+                    EmployerRole = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false, defaultValue: "Hiring"),
                     Title = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     Description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
                     WorkplaceName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
@@ -61,11 +72,12 @@ namespace LocalHire.Api.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_JobPosts", x => x.Id);
+                    table.CheckConstraint("CK_JobPosts_Location_CompleteAndValid", @"(""Latitude"" IS NULL AND ""Longitude"" IS NULL) OR (""Latitude"" BETWEEN -90.0 AND 90.0 AND ""Longitude"" BETWEEN -180.0 AND 180.0)");
                     table.ForeignKey(
                         name: "FK_JobPosts_Users_EmployerId",
-                        column: x => x.EmployerId,
+                        columns: x => new { x.EmployerId, x.EmployerRole },
                         principalTable: "Users",
-                        principalColumn: "Id",
+                        principalColumns: new[] { "Id", "Role" },
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -77,6 +89,7 @@ namespace LocalHire.Api.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     JobPostId = table.Column<Guid>(type: "uuid", nullable: false),
                     WorkerId = table.Column<Guid>(type: "uuid", nullable: false),
+                    WorkerRole = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false, defaultValue: "LookingForWork"),
                     Status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
@@ -91,16 +104,16 @@ namespace LocalHire.Api.Migrations
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_JobApplications_Users_WorkerId",
-                        column: x => x.WorkerId,
+                        columns: x => new { x.WorkerId, x.WorkerRole },
                         principalTable: "Users",
-                        principalColumn: "Id",
+                        principalColumns: new[] { "Id", "Role" },
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_JobPosts_EmployerId",
+                name: "IX_JobPosts_EmployerId_EmployerRole",
                 table: "JobPosts",
-                column: "EmployerId");
+                columns: new[] { "EmployerId", "EmployerRole" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_JobApplications_JobPostId_WorkerId",
@@ -109,22 +122,43 @@ namespace LocalHire.Api.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_JobApplications_WorkerId",
+                name: "IX_JobApplications_WorkerId_WorkerRole",
                 table: "JobApplications",
-                column: "WorkerId");
+                columns: new[] { "WorkerId", "WorkerRole" });
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Reverse order: drop new tables first, then revert User changes
+            migrationBuilder.Sql(
+                """
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1
+                        FROM "Users"
+                        GROUP BY "Email"
+                        HAVING COUNT(*) > 1
+                    ) THEN
+                        RAISE EXCEPTION 'RoleSeparatedJobs cannot be rolled back while duplicate user emails exist across roles.';
+                    END IF;
+                END $$;
+                """);
+
             migrationBuilder.DropTable(
                 name: "JobApplications");
 
             migrationBuilder.DropTable(
                 name: "JobPosts");
 
-            // Restore old email-only index
+            migrationBuilder.DropUniqueConstraint(
+                name: "AK_Users_Id_Role",
+                table: "Users");
+
+            migrationBuilder.DropCheckConstraint(
+                name: "CK_Users_Location_CompleteAndValid",
+                table: "Users");
+
             migrationBuilder.DropIndex(
                 name: "IX_Users_Email_Role",
                 table: "Users");
@@ -141,7 +175,6 @@ namespace LocalHire.Api.Migrations
                 name: "Latitude",
                 table: "Users");
 
-            // Recreate original unique email index
             migrationBuilder.CreateIndex(
                 name: "IX_Users_Email",
                 table: "Users",

@@ -45,9 +45,16 @@ namespace LocalHire.Api.Migrations
                     b.Property<Guid>("WorkerId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("WorkerRole")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("LookingForWork");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("WorkerId");
+                    b.HasIndex("WorkerId", "WorkerRole");
 
                     b.HasIndex("JobPostId", "WorkerId")
                         .IsUnique();
@@ -77,8 +84,17 @@ namespace LocalHire.Api.Migrations
                     b.Property<Guid>("EmployerId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("EmployerRole")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Hiring");
+
                     b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
 
                     b.Property<double?>("Latitude")
                         .HasColumnType("double precision");
@@ -98,9 +114,12 @@ namespace LocalHire.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmployerId");
+                    b.HasIndex("EmployerId", "EmployerRole");
 
-                    b.ToTable("JobPosts");
+                    b.ToTable("JobPosts", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobPosts_Location_CompleteAndValid", "(\"Latitude\" IS NULL AND \"Longitude\" IS NULL) OR (\"Latitude\" BETWEEN -90.0 AND 90.0 AND \"Longitude\" BETWEEN -180.0 AND 180.0)");
+                        });
                 });
 
             modelBuilder.Entity("LocalHire.Api.Models.User", b =>
@@ -146,7 +165,10 @@ namespace LocalHire.Api.Migrations
                     b.HasIndex("Email", "Role")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", t =>
+                        {
+                            t.HasCheckConstraint("CK_Users_Location_CompleteAndValid", "(\"Latitude\" IS NULL AND \"Longitude\" IS NULL) OR (\"Latitude\" BETWEEN -90.0 AND 90.0 AND \"Longitude\" BETWEEN -180.0 AND 180.0)");
+                        });
                 });
 
             modelBuilder.Entity("LocalHire.Api.Models.JobApplication", b =>
@@ -159,7 +181,8 @@ namespace LocalHire.Api.Migrations
 
                     b.HasOne("LocalHire.Api.Models.User", "Worker")
                         .WithMany("JobApplications")
-                        .HasForeignKey("WorkerId")
+                        .HasForeignKey("WorkerId", "WorkerRole")
+                        .HasPrincipalKey("Id", "Role")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -172,7 +195,8 @@ namespace LocalHire.Api.Migrations
                 {
                     b.HasOne("LocalHire.Api.Models.User", "Employer")
                         .WithMany("JobPosts")
-                        .HasForeignKey("EmployerId")
+                        .HasForeignKey("EmployerId", "EmployerRole")
+                        .HasPrincipalKey("Id", "Role")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
