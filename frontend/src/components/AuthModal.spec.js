@@ -34,6 +34,27 @@ describe('AuthModal', () => {
     expect(setAuth).toHaveBeenCalledWith('token')
   })
 
+  it('uses the initial role when opening signup', async () => {
+    const wrapper = mount(AuthModal, {
+      props: { initialRole: 'Hiring' },
+    })
+
+    expect(wrapper.find('#auth-role').element.value).toBe('Hiring')
+
+    await wrapper.find('#auth-name').setValue('Person')
+    await wrapper.find('#auth-email').setValue('person@example.com')
+    await wrapper.find('#auth-password').setValue('Password1!')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(api.post).toHaveBeenCalledWith('/auth/register', {
+      name: 'Person',
+      email: 'person@example.com',
+      password: 'Password1!',
+      role: 'Hiring',
+    })
+  })
+
   it('sends role on login', async () => {
     const wrapper = mount(AuthModal)
 

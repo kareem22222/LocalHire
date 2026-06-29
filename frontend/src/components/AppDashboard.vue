@@ -1,11 +1,15 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import api from '../api'
 import BrandLogo from './BrandLogo.vue'
+import HiringDashboard from './HiringDashboard.vue'
 
 const emit = defineEmits(['logout'])
 
 const user = ref(null)
+const userRole = computed(() => normalizeRole(user.value?.role))
+const isHiringUser = computed(() => userRole.value === 'hiring')
+const isWorkerUser = computed(() => userRole.value === 'worker')
 
 // --- Shared ---
 const activeTab = ref('dashboard')
@@ -16,14 +20,25 @@ async function fetchProfile() {
     user.value = data
 
     // Auto-load role-specific data after profile fetch
-    if (data.role === 'Hiring') {
+    const role = normalizeRole(data.role)
+    if (role === 'hiring') {
       await loadMyJobs()
-    } else if (data.role === 'LookingForWork') {
+    } else if (role === 'worker') {
       await loadMyApplications()
       await loadNearbyJobs()
     }
   } catch {
   }
+}
+
+function normalizeRole(role) {
+  if (role === 1 || role === '1') return 'hiring'
+  if (role === 0 || role === '0') return 'worker'
+
+  const value = String(role || '').trim().toLowerCase()
+  if (['hiring', 'employer'].includes(value)) return 'hiring'
+  if (['lookingforwork', 'looking_for_work', 'worker'].includes(value)) return 'worker'
+  return ''
 }
 
 function handleLogout() {
@@ -40,6 +55,8 @@ const jobForm = ref({
   description: '',
   workplaceName: '',
   cityArea: '',
+  pincode: '',
+  state: '',
   latitude: null,
   longitude: null,
 })
@@ -63,18 +80,30 @@ async function createJob() {
     jobFormError.value = 'Please fill in all required fields.'
     return
   }
+  if (!/^\d{6}$/.test(String(jobForm.value.pincode || '').trim())) {
+    jobFormError.value = 'Please enter a valid 6-digit pincode.'
+    return
+  }
+  if (!jobForm.value.state.trim()) {
+    jobFormError.value = 'Please wait for the state to load from the pincode.'
+    return
+  }
 
   creating.value = true
   try {
-    await api.post('/hiring/jobs', {
+    const location = `${jobForm.value.cityArea.trim()}, ${jobForm.value.state.trim()} - ${jobForm.value.pincode.trim()}`
+    const payload = {
       title: jobForm.value.title.trim(),
       description: jobForm.value.description.trim(),
       workplaceName: jobForm.value.workplaceName.trim(),
-      cityArea: jobForm.value.cityArea.trim(),
-      latitude: jobForm.value.latitude ?? null,
-      longitude: jobForm.value.longitude ?? null,
-    })
-    jobForm.value = { title: '', description: '', workplaceName: '', cityArea: '', latitude: null, longitude: null }
+      cityArea: location,
+    }
+    if (jobForm.value.latitude != null && jobForm.value.longitude != null) {
+      payload.latitude = jobForm.value.latitude
+      payload.longitude = jobForm.value.longitude
+    }
+    await api.post('/hiring/jobs', payload)
+    jobForm.value = { title: '', description: '', workplaceName: '', cityArea: '', pincode: '', state: '', latitude: null, longitude: null }
     showCreateForm.value = false
     await loadMyJobs()
   } catch (err) {
@@ -175,104 +204,42 @@ function hasApplied(jobId) {
     <header class="dash-header">
       <BrandLogo />
       <div class="dash-header__right">
+        <span class="dash-btn dash-btn--primary dash-role-badge">{{ isHiringUser ? 'Hiring' : isWorkerUser ? 'Worker' : 'Account' }}</span>
         <span class="dash-user-name">{{ user?.name || 'User' }}</span>
-        <span class="dash-role-badge">{{ user?.role === 'Hiring' ? 'Employer' : 'Worker' }}</span>
         <button class="dash-logout-btn" @click="handleLogout">Sign out</button>
       </div>
     </header>
 
-    <main class="dash-main">
+    <HiringDashboard
+      v-if="isHiringUser"
+      v-model:show-create-form="showCreateForm"
+      :job-form="jobForm"
+      :job-form-error="jobFormError"
+      :creating="creating"
+      :my-jobs="myJobs"
+      @create-job="createJob"
+      @view-applications="viewApplications"
+      @shortlist="() => {}"
+    />
 
-      <!-- ===== HIRING DASHBOARD ===== -->
-      <template v-if="user?.role === 'Hiring'">
-        <div class="dash-welcome">
-          <h1 class="dash-welcome__title">
-            Employer Dashboard,
-            <span class="dash-welcome__name">{{ user?.name }}</span>
-          </h1>
-          <p class="dash-welcome__desc">
-            Post local job openings and review applications from nearby workers.
-          </p>
+    <div v-if="selectedJobApplications !== null" class="auth-overlay" @click.self="closeApplications">
+      <div class="auth-modal" style="max-width: 520px;">
+        <button class="auth-modal__close" @click="closeApplications">&times;</button>
+        <h2 class="auth-modal__title" style="margin-bottom: 20px;">Applicants</h2>
+        <div v-if="selectedJobApplications.length === 0" class="dash-empty">No applications yet.</div>
+        <div v-for="app in selectedJobApplications" :key="app.id" class="applicant-row">
+          <div class="applicant-row__info">
+            <strong>{{ app.workerName }}</strong>
+            <span class="applicant-row__status">{{ app.status }}</span>
+          </div>
+          <span class="applicant-row__date">{{ new Date(app.appliedAt).toLocaleDateString() }}</span>
         </div>
+      </div>
+    </div>
 
-        <div class="dash-section">
-          <div class="dash-section__header">
-            <h2 class="dash-section__title">Your Job Posts</h2>
-            <button class="dash-btn dash-btn--primary" @click="showCreateForm = !showCreateForm">
-              {{ showCreateForm ? 'Cancel' : '+ New Job Post' }}
-            </button>
-          </div>
-
-          <div v-if="showCreateForm" class="job-form">
-            <div class="job-form__field">
-              <label>Title</label>
-              <input v-model="jobForm.title" placeholder="e.g. Store Associate" />
-            </div>
-            <div class="job-form__field">
-              <label>Description</label>
-              <textarea v-model="jobForm.description" placeholder="Describe the role, hours, pay..." rows="3"></textarea>
-            </div>
-            <div class="job-form__field">
-              <label>Workplace name</label>
-              <input v-model="jobForm.workplaceName" placeholder="e.g. FreshMart Store" />
-            </div>
-            <div class="job-form__field">
-              <label>City / Area</label>
-              <input v-model="jobForm.cityArea" placeholder="e.g. Andheri West, Mumbai" />
-            </div>
-            <div class="job-form__row">
-              <div class="job-form__field">
-                <label>Latitude <span class="job-form__optional">(optional)</span></label>
-                <input v-model.number="jobForm.latitude" type="number" step="any" placeholder="19.113" />
-              </div>
-              <div class="job-form__field">
-                <label>Longitude <span class="job-form__optional">(optional)</span></label>
-                <input v-model.number="jobForm.longitude" type="number" step="any" placeholder="72.869" />
-              </div>
-            </div>
-            <p v-if="jobFormError" class="job-form__error">{{ jobFormError }}</p>
-            <button class="dash-btn dash-btn--primary" :disabled="creating" @click="createJob">
-              {{ creating ? 'Posting...' : 'Post Job' }}
-            </button>
-          </div>
-
-          <div v-if="myJobs.length === 0 && !showCreateForm" class="dash-empty">
-            No job posts yet. Create your first one!
-          </div>
-
-          <div v-for="job in myJobs" :key="job.id" class="job-card">
-            <div class="job-card__body">
-              <h3 class="job-card__title">{{ job.title }}</h3>
-              <p class="job-card__meta">{{ job.workplaceName }} &middot; {{ job.cityArea }}</p>
-              <p class="job-card__desc">{{ job.description }}</p>
-              <span v-if="!job.isActive" class="job-card__badge job-card__badge--inactive">Inactive</span>
-            </div>
-            <div class="job-card__actions">
-              <span class="job-card__count">{{ job.applicationCount }} applicant{{ job.applicationCount !== 1 ? 's' : '' }}</span>
-              <button class="dash-btn dash-btn--outline" @click="viewApplications(job.id)">View</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Applicants Modal -->
-        <div v-if="selectedJobApplications !== null" class="auth-overlay" @click.self="closeApplications">
-          <div class="auth-modal" style="max-width: 520px;">
-            <button class="auth-modal__close" @click="closeApplications">&times;</button>
-            <h2 class="auth-modal__title" style="margin-bottom: 20px;">Applicants</h2>
-            <div v-if="selectedJobApplications.length === 0" class="dash-empty">No applications yet.</div>
-            <div v-for="app in selectedJobApplications" :key="app.id" class="applicant-row">
-              <div class="applicant-row__info">
-                <strong>{{ app.workerName }}</strong>
-                <span class="applicant-row__status">{{ app.status }}</span>
-              </div>
-              <span class="applicant-row__date">{{ new Date(app.appliedAt).toLocaleDateString() }}</span>
-            </div>
-          </div>
-        </div>
-      </template>
+    <main v-if="isWorkerUser" class="dash-main">
 
       <!-- ===== WORKER DASHBOARD ===== -->
-      <template v-else-if="user?.role === 'LookingForWork'">
         <div class="dash-welcome">
           <h1 class="dash-welcome__title">
             Worker Dashboard,
@@ -337,8 +304,12 @@ function hasApplied(jobId) {
             </div>
           </div>
         </div>
-      </template>
+    </main>
 
+    <main v-else-if="user && !isHiringUser" class="dash-main">
+      <div class="dash-empty">
+        We could not identify this account type. Please sign out and sign in again with the correct role.
+      </div>
     </main>
   </div>
 </template>
