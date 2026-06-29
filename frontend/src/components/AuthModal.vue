@@ -7,6 +7,11 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  initialRole: {
+    type: String,
+    default: 'LookingForWork',
+    validator: (value) => ['LookingForWork', 'Hiring'].includes(value),
+  },
 })
 const emit = defineEmits(['close', 'success'])
 
@@ -20,7 +25,7 @@ const form = ref({
   name: '',
   email: props.initialEmail,
   password: '',
-  role: 'LookingForWork',
+  role: props.initialRole,
 })
 
 const isRegister = computed(() => mode.value === 'register')

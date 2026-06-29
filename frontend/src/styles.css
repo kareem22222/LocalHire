@@ -940,14 +940,12 @@ No assets dir, appending inline
    ============================================================ */
 
 .dash-role-badge {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(7, 85, 154, 0.08);
-  color: #07559a;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.dash-role-badge:hover {
+  transform: none;
 }
 
 .dash-section {
@@ -1060,7 +1058,8 @@ No assets dir, appending inline
 }
 
 .job-form__field input,
-.job-form__field textarea {
+.job-form__field textarea,
+.job-form__field select {
   padding: 12px 14px;
   font-size: 14px;
   color: #12324a;
@@ -1073,7 +1072,8 @@ No assets dir, appending inline
 }
 
 .job-form__field input:focus,
-.job-form__field textarea:focus {
+.job-form__field textarea:focus,
+.job-form__field select:focus {
   border-color: #07559a;
   box-shadow: 0 0 0 3px rgba(7, 85, 154, 0.08);
 }
@@ -1091,6 +1091,20 @@ No assets dir, appending inline
   padding: 8px 14px;
   border-radius: 8px;
   font-weight: 500;
+}
+
+.job-form__hint,
+.job-form__error-text {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.job-form__hint {
+  color: #5d7482;
+}
+
+.job-form__error-text {
+  color: #e53935;
 }
 
 /* ---------- Job Card ---------- */

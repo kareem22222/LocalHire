@@ -8,6 +8,8 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  localStorage.clear()
+  if (typeof localStorage.clear === 'function') {
+    localStorage.clear()
+  }
   vi.restoreAllMocks()
 })

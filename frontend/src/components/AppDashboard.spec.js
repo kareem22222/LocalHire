@@ -19,9 +19,23 @@ function mountDashboard() {
   })
 }
 
+function findButtonByText(wrapper, text) {
+  return wrapper.findAll('button').find((button) => button.text() === text)
+}
+
+function mockPincodeLookup(postOffices = [
+  { Name: 'Bandra West', Block: 'Mumbai', District: 'Mumbai', State: 'Maharashtra' },
+  { Name: 'Khar Colony', Block: 'Mumbai', District: 'Mumbai', State: 'Maharashtra' },
+]) {
+  fetch.mockResolvedValue({
+    json: vi.fn().mockResolvedValue([{ Status: 'Success', PostOffice: postOffices }]),
+  })
+}
+
 describe('AppDashboard', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    vi.stubGlobal('fetch', vi.fn())
     api.get.mockReset()
     api.post.mockReset()
     api.put.mockReset()
@@ -33,6 +47,17 @@ describe('AppDashboard', () => {
   it('loads hiring jobs after profile fetch', async () => {
     api.get.mockImplementation((url) => Promise.resolve({
       data: url === '/auth/me' ? { name: 'Pat', role: 'Hiring' } : [],
+    }))
+
+    mountDashboard()
+    await flushPromises()
+
+    expect(api.get).toHaveBeenCalledWith('/hiring/jobs')
+  })
+
+  it('loads hiring jobs when profile role is the numeric backend enum', async () => {
+    api.get.mockImplementation((url) => Promise.resolve({
+      data: url === '/auth/me' ? { name: 'Pat', role: 1 } : [],
     }))
 
     mountDashboard()
@@ -86,31 +111,51 @@ describe('AppDashboard', () => {
     expect(api.get).toHaveBeenCalledWith('/work/jobs/nearby', { params: {} })
   })
 
-  it('creating a job preserves zero coordinates', async () => {
+  it('creating a job submits pincode and state as the location text', async () => {
+    mockPincodeLookup()
     api.get.mockImplementation((url) => Promise.resolve({
       data: url === '/auth/me' ? { name: 'Pat', role: 'Hiring' } : [],
     }))
 
     const wrapper = mountDashboard()
     await flushPromises()
-    await wrapper.find('.dash-btn--primary').trigger('click')
+    await findButtonByText(wrapper, 'Post new role').trigger('click')
 
-    const inputs = wrapper.findAll('input')
-    await inputs[0].setValue('Cashier')
-    await wrapper.find('textarea').setValue('Front desk')
-    await inputs[1].setValue('Corner Shop')
-    await inputs[2].setValue('Bandra')
-    await inputs[3].setValue(0)
-    await inputs[4].setValue(0)
+    const form = wrapper.find('.job-form')
+    await form.find('input[placeholder="e.g. Store Associate"]').setValue('Cashier')
+    await form.find('textarea').setValue('Front desk')
+    await form.find('input[placeholder="e.g. FreshMart Store"]').setValue('Corner Shop')
+    await form.find('input[inputmode="numeric"]').setValue('400050')
+    await flushPromises()
     await wrapper.find('.job-form > .dash-btn').trigger('click')
 
     expect(api.post).toHaveBeenCalledWith('/hiring/jobs', {
       title: 'Cashier',
       description: 'Front desk',
       workplaceName: 'Corner Shop',
-      cityArea: 'Bandra',
-      latitude: 0,
-      longitude: 0,
+      cityArea: 'Bandra West, Mumbai, Maharashtra - 400050',
+      latitude: null,
+      longitude: null,
     })
+  })
+
+  it('fetches state and area options from an Indian pincode', async () => {
+    mockPincodeLookup()
+    api.get.mockImplementation((url) => Promise.resolve({
+      data: url === '/auth/me' ? { name: 'Pat', role: 'Hiring' } : [],
+    }))
+
+    const wrapper = mountDashboard()
+    await flushPromises()
+    await findButtonByText(wrapper, 'Post new role').trigger('click')
+
+    await wrapper.find('.job-form input[inputmode="numeric"]').setValue('400050')
+    await flushPromises()
+
+    expect(fetch).toHaveBeenCalledWith('https://api.postalpincode.in/pincode/400050')
+    expect(wrapper.vm.jobForm.state).toBe('Maharashtra')
+    expect(wrapper.vm.jobForm.cityArea).toBe('Bandra West, Mumbai')
+    expect(wrapper.findAll('.job-form__field select')[1].exists()).toBe(true)
+    expect(wrapper.findAll('.job-form__field select')[1].text()).toContain('Khar Colony, Mumbai, Mumbai')
   })
 })
