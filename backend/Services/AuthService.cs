@@ -87,11 +87,17 @@ public sealed class AuthService : IAuthService
 
     public async Task<UserProfile> UpdateLocationAsync(Guid userId, UpdateLocationRequest request, CancellationToken ct)
     {
+        if (request is not { Latitude: double latitude, Longitude: double longitude })
+            throw new BadRequestException("Latitude and longitude are required.");
+
+        if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)
+            throw new BadRequestException("Latitude must be between -90 and 90, and longitude must be between -180 and 180.");
+
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct)
             ?? throw new NotFoundException("User not found.");
 
-        user.Latitude = Math.Round(request.Latitude, 3);
-        user.Longitude = Math.Round(request.Longitude, 3);
+        user.Latitude = Math.Round(latitude, 3);
+        user.Longitude = Math.Round(longitude, 3);
         user.LocationUpdatedAt = DateTimeOffset.UtcNow;
 
         await _db.SaveChangesAsync(ct);

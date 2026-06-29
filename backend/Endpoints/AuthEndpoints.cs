@@ -10,7 +10,6 @@ namespace LocalHire.Api.Endpoints;
 public static class AuthEndpoints
 {
     public const string AnonymousAuthRateLimitPolicy = "anonymous-auth";
-    public const string AuthCookieName = "localhire_auth";
 
     public static void MapAuthEndpoints(this WebApplication app)
     {
@@ -66,15 +65,6 @@ public static class AuthEndpoints
         .RequireRateLimiting(AnonymousAuthRateLimitPolicy)
         .AllowAnonymous();
 
-        group.MapPost("/logout", (HttpResponse response) =>
-        {
-            DeleteAuthCookie(response);
-            return Results.NoContent();
-        })
-        .WithName("Logout")
-        .Produces(StatusCodes.Status204NoContent)
-        .AllowAnonymous();
-
         group.MapGet("/me", async (
             ClaimsPrincipal user,
             IAuthService authService,
@@ -93,15 +83,5 @@ public static class AuthEndpoints
         .Produces<UserProfile>()
         .Produces(StatusCodes.Status401Unauthorized)
         .RequireAuthorization();
-    }
-
-    private static void DeleteAuthCookie(HttpResponse response)
-    {
-        response.Cookies.Delete(AuthCookieName, new CookieOptions
-        {
-            Secure = true,
-            SameSite = SameSiteMode.Strict,
-            Path = "/"
-        });
     }
 }

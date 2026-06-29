@@ -6,6 +6,9 @@ namespace LocalHire.Api.Data;
 public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> options)
     : DbContext(options)
 {
+    private const string CoordinateCheck =
+        """("Latitude" IS NULL AND "Longitude" IS NULL) OR ("Latitude" BETWEEN -90.0 AND 90.0 AND "Longitude" BETWEEN -180.0 AND 180.0)""";
+
     public DbSet<User> Users => Set<User>();
     public DbSet<JobPost> JobPosts => Set<JobPost>();
     public DbSet<JobApplication> JobApplications => Set<JobApplication>();
@@ -15,6 +18,7 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(u => u.Id);
+            entity.HasAlternateKey(u => new { u.Id, u.Role });
             entity.HasIndex(u => new { u.Email, u.Role }).IsUnique();
             entity.Property(u => u.Email).HasMaxLength(256);
             entity.Property(u => u.Name).HasMaxLength(100);
@@ -23,19 +27,30 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
             entity.Property(u => u.Latitude).IsRequired(false);
             entity.Property(u => u.Longitude).IsRequired(false);
             entity.Property(u => u.LocationUpdatedAt).IsRequired(false);
+            entity.ToTable(t => t.HasCheckConstraint("CK_Users_Location_CompleteAndValid", CoordinateCheck));
         });
 
         modelBuilder.Entity<JobPost>(entity =>
         {
             entity.HasKey(j => j.Id);
+            entity.Property(j => j.EmployerRole)
+                .HasMaxLength(50)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasDefaultValue(UserRole.Hiring);
             entity.Property(j => j.Title).HasMaxLength(200).IsRequired();
             entity.Property(j => j.Description).HasMaxLength(2000).IsRequired();
             entity.Property(j => j.WorkplaceName).HasMaxLength(200).IsRequired();
             entity.Property(j => j.CityArea).HasMaxLength(200).IsRequired();
+            entity.Property(j => j.IsActive).HasDefaultValue(true);
+            entity.Property(j => j.Latitude).IsRequired(false);
+            entity.Property(j => j.Longitude).IsRequired(false);
+            entity.ToTable(t => t.HasCheckConstraint("CK_JobPosts_Location_CompleteAndValid", CoordinateCheck));
 
             entity.HasOne(j => j.Employer)
                 .WithMany(u => u.JobPosts)
-                .HasForeignKey(j => j.EmployerId)
+                .HasForeignKey(j => new { j.EmployerId, j.EmployerRole })
+                .HasPrincipalKey(u => new { u.Id, u.Role })
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -45,6 +60,11 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
             entity.Property(a => a.Status)
                 .HasMaxLength(50)
                 .HasConversion<string>();
+            entity.Property(a => a.WorkerRole)
+                .HasMaxLength(50)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasDefaultValue(UserRole.LookingForWork);
 
             entity.HasIndex(a => new { a.JobPostId, a.WorkerId }).IsUnique();
 
@@ -55,7 +75,8 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
 
             entity.HasOne(a => a.Worker)
                 .WithMany(u => u.JobApplications)
-                .HasForeignKey(a => a.WorkerId)
+                .HasForeignKey(a => new { a.WorkerId, a.WorkerRole })
+                .HasPrincipalKey(u => new { u.Id, u.Role })
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

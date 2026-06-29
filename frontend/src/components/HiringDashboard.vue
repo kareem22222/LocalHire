@@ -112,6 +112,8 @@ watch(
 
     props.jobForm.state = ''
     props.jobForm.cityArea = ''
+    props.jobForm.latitude = null
+    props.jobForm.longitude = null
     areaOptions.value = []
     pincodeError.value = ''
 
