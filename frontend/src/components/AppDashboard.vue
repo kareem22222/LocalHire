@@ -81,29 +81,6 @@ function hasValidCoordinates(latitude, longitude) {
   return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
 }
 
-function getCurrentCoordinates() {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error('Please allow location access before posting a job.'))
-      return
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const latitude = Math.round(pos.coords.latitude * 1000) / 1000
-        const longitude = Math.round(pos.coords.longitude * 1000) / 1000
-        if (hasValidCoordinates(latitude, longitude)) {
-          resolve({ latitude, longitude })
-        } else {
-          reject(new Error('Could not read valid job coordinates.'))
-        }
-      },
-      () => reject(new Error('Please allow location access before posting a job.')),
-      { enableHighAccuracy: false, timeout: 10000 },
-    )
-  })
-}
-
 async function createJob() {
   jobFormError.value = ''
   if (!jobForm.value.title.trim() || !jobForm.value.description.trim() || !jobForm.value.workplaceName.trim() || !jobForm.value.cityArea.trim()) {
@@ -121,20 +98,15 @@ async function createJob() {
 
   creating.value = true
   try {
-    if (!hasValidCoordinates(jobForm.value.latitude, jobForm.value.longitude)) {
-      const coordinates = await getCurrentCoordinates()
-      jobForm.value.latitude = coordinates.latitude
-      jobForm.value.longitude = coordinates.longitude
-    }
-
     const location = `${jobForm.value.cityArea.trim()}, ${jobForm.value.state.trim()} - ${jobForm.value.pincode.trim()}`
+    const hasCoords = hasValidCoordinates(jobForm.value.latitude, jobForm.value.longitude)
     const payload = {
       title: jobForm.value.title.trim(),
       description: jobForm.value.description.trim(),
       workplaceName: jobForm.value.workplaceName.trim(),
       cityArea: location,
-      latitude: Number(jobForm.value.latitude),
-      longitude: Number(jobForm.value.longitude),
+      latitude: hasCoords ? Number(jobForm.value.latitude) : null,
+      longitude: hasCoords ? Number(jobForm.value.longitude) : null,
     }
     await api.post('/hiring/jobs', payload)
     jobForm.value = { title: '', description: '', workplaceName: '', cityArea: '', pincode: '', state: '', latitude: null, longitude: null }

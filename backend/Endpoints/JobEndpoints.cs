@@ -143,6 +143,7 @@ public static class JobEndpoints
                 }
 
                 var jobs = await query
+                    .Where(j => j.Latitude != null && j.Longitude != null)
                     .Select(j => new
                     {
                         Response = new JobPostResponse(

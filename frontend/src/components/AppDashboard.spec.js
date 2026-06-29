@@ -113,9 +113,6 @@ describe('AppDashboard', () => {
 
   it('creating a job submits pincode and state as the location text', async () => {
     mockPincodeLookup()
-    vi.spyOn(navigator.geolocation, 'getCurrentPosition').mockImplementation((success) => {
-      success({ coords: { latitude: 19.1234, longitude: 72.9876 } })
-    })
     api.get.mockImplementation((url) => Promise.resolve({
       data: url === '/auth/me' ? { name: 'Pat', role: 'Hiring' } : [],
     }))
@@ -137,8 +134,8 @@ describe('AppDashboard', () => {
       description: 'Front desk',
       workplaceName: 'Corner Shop',
       cityArea: 'Bandra West, Mumbai, Maharashtra - 400050',
-      latitude: 19.123,
-      longitude: 72.988,
+      latitude: null,
+      longitude: null,
     })
   })
 

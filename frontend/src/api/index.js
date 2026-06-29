@@ -40,8 +40,10 @@ export async function isAuthenticated() {
   try {
     await api.get('/auth/me', { skipAuthReload: true })
     return true
-  } catch {
-    accessToken = ''
+  } catch (err) {
+    if (err.response?.status === 401) {
+      accessToken = ''
+    }
     return false
   }
 }
