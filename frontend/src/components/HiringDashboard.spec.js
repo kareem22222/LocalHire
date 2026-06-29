@@ -36,29 +36,25 @@ function mockPincodeLookup(postOffices = [
   })
 }
 
-function candidateNames(wrapper) {
-  return wrapper.findAll('.candidate-card h3').map((item) => item.text())
-}
-
 describe('HiringDashboard', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     vi.stubGlobal('fetch', vi.fn())
   })
 
-  it('filters candidates by search text, role, and availability', async () => {
+  it('does not render demo candidates when no real candidate data exists', async () => {
     const wrapper = mountHiringDashboard()
 
     await wrapper.find('input[aria-label="Search candidates"]').setValue('routes')
-    expect(candidateNames(wrapper)).toEqual(['Rahul Mehta'])
+    expect(wrapper.findAll('.candidate-card')).toHaveLength(0)
+    expect(wrapper.text()).toContain('No talent found')
+  })
 
-    await wrapper.find('input[aria-label="Search candidates"]').setValue('')
-    await wrapper.findAll('.hiring-search-panel select')[0].setValue('Front Desk Executive')
-    expect(candidateNames(wrapper)).toEqual(['Sneha Iyer'])
+  it('shows an empty state instead of fallback demo roles', () => {
+    const wrapper = mountHiringDashboard()
 
-    await wrapper.findAll('.hiring-search-panel select')[0].setValue('All')
-    await wrapper.findAll('.hiring-search-panel select')[1].setValue('Next week')
-    expect(candidateNames(wrapper)).toEqual(['Karthik S'])
+    expect(wrapper.findAll('.hiring-role-card')).toHaveLength(0)
+    expect(wrapper.text()).toContain('No open roles yet')
   })
 
   it('emits create form toggle when post new role is clicked', async () => {
@@ -132,5 +128,15 @@ describe('HiringDashboard', () => {
 
     expect(wrapper.emitted('create-job')).toHaveLength(1)
     expect(wrapper.emitted('view-applications')).toEqual([[7]])
+  })
+
+  it('emits shortlist without changing the search filter', async () => {
+    const wrapper = mountHiringDashboard()
+    const candidate = { id: 1, name: 'Worker', role: 'Cashier', skills: [] }
+
+    wrapper.vm.shortlist(candidate)
+
+    expect(wrapper.emitted('shortlist')).toEqual([[candidate]])
+    expect(wrapper.find('input[aria-label="Search candidates"]').element.value).toBe('')
   })
 })

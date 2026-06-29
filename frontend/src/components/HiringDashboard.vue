@@ -10,7 +10,7 @@ const props = defineProps({
   showCreateForm: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['update:showCreateForm', 'create-job', 'view-applications'])
+const emit = defineEmits(['update:showCreateForm', 'create-job', 'view-applications', 'shortlist'])
 
 const search = ref('')
 const role = ref('All')
@@ -20,62 +20,7 @@ const pincodeError = ref('')
 const areaOptions = ref([])
 let pincodeRequestId = 0
 
-const fallbackOpenRoles = [
-  { title: 'Store Associate', area: 'Indiranagar', applicants: 18, shortlisted: 6, status: 'Actively hiring' },
-  { title: 'Delivery Partner', area: 'Madhapur', applicants: 24, shortlisted: 8, status: 'Interviews today' },
-  { title: 'Front Desk Executive', area: 'T Nagar', applicants: 11, shortlisted: 4, status: 'New matches' },
-]
-
-const candidates = [
-  {
-    id: 1,
-    name: 'Ananya Rao',
-    role: 'Store Associate',
-    area: 'Indiranagar',
-    city: 'Bengaluru',
-    availability: 'Immediate',
-    experience: '2 yrs',
-    match: 96,
-    rate: 'Rs 22k/mo',
-    skills: ['Billing', 'Customer support', 'Inventory'],
-  },
-  {
-    id: 2,
-    name: 'Rahul Mehta',
-    role: 'Delivery Partner',
-    area: 'Madhapur',
-    city: 'Hyderabad',
-    availability: 'This week',
-    experience: '3 yrs',
-    match: 91,
-    rate: 'Rs 28k/mo',
-    skills: ['Local routes', 'Bike license', 'Cash handling'],
-  },
-  {
-    id: 3,
-    name: 'Sneha Iyer',
-    role: 'Front Desk Executive',
-    area: 'T Nagar',
-    city: 'Chennai',
-    availability: 'Immediate',
-    experience: '4 yrs',
-    match: 89,
-    rate: 'Rs 26k/mo',
-    skills: ['Appointments', 'MS Office', 'Reception'],
-  },
-  {
-    id: 4,
-    name: 'Karthik S',
-    role: 'Kitchen Helper',
-    area: 'Koregaon Park',
-    city: 'Pune',
-    availability: 'Next week',
-    experience: '1 yr',
-    match: 84,
-    rate: 'Rs 18k/mo',
-    skills: ['Prep work', 'Cleaning', 'Evening shift'],
-  },
-]
+const candidates = []
 
 const roles = computed(() => ['All', ...new Set(candidates.map((candidate) => candidate.role))])
 const availabilityOptions = ['All', 'Immediate', 'This week', 'Next week']
@@ -119,8 +64,6 @@ const indianStates = [
 ]
 
 const openRoles = computed(() => {
-  if (!props.myJobs.length) return fallbackOpenRoles
-
   return props.myJobs.map((job) => {
     const applicants = job.applicationCount ?? 0
     return {
@@ -153,7 +96,7 @@ const filteredCandidates = computed(() => {
 })
 
 function shortlist(candidate) {
-  search.value = candidate.name
+  emit('shortlist', candidate)
 }
 
 watch(
@@ -166,6 +109,7 @@ watch(
     }
 
     props.jobForm.state = ''
+    props.jobForm.cityArea = ''
     areaOptions.value = []
     pincodeError.value = ''
 
@@ -264,38 +208,38 @@ watch(
 
       <div v-if="showCreateForm" class="job-form">
         <div class="job-form__field">
-          <label>Title</label>
-          <input v-model="jobForm.title" placeholder="e.g. Store Associate" />
+          <label for="job-title">Title</label>
+          <input id="job-title" v-model="jobForm.title" placeholder="e.g. Store Associate" />
         </div>
         <div class="job-form__field">
-          <label>Description</label>
-          <textarea v-model="jobForm.description" placeholder="Describe the role, hours, pay..." rows="3"></textarea>
+          <label for="job-description">Description</label>
+          <textarea id="job-description" v-model="jobForm.description" placeholder="Describe the role, hours, pay..." rows="3"></textarea>
         </div>
         <div class="job-form__field">
-          <label>Workplace name</label>
-          <input v-model="jobForm.workplaceName" placeholder="e.g. FreshMart Store" />
+          <label for="job-workplace">Workplace name</label>
+          <input id="job-workplace" v-model="jobForm.workplaceName" placeholder="e.g. FreshMart Store" />
         </div>
         <div class="job-form__row">
           <div class="job-form__field">
-            <label>Pincode</label>
-            <input v-model="jobForm.pincode" inputmode="numeric" maxlength="6" placeholder="" />
+            <label for="job-pincode">Pincode</label>
+            <input id="job-pincode" v-model="jobForm.pincode" inputmode="numeric" maxlength="6" placeholder="" />
             <span v-if="pincodeStatus === 'loading'" class="job-form__hint">Fetching area and state...</span>
             <span v-else-if="pincodeError" class="job-form__error-text">{{ pincodeError }}</span>
           </div>
           <div class="job-form__field">
-            <label>State</label>
-            <select v-model="jobForm.state">
+            <label for="job-state">State</label>
+            <select id="job-state" v-model="jobForm.state">
               <option value="">Select state</option>
               <option v-for="state in indianStates" :key="state" :value="state">{{ state }}</option>
             </select>
           </div>
         </div>
         <div class="job-form__field">
-          <label>City / Village / Area</label>
-          <select v-if="areaOptions.length" v-model="jobForm.cityArea">
+          <label for="job-city-area">City / Village / Area</label>
+          <select v-if="areaOptions.length" id="job-city-area" v-model="jobForm.cityArea">
             <option v-for="area in areaOptions" :key="area.value" :value="area.value">{{ area.label }}</option>
           </select>
-          <input v-else v-model="jobForm.cityArea" placeholder="" />
+          <input v-else id="job-city-area" v-model="jobForm.cityArea" placeholder="" />
           <span v-if="areaOptions.length > 1" class="job-form__hint">Choose the nearest area for this role.</span>
         </div>
         <p v-if="jobFormError" class="job-form__error">{{ jobFormError }}</p>
@@ -319,6 +263,10 @@ watch(
             View applications
           </button>
         </article>
+      </div>
+      <div v-if="!openRoles.length" class="candidate-empty">
+        <strong>No open roles yet</strong>
+        <p>Post a role to start tracking applicants and matches.</p>
       </div>
     </section>
 

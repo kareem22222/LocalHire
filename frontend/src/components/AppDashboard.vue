@@ -57,6 +57,8 @@ const jobForm = ref({
   cityArea: '',
   pincode: '',
   state: '',
+  latitude: null,
+  longitude: null,
 })
 const jobFormError = ref('')
 const creating = ref(false)
@@ -90,15 +92,18 @@ async function createJob() {
   creating.value = true
   try {
     const location = `${jobForm.value.cityArea.trim()}, ${jobForm.value.state.trim()} - ${jobForm.value.pincode.trim()}`
-    await api.post('/hiring/jobs', {
+    const payload = {
       title: jobForm.value.title.trim(),
       description: jobForm.value.description.trim(),
       workplaceName: jobForm.value.workplaceName.trim(),
       cityArea: location,
-      latitude: null,
-      longitude: null,
-    })
-    jobForm.value = { title: '', description: '', workplaceName: '', cityArea: '', pincode: '', state: '' }
+    }
+    if (jobForm.value.latitude != null && jobForm.value.longitude != null) {
+      payload.latitude = jobForm.value.latitude
+      payload.longitude = jobForm.value.longitude
+    }
+    await api.post('/hiring/jobs', payload)
+    jobForm.value = { title: '', description: '', workplaceName: '', cityArea: '', pincode: '', state: '', latitude: null, longitude: null }
     showCreateForm.value = false
     await loadMyJobs()
   } catch (err) {
@@ -214,6 +219,7 @@ function hasApplied(jobId) {
       :my-jobs="myJobs"
       @create-job="createJob"
       @view-applications="viewApplications"
+      @shortlist="() => {}"
     />
 
     <div v-if="selectedJobApplications !== null" class="auth-overlay" @click.self="closeApplications">

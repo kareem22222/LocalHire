@@ -134,8 +134,6 @@ describe('AppDashboard', () => {
       description: 'Front desk',
       workplaceName: 'Corner Shop',
       cityArea: 'Bandra West, Mumbai, Maharashtra - 400050',
-      latitude: null,
-      longitude: null,
     })
   })
 

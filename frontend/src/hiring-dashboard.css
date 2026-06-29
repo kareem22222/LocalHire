@@ -137,7 +137,7 @@
   height: 22px;
   color: #07559a;
   fill: none;
-  stroke: currentColor;
+  stroke: currentcolor;
   stroke-width: 2;
 }
 
@@ -148,6 +148,11 @@
   color: #12324a;
   background: transparent;
   font-size: 15px;
+}
+
+.hiring-search:focus-within {
+  border-color: rgba(7, 85, 154, 0.55);
+  box-shadow: 0 0 0 4px rgba(7, 85, 154, 0.1);
 }
 
 .hiring-search-panel label {
