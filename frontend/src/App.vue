@@ -149,7 +149,7 @@ onUnmounted(() => {
       <nav class="nav-links">
         <a href="#" class="nav-link" @click.prevent="openModal('', 'LookingForWork')">For Candidates</a>
         <a href="#" class="nav-link" @click.prevent="openModal('', 'Hiring')">For Employers</a>
-        <a href="#" class="nav-link nav-link--primary" @click.prevent="openModal">Get Early Access</a>
+        <a href="#" class="nav-link nav-link--primary" @click.prevent="openModal">Sign in</a>
       </nav>
     </header>
 
