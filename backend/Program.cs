@@ -11,9 +11,16 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Serilog;
+using Serilog.Formatting.Json;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// --- Logging (Serilog: JSON to console, levels from configuration) ---
+builder.Host.UseSerilog((context, configuration) => configuration
+    .ReadFrom.Configuration(context.Configuration)
+    .WriteTo.Console(new JsonFormatter()));
 
 // --- Database ---
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -143,6 +150,8 @@ if (!app.Environment.IsEnvironment("Test"))
 
 // --- Middleware Pipeline ---
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+app.UseSerilogRequestLogging(options => options.ExcludeHealthChecks());
 
 if (app.Environment.IsDevelopment())
 {
