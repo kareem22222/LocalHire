@@ -12,10 +12,14 @@ const props = defineProps({
     default: 'LookingForWork',
     validator: (value) => ['LookingForWork', 'Hiring'].includes(value),
   },
+  initialMode:{
+    type:String,
+    default:'register'
+  }
 })
 const emit = defineEmits(['close', 'success'])
 
-const mode = ref('register')
+const mode = ref(props.initialMode)
 const loading = ref(false)
 const serverError = ref('')
 const fieldErrors = ref({})

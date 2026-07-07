@@ -14,6 +14,7 @@ const showModal = ref(false)
 const isAuth = ref(null)
 const authEmail = ref('')
 const authRole = ref('LookingForWork')
+const authMode=ref('register')
 const ctaEmail = ref('')
 
 const headerRef = ref(null)
@@ -27,9 +28,10 @@ const footerRef = ref(null)
 let ctx
 let onScroll
 
-function openModal(email = '', role = 'LookingForWork') {
+function openModal(email = '', role = 'LookingForWork',initialMode='register') {
   authEmail.value = typeof email === 'string' ? email : ''
   authRole.value = role
+  authMode.value=initialMode
   showModal.value = true
 }
 
@@ -137,7 +139,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <AuthModal v-if="showModal" :initial-email="authEmail" :initial-role="authRole" @close="showModal = false" @success="onAuthSuccess" />
+  <AuthModal v-if="showModal" :initial-email="authEmail" :initial-role="authRole" :initial-mode="authMode" @close="showModal = false" @success="onAuthSuccess" />
   <AppDashboard v-if="isAuth === true" @logout="handleLogout" />
 
   <div v-if="isAuth === false" class="app-shell">
@@ -149,7 +151,7 @@ onUnmounted(() => {
       <nav class="nav-links">
         <a href="#" class="nav-link" @click.prevent="openModal('', 'LookingForWork')">For Candidates</a>
         <a href="#" class="nav-link" @click.prevent="openModal('', 'Hiring')">For Employers</a>
-        <a href="#" class="nav-link nav-link--primary" @click.prevent="openModal">Sign in</a>
+        <a href="#" class="nav-link nav-link--primary" @click.prevent="openModal('','LookingForWork','login')">Sign in</a>
       </nav>
     </header>
 
