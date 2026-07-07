@@ -5,7 +5,17 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-let accessToken = ''
+const TOKEN_STORAGE_KEY = 'localhire.accessToken'
+
+function readStoredToken() {
+  try {
+    return localStorage.getItem(TOKEN_STORAGE_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+
+let accessToken = readStoredToken()
 
 api.interceptors.request.use((config) => {
   if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`
@@ -20,7 +30,7 @@ api.interceptors.response.use(
       .some((path) => url.startsWith(path))
 
     if (error.response?.status === 401 && !isAuthFlowRequest && !error.config?.skipAuthReload) {
-      accessToken = ''
+      clearAuth()
       window.location.reload()
     }
     return Promise.reject(error)
@@ -29,10 +39,24 @@ api.interceptors.response.use(
 
 export function setAuth(token) {
   accessToken = token || ''
+  try {
+    if (accessToken) {
+      localStorage.setItem(TOKEN_STORAGE_KEY, accessToken)
+    } else {
+      localStorage.removeItem(TOKEN_STORAGE_KEY)
+    }
+  } catch {
+    // Storage unavailable (e.g. private mode); fall back to in-memory only.
+  }
 }
 
 export function clearAuth() {
   accessToken = ''
+  try {
+    localStorage.removeItem(TOKEN_STORAGE_KEY)
+  } catch {
+    // Ignore storage errors.
+  }
 }
 
 export async function isAuthenticated() {
@@ -42,7 +66,7 @@ export async function isAuthenticated() {
     return true
   } catch (err) {
     if (err.response?.status === 401) {
-      accessToken = ''
+      clearAuth()
     }
     return false
   }

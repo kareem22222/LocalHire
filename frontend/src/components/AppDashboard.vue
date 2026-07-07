@@ -4,7 +4,7 @@ import api from '../api'
 import BrandLogo from './BrandLogo.vue'
 import HiringDashboard from './HiringDashboard.vue'
 
-const emit = defineEmits(['logout'])
+const emit = defineEmits(['logout', 'profile'])
 
 const user = ref(null)
 const userRole = computed(() => normalizeRole(user.value?.role))
@@ -43,6 +43,10 @@ function normalizeRole(role) {
 
 function handleLogout() {
   emit('logout')
+}
+
+function handleProfileClick() {
+  emit('profile', user.value)
 }
 
 onMounted(fetchProfile)
@@ -211,7 +215,7 @@ function hasApplied(jobId) {
       <BrandLogo />
       <div class="dash-header__right">
         <span class="dash-btn dash-btn--primary dash-role-badge">{{ isHiringUser ? 'Hiring' : isWorkerUser ? 'Worker' : 'Account' }}</span>
-        <span class="dash-user-name">{{ user?.name || 'User' }}</span>
+        <button type="button" class="dash-user-name" @click="handleProfileClick">{{ user?.name || 'User' }}</button>
         <button class="dash-logout-btn" @click="handleLogout">Sign out</button>
       </div>
     </header>
