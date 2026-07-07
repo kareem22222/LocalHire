@@ -17,6 +17,9 @@ public static class SerilogRequestLoggingExtensions
             if (httpContext.Request.Path.StartsWithSegments("/api/health"))
                 return LogEventLevel.Debug;
 
+            if (httpContext.Response.StatusCode >= 400)
+                return LogEventLevel.Warning;
+
             return LogEventLevel.Information;
         };
     }
