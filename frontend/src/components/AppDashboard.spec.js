@@ -175,4 +175,92 @@ describe('AppDashboard', () => {
     expect(wrapper.findAll('.job-form__field select')[1].exists()).toBe(true)
     expect(wrapper.findAll('.job-form__field select')[1].text()).toContain('Khar Colony, Mumbai, Mumbai')
   })
+
+  describe('profile navigation', () => {
+    it('emits "profile" with the current user and shows the profile page when the name is clicked', async () => {
+      api.get.mockImplementation((url) => Promise.resolve({
+        data: url === '/auth/me' ? { name: 'Pat', role: 'Hiring' } : [],
+      }))
+
+      const wrapper = mountDashboard()
+      await flushPromises()
+
+      await wrapper.find('.dash-user-name').trigger('click')
+
+      expect(wrapper.emitted('profile')).toEqual([[{ name: 'Pat', role: 'Hiring' }]])
+      expect(wrapper.find('.profile-page').exists()).toBe(true)
+      expect(wrapper.text()).toContain('Your profile details will appear here soon.')
+    })
+
+    it('hides the hiring dashboard while the profile page is open and restores it on back', async () => {
+      api.get.mockImplementation((url) => Promise.resolve({
+        data: url === '/auth/me' ? { name: 'Pat', role: 'Hiring' } : [],
+      }))
+
+      const wrapper = mountDashboard()
+      await flushPromises()
+      expect(findButtonByText(wrapper, 'Post new role')).toBeTruthy()
+
+      await wrapper.find('.dash-user-name').trigger('click')
+
+      expect(findButtonByText(wrapper, 'Post new role')).toBeFalsy()
+      expect(wrapper.find('.profile-page').exists()).toBe(true)
+
+      await findButtonByText(wrapper, 'Back').trigger('click')
+
+      expect(wrapper.find('.profile-page').exists()).toBe(false)
+      expect(findButtonByText(wrapper, 'Post new role')).toBeTruthy()
+    })
+
+    it('hides the worker dashboard while the profile page is open and restores it on back', async () => {
+      api.get.mockImplementation((url) => Promise.resolve({
+        data: url === '/auth/me' ? { name: 'Pat', role: 'LookingForWork' } : [],
+      }))
+
+      const wrapper = mountDashboard()
+      await flushPromises()
+      expect(wrapper.text()).toContain('Worker Dashboard')
+
+      await wrapper.find('.dash-user-name').trigger('click')
+
+      expect(wrapper.text()).not.toContain('Worker Dashboard')
+      expect(wrapper.find('.profile-page').exists()).toBe(true)
+
+      await findButtonByText(wrapper, 'Back').trigger('click')
+
+      expect(wrapper.find('.profile-page').exists()).toBe(false)
+      expect(wrapper.text()).toContain('Worker Dashboard')
+    })
+
+    it('hides the unidentified-account message while the profile page is open and restores it on back', async () => {
+      api.get.mockImplementation((url) => Promise.resolve({
+        data: url === '/auth/me' ? { name: 'Pat', role: 'Unknown' } : [],
+      }))
+
+      const wrapper = mountDashboard()
+      await flushPromises()
+      expect(wrapper.text()).toContain('We could not identify this account type.')
+
+      await wrapper.find('.dash-user-name').trigger('click')
+
+      expect(wrapper.text()).not.toContain('We could not identify this account type.')
+      expect(wrapper.find('.profile-page').exists()).toBe(true)
+
+      await findButtonByText(wrapper, 'Back').trigger('click')
+
+      expect(wrapper.find('.profile-page').exists()).toBe(false)
+      expect(wrapper.text()).toContain('We could not identify this account type.')
+    })
+
+    it('opens the profile page with a fallback name before the profile has loaded', async () => {
+      api.get.mockReturnValue(new Promise(() => {}))
+
+      const wrapper = mountDashboard()
+
+      await wrapper.find('.dash-user-name').trigger('click')
+
+      expect(wrapper.emitted('profile')).toEqual([[null]])
+      expect(wrapper.find('.profile-page .dash-welcome__name').text()).toBe('User')
+    })
+  })
 })
