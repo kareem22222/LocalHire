@@ -3,6 +3,7 @@ import { computed, ref, onMounted } from 'vue'
 import api from '../api'
 import BrandLogo from './BrandLogo.vue'
 import HiringDashboard from './HiringDashboard.vue'
+import ProfilePage from './ProfilePage.vue'
 
 const emit = defineEmits(['logout', 'profile'])
 
@@ -47,6 +48,11 @@ function handleLogout() {
 
 function handleProfileClick() {
   emit('profile', user.value)
+  activeTab.value = 'profile'
+}
+
+function closeProfile() {
+  activeTab.value = 'dashboard'
 }
 
 onMounted(fetchProfile)
@@ -220,8 +226,10 @@ function hasApplied(jobId) {
       </div>
     </header>
 
+    <ProfilePage v-if="activeTab === 'profile'" :user="user" @back="closeProfile" />
+
     <HiringDashboard
-      v-if="isHiringUser"
+      v-if="isHiringUser && activeTab !== 'profile'"
       v-model:show-create-form="showCreateForm"
       :job-form="jobForm"
       :job-form-error="jobFormError"
@@ -247,7 +255,7 @@ function hasApplied(jobId) {
       </div>
     </div>
 
-    <main v-if="isWorkerUser" class="dash-main">
+    <main v-if="isWorkerUser && activeTab !== 'profile'" class="dash-main">
 
       <!-- ===== WORKER DASHBOARD ===== -->
         <div class="dash-welcome">
@@ -316,7 +324,7 @@ function hasApplied(jobId) {
         </div>
     </main>
 
-    <main v-else-if="user && !isHiringUser" class="dash-main">
+    <main v-else-if="user && !isHiringUser && activeTab !== 'profile'" class="dash-main">
       <div class="dash-empty">
         We could not identify this account type. Please sign out and sign in again with the correct role.
       </div>
