@@ -7,10 +7,19 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  initialRole: {
+    type: String,
+    default: 'LookingForWork',
+    validator: (value) => ['LookingForWork', 'Hiring'].includes(value),
+  },
+  initialMode:{
+    type:String,
+    default:'register'
+  }
 })
 const emit = defineEmits(['close', 'success'])
 
-const mode = ref('register')
+const mode = ref(props.initialMode)
 const loading = ref(false)
 const serverError = ref('')
 const fieldErrors = ref({})
@@ -20,7 +29,7 @@ const form = ref({
   name: '',
   email: props.initialEmail,
   password: '',
-  role: 'LookingForWork',
+  role: props.initialRole,
 })
 
 const isRegister = computed(() => mode.value === 'register')
@@ -74,14 +83,19 @@ async function handleSubmit() {
   fieldErrors.value = {}
 
   try {
-    const endpoint = isRegister.value ? '/auth/register' : '/auth/login'
     const payload = isRegister.value
       ? { name: form.value.name, email: form.value.email, password: form.value.password, role: form.value.role }
-      : { email: form.value.email, password: form.value.password }
+      : { email: form.value.email, password: form.value.password, role: form.value.role }
 
-    await api.post(endpoint, payload)
+    const endpoint = isRegister.value ? '/auth/register' : '/auth/login'
+    const { data } = await api.post(endpoint, payload)
 
-    setAuth()
+    if (!data?.token) {
+      serverError.value = 'Invalid authentication response. Please try again.'
+      return
+    }
+
+    setAuth(data.token)
     emit('success')
   } catch (err) {
     if (err.response?.status === 429) {
@@ -89,9 +103,9 @@ async function handleSubmit() {
     } else if (err.response?.status === 400 && err.response?.data?.errors) {
       fieldErrors.value = err.response.data.errors
     } else if (err.response?.data?.title === 'Conflict') {
-      fieldErrors.value = { email: ['An account with this email already exists.'] }
+      fieldErrors.value = { email: ['An account with this email and role already exists.'] }
     } else if (err.response?.data?.title === 'Unauthorized') {
-      serverError.value = 'Invalid email or password.'
+      serverError.value = 'Invalid email, password, or role.'
     } else {
       serverError.value = err.response?.data?.message || 'Something went wrong. Please try again.'
     }
@@ -145,7 +159,7 @@ onUnmounted(() => {
           <span v-if="fieldErrors.name" class="auth-field__error">{{ fieldErrors.name[0] }}</span>
         </div>
 
-        <div v-if="isRegister" class="auth-field">
+        <div class="auth-field">
           <label class="auth-field__label" for="auth-role">I am</label>
           <select
             id="auth-role"

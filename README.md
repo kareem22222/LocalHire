@@ -1,81 +1,25 @@
 # LocalHire
 
-A minimal coming-soon page for LocalHire, built with Vue 3 and ASP.NET Core. 
+LocalHire is a Vue 3 frontend with an ASP.NET Core API, PostgreSQL storage,
+JWT authentication, and Docker Compose support for local development.
 
-## Run the frontend
+## Stack
 
-```powershell
-cd frontend
-npm install
-npm run dev
-```
+- Frontend: Vue 3, Vite, Vitest
+- Backend: ASP.NET Core on .NET 10
+- Database: PostgreSQL
+- ORM: Entity Framework Core
+- Local runtime: Docker Compose
 
-The frontend dev server runs at http://localhost:5173. Start the backend
-separately (`cd backend` then `dotnet run`) for login and registration; Vite
-proxies `/api` to the ASP.NET Core app at http://localhost:5180.
+## Quick Start
 
-## Build and serve with .NET
-
-```powershell
-cd frontend
-npm install
-npm run build
-cd ../backend
-dotnet run
-```
-
-The production frontend build is written to `backend/wwwroot` and served by ASP.NET Core.
-
-## Local development with Docker Compose
-
-The default Compose configuration is isolated from production. It starts:
-
-- PostgreSQL at `localhost:5433`
-- The LocalHire API at `localhost:8080`
-- A persistent Docker volume named `localhire-postgres-data`
-
-Start both services:
+The easiest local setup runs the API and PostgreSQL in Docker:
 
 ```powershell
 Copy-Item .env.example .env
-# Edit .env and set JWT_SECRET to a unique random value of at least 32 bytes.
-docker compose up --build
 ```
 
-Open:
-
-- Website/API: http://localhost:8080
-- Swagger: http://localhost:8080/swagger
-- Database check: http://localhost:8080/api/health/database
-
-To run the API directly while keeping PostgreSQL in Docker:
-
-```powershell
-docker compose up -d database
-dotnet user-secrets set "Jwt:Secret" "YOUR_UNIQUE_RANDOM_SECRET_OF_AT_LEAST_32_BYTES" --project .\backend\LocalHire.Api.csproj
-cd backend
-dotnet run
-```
-
-The Development connection string in `backend/appsettings.Development.json`
-uses the default local database values on port `5433`.
-
-The JWT signing key is intentionally not stored in `appsettings` or committed
-to Git. For Visual Studio and `dotnet run`, configure `Jwt:Secret` once with
-.NET user secrets as shown above. Docker Compose reads `JWT_SECRET` from the
-ignored `.env` file. Use a different, securely generated secret in every
-environment.
-
-## JWT authentication setup
-
-There are two different values involved:
-
-- **JWT secret:** A private key used by the backend to sign and validate tokens.
-
-### Generate a local JWT secret
-
-Generate the secret once per developer machine. Do not generate a new value
-each time the application starts.
+Set `JWT_SECRET` in `.env` to a stable random value of at least 32 bytes:
 
 ```powershell
 $bytes = New-Object byte[] 48
@@ -85,78 +29,138 @@ $rng.Dispose()
 [Convert]::ToBase64String($bytes)
 ```
 
-Copy the generated value.
+Then start the app:
 
-For Visual Studio or `dotnet run`, store it in .NET user secrets:
+```powershell
+docker compose up --build
+```
+
+Open:
+
+- App/API: http://localhost:8080
+- Swagger: http://localhost:8080/swagger
+- Database health check: http://localhost:8080/api/health/database
+
+Compose starts PostgreSQL on `localhost:5433`, the API on `localhost:8080`,
+and stores database files in the `localhire-postgres-data` Docker volume.
+
+## Frontend Development
+
+Run the Vite dev server:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend runs at http://localhost:5173. Start the backend separately for
+login and registration; Vite proxies `/api` requests to http://localhost:5180.
+
+## Backend Development
+
+Run PostgreSQL in Docker:
+
+```powershell
+docker compose up -d database
+```
+
+Store the JWT secret in .NET user secrets:
 
 ```powershell
 dotnet user-secrets set "Jwt:Secret" "PASTE_GENERATED_VALUE_HERE" --project .\backend\LocalHire.Api.csproj
 ```
 
-Confirm that it is configured:
+Start the API:
 
 ```powershell
-dotnet user-secrets list --project .\backend\LocalHire.Api.csproj
+cd backend
+dotnet run
 ```
 
-For Docker Compose, put the value in your ignored `.env` file:
+The backend runs at http://localhost:5180 and uses the local database
+connection in `backend/appsettings.Development.json`.
+
+## Production-style Local Build
+
+Build the frontend into `backend/wwwroot`, then let ASP.NET Core serve it. The
+backend still needs `Jwt:Secret` configured through user secrets or an
+environment variable.
+
+```powershell
+cd frontend
+npm install
+npm run build
+cd ../backend
+dotnet run
+```
+
+## Environment Variables
+
+`.env.example` defines the local Docker defaults:
 
 ```env
-JWT_SECRET=PASTE_GENERATED_VALUE_HERE
+LOCAL_DB_NAME=localhire_dev
+LOCAL_DB_USERNAME=localhire_admin
+LOCAL_DB_PASSWORD=localhire_dev_password
+JWT_SECRET=
 ```
 
-Each developer may use a different local secret. Production must use a
-different, stable secret shared by all production API instances and stored in
-a secure service such as AWS Secrets Manager.
+If you change the database values in `.env`, update
+`backend/appsettings.Development.json` too, or override
+`ConnectionStrings:DefaultConnection` with an environment variable or .NET user
+secret when running the backend outside Docker.
 
-Changing a JWT secret invalidates every token signed with the previous secret.
+Keep JWT secrets out of Git. Each developer can use a different local secret.
+Production needs its own stable secret stored in a secure service such as AWS
+Secrets Manager. Changing the JWT secret invalidates existing tokens.
 
+## Tests
 
-If you change `LOCAL_DB_NAME`, `LOCAL_DB_USERNAME`, or `LOCAL_DB_PASSWORD` in
-`.env`, Docker Compose will create PostgreSQL with those overridden values.
-Update `backend/appsettings.Development.json` to match, or override
-`ConnectionStrings:DefaultConnection` with an environment variable or .NET
-user secret before running the backend from your IDE.
-
-Remove the local Compose containers, network, and volumes:
+Run frontend tests:
 
 ```powershell
-docker compose down --volumes --remove-orphans
+cd frontend
+npm test
 ```
 
-Reset all local database data:
+Run backend tests:
 
 ```powershell
-docker compose down --volumes --remove-orphans
-docker compose up --build
+cd backend
+dotnet test .\LocalHire.Api.slnx
 ```
 
-## Database Migrations
+## Database
 
-Migrations are managed with EF Core CLI tools. Make sure PostgreSQL is running first.
+Install the EF Core CLI once:
 
-### Apply migrations (bring the database up to date)
+```powershell
+dotnet tool install --global dotnet-ef
+```
+
+Apply the migrations:
 
 ```powershell
 cd backend
 dotnet ef database update
 ```
 
-### Create a new migration after changing models
+Create a migration after model changes:
 
 ```powershell
 cd backend
 dotnet ef migrations add <MigrationName> --output-dir Data/Migrations
 ```
 
-### Remove the last unapplied migration
+Remove the last unapplied migration:
 
 ```powershell
 cd backend
 dotnet ef migrations remove
 ```
 
-### Reset the database (drop and recreate)
+Drop and recreate the local database:
 
 ```powershell
 cd backend
@@ -164,50 +168,43 @@ dotnet ef database drop --force
 dotnet ef database update
 ```
 
-### Prerequisites
-
-Install the EF Core CLI tools globally (one-time):
+Reset the Docker database volume:
 
 ```powershell
-dotnet tool install --global dotnet-ef
+docker compose down --volumes --remove-orphans
+docker compose up --build
 ```
 
-The `Microsoft.EntityFrameworkCore.Design` package is already included in the project.
+## AWS RDS
 
----
+Use RDS only when intentionally verifying an integration against that database.
+Do not use production for automated tests, seed data, schema experiments, or
+destructive development work.
 
-## Explicitly connect to AWS RDS
-
-Do this only when you intentionally need to verify an integration against RDS.
-Production credentials are kept in the ignored `.env.rds` file:
+Create an ignored RDS env file:
 
 ```powershell
 Copy-Item .env.rds.example .env.rds
-# Edit .env.rds and enter the real RDS values.
+```
+
+Edit `.env.rds`, then run:
+
+```powershell
 docker compose --env-file .env.rds -f docker-compose.rds.yml up --build
 ```
 
-Never use the production database for automated tests, schema experiments,
-seed data, or destructive development work.
-
-### Temporarily use AWS RDS from Visual Studio or `dotnet run`
-
-The backend normally uses the local PostgreSQL connection from
-`backend/appsettings.Development.json`. To temporarily override it with RDS,
-store the connection string in .NET user secrets:
+To temporarily use RDS from Visual Studio or `dotnet run`, store the connection
+string in user secrets:
 
 ```powershell
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=YOUR_RDS_ENDPOINT;Port=5432;Database=localhire;Username=YOUR_RDS_USERNAME;Password=YOUR_RDS_PASSWORD;SSL Mode=VerifyFull;Root Certificate=../certs/global-bundle.pem;Trust Server Certificate=false" --project .\backend\LocalHire.Api.csproj
 ```
 
-Restart the backend, then verify the connection:
+Restart the backend, then check:
 
 ```text
 http://localhost:5180/api/health/database
 ```
-
-User secrets override `appsettings.Development.json`, so the backend will use
-RDS until the secret is removed.
 
 Switch back to the local Docker database:
 
@@ -216,7 +213,3 @@ dotnet user-secrets remove "ConnectionStrings:DefaultConnection" --project .\bac
 ```
 
 Restart the backend again. It will return to `localhost:5433/localhire_dev`.
-Do not run migrations, seed scripts, automated tests, or destructive commands
-while connected to production. Prefer a staging database or a read-only
-production account whenever possible.
-

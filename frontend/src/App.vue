@@ -13,6 +13,8 @@ gsap.registerPlugin(ScrollTrigger)
 const showModal = ref(false)
 const isAuth = ref(null)
 const authEmail = ref('')
+const authRole = ref('LookingForWork')
+const authMode=ref('register')
 const ctaEmail = ref('')
 
 const headerRef = ref(null)
@@ -26,8 +28,10 @@ const footerRef = ref(null)
 let ctx
 let onScroll
 
-function openModal(email = '') {
+function openModal(email = '', role = 'LookingForWork',initialMode='register') {
   authEmail.value = typeof email === 'string' ? email : ''
+  authRole.value = role
+  authMode.value=initialMode
   showModal.value = true
 }
 
@@ -135,7 +139,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <AuthModal v-if="showModal" :initial-email="authEmail" @close="showModal = false" @success="onAuthSuccess" />
+  <AuthModal v-if="showModal" :initial-email="authEmail" :initial-role="authRole" :initial-mode="authMode" @close="showModal = false" @success="onAuthSuccess" />
   <AppDashboard v-if="isAuth === true" @logout="handleLogout" />
 
   <div v-if="isAuth === false" class="app-shell">
@@ -145,9 +149,9 @@ onUnmounted(() => {
     <header ref="headerRef" class="site-header">
       <BrandLogo />
       <nav class="nav-links">
-        <a href="#" class="nav-link" @click.prevent="openModal">For Candidates</a>
-        <a href="#" class="nav-link" @click.prevent="openModal">For Employers</a>
-        <a href="#" class="nav-link nav-link--primary" @click.prevent="openModal">Get Early Access</a>
+        <a href="#" class="nav-link" @click.prevent="openModal('', 'LookingForWork')">For Candidates</a>
+        <a href="#" class="nav-link" @click.prevent="openModal('', 'Hiring')">For Employers</a>
+        <a href="#" class="nav-link nav-link--primary" @click.prevent="openModal('','LookingForWork','login')">Sign in</a>
       </nav>
     </header>
 
@@ -164,8 +168,8 @@ onUnmounted(() => {
           across India's growing cities and neighbourhoods.
         </p>
         <div class="hero-actions">
-          <a href="#" class="btn btn--primary" @click.prevent="openModal">I'm looking for work</a>
-          <a href="#" class="btn btn--stroke" @click.prevent="openModal">I'm hiring locally</a>
+          <a href="#" class="btn btn--primary" @click.prevent="openModal('', 'LookingForWork')">I'm looking for work</a>
+          <a href="#" class="btn btn--stroke" @click.prevent="openModal('', 'Hiring')">I'm hiring locally</a>
         </div>
         <div class="hero-meta">
           <div class="avatar-stack" aria-hidden="true">

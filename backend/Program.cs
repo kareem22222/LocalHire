@@ -5,21 +5,37 @@ using LocalHire.Api.Data;
 using LocalHire.Api.Endpoints;
 using LocalHire.Api.Middleware;
 using LocalHire.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Serilog;
+using Serilog.Formatting.Json;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// --- Logging (Serilog: JSON to console, levels from configuration) ---
+builder.Host.UseSerilog((context, configuration) => configuration
+    .ReadFrom.Configuration(context.Configuration)
+    .WriteTo.Console(new JsonFormatter()));
 
 // --- Database ---
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException(
         "Connection string 'DefaultConnection' is missing. Configure it in appsettings, .NET user secrets, or the ConnectionStrings__DefaultConnection environment variable.");
 
-builder.Services.AddDbContext<LocalHireDbContext>(options =>
-    options.UseNpgsql(connectionString));
+if (builder.Environment.IsEnvironment("Test"))
+{
+    builder.Services.AddDbContext<LocalHireDbContext>();
+}
+else
+{
+    builder.Services.AddDbContext<LocalHireDbContext>(options =>
+        options.UseNpgsql(connectionString));
+}
 
 // --- JWT Authentication ---
 var jwtSection = builder.Configuration.GetSection("Jwt");
@@ -65,40 +81,36 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret)),
             ClockSkew = TimeSpan.Zero
         };
-        options.Events = new JwtBearerEvents
-        {
-            OnMessageReceived = context =>
-            {
-                if (string.IsNullOrEmpty(context.Token)
-                    && context.Request.Cookies.TryGetValue(AuthEndpoints.AuthCookieName, out var token))
-                {
-                    context.Token = token;
-                }
-
-                return Task.CompletedTask;
-            }
-        };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("HiringOnly", policy =>
+        policy.RequireRole("Hiring"));
+    options.AddPolicy("LookingForWorkOnly", policy =>
+        policy.RequireRole("LookingForWork"));
+});
 
 // --- Rate Limiting ---
-builder.Services.AddRateLimiter(options =>
+if (!builder.Environment.IsEnvironment("Test"))
 {
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    options.AddPolicy(AuthEndpoints.AnonymousAuthRateLimitPolicy, context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            factory: _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 5,
-                Window = TimeSpan.FromMinutes(1),
-                QueueLimit = 0,
-                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                AutoReplenishment = true
-            }));
-});
+        options.AddPolicy(AuthEndpoints.AnonymousAuthRateLimitPolicy, context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 5,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    AutoReplenishment = true
+                }));
+    });
+}
 
 // --- Caching ---
 builder.Services.AddMemoryCache();
@@ -124,24 +136,22 @@ builder.Services.AddSwaggerGen(options =>
         Description = "Enter the token from /api/auth/login"
     });
 
-    options.AddSecurityRequirement(document =>
-    {
-        var requirement = new OpenApiSecurityRequirement();
-        requirement[new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>();
-        return requirement;
-    });
+    options.OperationFilter<RequireAuthorizationOperationFilter>();
 });
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+if (!app.Environment.IsEnvironment("Test"))
 {
+    using var scope = app.Services.CreateScope();
     var database = scope.ServiceProvider.GetRequiredService<LocalHireDbContext>();
     await database.Database.MigrateAsync();
 }
 
 // --- Middleware Pipeline ---
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+app.UseSerilogRequestLogging(options => options.ExcludeHealthChecks());
 
 if (app.Environment.IsDevelopment())
 {
@@ -152,7 +162,8 @@ if (app.Environment.IsDevelopment())
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.UseRateLimiter();
+if (!app.Environment.IsEnvironment("Test"))
+    app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -215,6 +226,31 @@ app.MapGet("/api/health/database", async (
 // --- Auth Endpoints ---
 app.MapAuthEndpoints();
 
+// --- Profile Endpoints ---
+app.MapProfileEndpoints();
+
+// --- Job Endpoints ---
+app.MapJobEndpoints();
+
 app.MapFallbackToFile("index.html");
 
 app.Run();
+
+public partial class Program { }
+
+internal sealed class RequireAuthorizationOperationFilter : IOperationFilter
+{
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
+    {
+        var metadata = context.ApiDescription.ActionDescriptor.EndpointMetadata;
+
+        if (metadata.OfType<IAllowAnonymous>().Any() || !metadata.OfType<IAuthorizeData>().Any())
+            return;
+
+        operation.Security ??= new List<OpenApiSecurityRequirement>();
+
+        var requirement = new OpenApiSecurityRequirement();
+        requirement[new OpenApiSecuritySchemeReference("Bearer", context.Document)] = new List<string>();
+        operation.Security.Add(requirement);
+    }
+}

@@ -4,8 +4,10 @@
 **/bin/
 **/obj/
 **/.vs/
+**/coverage/
 *.log
 backend/wwwroot/
 !.gitkeep
 .env
 .env.rds
+.csproj.user

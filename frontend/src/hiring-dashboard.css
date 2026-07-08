@@ -1,0 +1,495 @@
+.hiring-dashboard {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 34px clamp(22px, 5vw, 64px) 72px;
+  display: grid;
+  gap: 22px;
+}
+
+.hiring-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px;
+}
+
+.hiring-hero > div,
+.hiring-search-panel,
+.hiring-metrics,
+.hiring-sidebar,
+.candidate-card,
+.candidate-empty,
+.hiring-role-card {
+  border: 1px solid rgba(18, 50, 74, 0.08);
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 18px 54px rgba(7, 85, 154, 0.08);
+}
+
+.hiring-hero > div:first-child {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(28px, 5vw, 48px);
+  border-radius: 24px;
+}
+
+.hiring-hero > div:first-child::after {
+  content: "";
+  position: absolute;
+  right: -80px;
+  top: -80px;
+  width: 230px;
+  height: 230px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(7, 85, 154, 0.16), transparent 70%);
+}
+
+.hiring-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: #07559a;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.hiring-kicker::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #07559a, #21a947);
+}
+
+.hiring-hero h1 {
+  max-width: 650px;
+  margin-bottom: 18px;
+  color: #0b3658;
+  font-family: Manrope, sans-serif;
+  font-size: clamp(34px, 5vw, 62px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.hiring-hero p {
+  max-width: 610px;
+  color: #5d7482;
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.hiring-hero-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 220px;
+  padding: 28px;
+  color: #ffffff;
+  border-radius: 24px;
+  background: linear-gradient(145deg, #12324a, #07559a 58%, #21a947);
+  box-shadow: 0 26px 64px rgba(7, 85, 154, 0.24);
+}
+
+.hiring-hero-card span {
+  align-self: flex-start;
+  margin-bottom: auto;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.hiring-hero-card strong {
+  font-family: Manrope, sans-serif;
+  font-size: 68px;
+  line-height: 1;
+}
+
+.hiring-search-panel {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 180px 180px;
+  gap: 14px;
+  align-items: end;
+  padding: 18px;
+  border-radius: 22px;
+}
+
+.hiring-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 0 18px;
+  border: 1.5px solid rgba(7, 85, 154, 0.12);
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.hiring-search svg {
+  width: 22px;
+  height: 22px;
+  color: #07559a;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+}
+
+.hiring-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: #12324a;
+  background: transparent;
+  font-size: 15px;
+}
+
+.hiring-search:focus-within {
+  border-color: rgba(7, 85, 154, 0.55);
+  box-shadow: 0 0 0 4px rgba(7, 85, 154, 0.1);
+}
+
+.hiring-search-panel label {
+  display: grid;
+  gap: 6px;
+}
+
+.hiring-search-panel label span {
+  padding-left: 4px;
+  color: #5d7482;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hiring-search-panel select {
+  height: 42px;
+  padding: 0 13px;
+  color: #12324a;
+  border: 1.5px solid rgba(18, 50, 74, 0.1);
+  border-radius: 13px;
+  background: #ffffff;
+  outline: none;
+}
+
+.hiring-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  overflow: hidden;
+  border-radius: 20px;
+  background: rgba(18, 50, 74, 0.08);
+}
+
+.hiring-metrics div {
+  padding: 22px;
+  text-align: center;
+  background: #ffffff;
+}
+
+.hiring-metrics strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #07559a;
+  font-family: Manrope, sans-serif;
+  font-size: 30px;
+}
+
+.hiring-metrics span,
+.candidate-list__head > span {
+  color: #6f8794;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.hiring-roles,
+.candidate-list {
+  display: grid;
+  gap: 14px;
+}
+
+.hiring-roles__head,
+.candidate-list__head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.hiring-roles__head h2,
+.candidate-list__head h2,
+.hiring-sidebar h2 {
+  color: #0b3658;
+  font-family: Manrope, sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.hiring-role-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.hiring-role-card,
+.hiring-sidebar,
+.candidate-card,
+.candidate-empty {
+  border-radius: 20px;
+}
+
+.hiring-role-card {
+  padding: 20px;
+}
+
+.hiring-role-card > span,
+.candidate-card__top span {
+  display: inline-flex;
+  padding: 7px 10px;
+  color: #188853;
+  border-radius: 999px;
+  background: rgba(33, 169, 71, 0.08);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.hiring-role-card > span {
+  margin-bottom: 14px;
+}
+
+.hiring-role-card h3,
+.candidate-card h3 {
+  color: #0b3658;
+  font-family: Manrope, sans-serif;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.hiring-role-card p,
+.candidate-card p,
+.hiring-sidebar p,
+.candidate-empty p {
+  color: #5d7482;
+  font-size: 14px;
+}
+
+.hiring-role-card p,
+.candidate-card p {
+  margin-top: 5px;
+}
+
+.hiring-role-card div {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr;
+  gap: 6px;
+  align-items: baseline;
+  margin-top: 18px;
+}
+
+.hiring-role-card strong {
+  color: #07559a;
+  font-family: Manrope, sans-serif;
+  font-size: 24px;
+}
+
+.hiring-role-card small {
+  color: #6f8794;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.hiring-role-card__link {
+  margin-top: 18px;
+  color: #07559a;
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.hiring-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.hiring-sidebar {
+  position: sticky;
+  top: 94px;
+  padding: 24px;
+}
+
+.hiring-sidebar p {
+  margin: 14px 0 22px;
+  line-height: 1.7;
+}
+
+.hiring-progress {
+  display: grid;
+  gap: 8px;
+}
+
+.hiring-progress span {
+  color: #5d7482;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hiring-progress strong {
+  color: #21a947;
+  font-family: Manrope, sans-serif;
+  font-size: 42px;
+}
+
+.hiring-progress i {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(18, 50, 74, 0.08);
+}
+
+.hiring-progress b {
+  display: block;
+  width: 88%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #07559a, #21a947);
+}
+
+.candidate-list__head {
+  margin-bottom: 8px;
+}
+
+.candidate-card {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 20px;
+}
+
+.candidate-card__avatar {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  font-family: Manrope, sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #07559a, #21a947);
+}
+
+.candidate-card__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.candidate-card__top span {
+  flex: 0 0 auto;
+  align-self: start;
+}
+
+.candidate-card__meta,
+.candidate-card__skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.candidate-card__meta span,
+.candidate-card__skills span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.candidate-card__meta span {
+  color: #12324a;
+  background: #f1f7fb;
+}
+
+.candidate-card__skills span {
+  color: #4d6878;
+  background: rgba(18, 50, 74, 0.06);
+}
+
+.candidate-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.candidate-actions button {
+  padding: 13px 20px;
+  color: #ffffff;
+  white-space: nowrap;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #07559a, #0966ad);
+  box-shadow: 0 12px 28px rgba(7, 85, 154, 0.18);
+  font-weight: 800;
+}
+
+.candidate-actions__ghost {
+  color: #07559a !important;
+  border: 1px solid rgba(7, 85, 154, 0.14) !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.candidate-empty {
+  padding: 34px;
+  text-align: center;
+}
+
+.candidate-empty strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #0b3658;
+  font-family: Manrope, sans-serif;
+  font-size: 22px;
+}
+
+@media (max-width: 850px) {
+  .hiring-dashboard {
+    padding: 24px 18px 48px;
+  }
+
+  .hiring-hero,
+  .hiring-search-panel,
+  .hiring-layout,
+  .hiring-role-grid,
+  .candidate-card {
+    grid-template-columns: 1fr;
+  }
+
+  .hiring-hero-card {
+    min-height: 180px;
+  }
+
+  .hiring-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .hiring-sidebar {
+    position: static;
+  }
+
+  .candidate-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+}

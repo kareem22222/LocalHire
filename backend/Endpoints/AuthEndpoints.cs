@@ -10,7 +10,6 @@ namespace LocalHire.Api.Endpoints;
 public static class AuthEndpoints
 {
     public const string AnonymousAuthRateLimitPolicy = "anonymous-auth";
-    public const string AuthCookieName = "localhire_auth";
 
     public static void MapAuthEndpoints(this WebApplication app)
     {
@@ -20,7 +19,6 @@ public static class AuthEndpoints
             RegisterRequest request,
             IValidator<RegisterRequest> validator,
             IAuthService authService,
-            HttpResponse response,
             CancellationToken ct) =>
         {
             var validation = await validator.ValidateAsync(request, ct);
@@ -34,11 +32,10 @@ public static class AuthEndpoints
             }
 
             var result = await authService.RegisterAsync(request, ct);
-            SetAuthCookie(response, result.Token);
-            return Results.Created("/api/auth/me", null);
+            return Results.Created("/api/auth/me", result);
         })
         .WithName("Register")
-        .Produces(StatusCodes.Status201Created)
+        .Produces<AuthResponse>(StatusCodes.Status201Created)
         .ProducesValidationProblem()
         .RequireRateLimiting(AnonymousAuthRateLimitPolicy)
         .AllowAnonymous();
@@ -47,7 +44,6 @@ public static class AuthEndpoints
             LoginRequest request,
             IValidator<LoginRequest> validator,
             IAuthService authService,
-            HttpResponse response,
             CancellationToken ct) =>
         {
             var validation = await validator.ValidateAsync(request, ct);
@@ -61,22 +57,12 @@ public static class AuthEndpoints
             }
 
             var result = await authService.LoginAsync(request, ct);
-            SetAuthCookie(response, result.Token);
-            return Results.Ok();
+            return Results.Ok(result);
         })
         .WithName("Login")
-        .Produces(StatusCodes.Status200OK)
+        .Produces<AuthResponse>(StatusCodes.Status200OK)
         .ProducesValidationProblem()
         .RequireRateLimiting(AnonymousAuthRateLimitPolicy)
-        .AllowAnonymous();
-
-        group.MapPost("/logout", (HttpResponse response) =>
-        {
-            DeleteAuthCookie(response);
-            return Results.NoContent();
-        })
-        .WithName("Logout")
-        .Produces(StatusCodes.Status204NoContent)
         .AllowAnonymous();
 
         group.MapGet("/me", async (
@@ -97,26 +83,5 @@ public static class AuthEndpoints
         .Produces<UserProfile>()
         .Produces(StatusCodes.Status401Unauthorized)
         .RequireAuthorization();
-    }
-
-    private static void SetAuthCookie(HttpResponse response, string token)
-    {
-        response.Cookies.Append(AuthCookieName, token, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Strict,
-            Path = "/"
-        });
-    }
-
-    private static void DeleteAuthCookie(HttpResponse response)
-    {
-        response.Cookies.Delete(AuthCookieName, new CookieOptions
-        {
-            Secure = true,
-            SameSite = SameSiteMode.Strict,
-            Path = "/"
-        });
     }
 }
