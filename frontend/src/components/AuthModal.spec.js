@@ -36,7 +36,7 @@ describe('AuthModal', () => {
 
   it('uses the initial role when opening signup', async () => {
     const wrapper = mount(AuthModal, {
-      props: { initialRole: 'Hiring' },
+      props: { initialRole: '' },
     })
 
     expect(wrapper.find('#auth-role').element.value).toBe('')
@@ -51,7 +51,7 @@ describe('AuthModal', () => {
       name: 'Person',
       email: 'person@example.com',
       password: 'Password1!',
-      role: 'Hiring',
+      role: '',
     })
   })
 
