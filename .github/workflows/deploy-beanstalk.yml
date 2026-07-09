@@ -1,0 +1,75 @@
+name: Deploy Elastic Beanstalk
+
+on:
+  workflow_dispatch:
+    inputs:
+      application_name:
+        description: Elastic Beanstalk application name
+        required: true
+        default: LocalHire
+      environment_name:
+        description: Elastic Beanstalk environment name
+        required: true
+        default: LocalHire-prod
+      aws_region:
+        description: AWS region
+        required: true
+        default: ap-south-2
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: elastic-beanstalk-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.actor == 'kareem22222'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout selected branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.1.0
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Create source bundle
+        id: bundle
+        run: |
+          safe_ref="$(printf '%s' "$GITHUB_REF_NAME" | tr -c 'A-Za-z0-9._-' '-')"
+          version_label="${safe_ref}-${GITHUB_SHA::7}-${GITHUB_RUN_NUMBER}"
+          git archive --format=zip --output=localhire-eb-docker-source.zip HEAD Dockerfile .dockerignore backend frontend certs favicon.png
+          echo "version_label=$version_label" >> "$GITHUB_OUTPUT"
+
+      - name: Upload and deploy
+        env:
+          APPLICATION_NAME: ${{ inputs.application_name }}
+          ENVIRONMENT_NAME: ${{ inputs.environment_name }}
+          VERSION_LABEL: ${{ steps.bundle.outputs.version_label }}
+        run: |
+          bucket="$(aws elasticbeanstalk create-storage-location --query S3Bucket --output text)"
+          key="resources/${APPLICATION_NAME}/${VERSION_LABEL}/localhire-eb-docker-source.zip"
+
+          aws s3 cp localhire-eb-docker-source.zip "s3://${bucket}/${key}"
+
+          aws elasticbeanstalk create-application-version \
+            --application-name "$APPLICATION_NAME" \
+            --version-label "$VERSION_LABEL" \
+            --source-bundle S3Bucket="$bucket",S3Key="$key" \
+            --process
+
+          aws elasticbeanstalk update-environment \
+            --environment-name "$ENVIRONMENT_NAME" \
+            --version-label "$VERSION_LABEL"
+
+          aws elasticbeanstalk wait environment-updated \
+            --environment-name "$ENVIRONMENT_NAME"
