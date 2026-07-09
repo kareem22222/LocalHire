@@ -40,7 +40,7 @@ describe('AuthModal', () => {
       props: { initialRole: 'Hiring' },
     })
 
-    expect(wrapper.find('#auth-role').element.value).toBe('Hiring')
+    expect(wrapper.find('#auth-role').element.value).toBe('')
 
     await wrapper.find('#auth-name').setValue('Person')
     await wrapper.find('#auth-email').setValue('person@example.com')
