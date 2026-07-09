@@ -29,7 +29,7 @@ const form = ref({
   name: '',
   email: props.initialEmail,
   password: '',
-  role: props.initialRole,
+  role:'',
 })
 
 const isRegister = computed(() => mode.value === 'register')
@@ -203,7 +203,7 @@ onUnmounted(() => {
             class="auth-field__input"
             :class="{ 'auth-field__input--error': fieldErrors.role }"
           >
-          <option value="" disabled selected>Select>/option>
+          <option value="" disabled selected>Select</option>
             <option value="LookingForWork">Looking for work</option>
             <option value="Hiring">Hiring</option>
           </select>
