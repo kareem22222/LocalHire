@@ -111,8 +111,6 @@ async function handleSubmit() {
     setAuth(data.token)
     emit('success')
   } catch (err) {
-    console.log('Status:', err.response?.status)
-    console.log('Response:', err.response?.data)
 
     if (err.response?.status === 429) {
       serverError.value =
