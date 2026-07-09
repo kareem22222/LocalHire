@@ -36,10 +36,10 @@ describe('AuthModal', () => {
 
   it('uses the initial role when opening signup', async () => {
     const wrapper = mount(AuthModal, {
-      props: { initialRole: '' },
+      props: { initialRole: 'Hiring' },
     })
 
-    expect(wrapper.find('#auth-role').element.value).toBe('')
+    expect(wrapper.find('#auth-role').element.value).toBe('Hiring')
 
     await wrapper.find('#auth-name').setValue('Person')
     await wrapper.find('#auth-email').setValue('person@example.com')
@@ -51,8 +51,14 @@ describe('AuthModal', () => {
       name: 'Person',
       email: 'person@example.com',
       password: 'Password1!',
-      role: '',
+      role: 'Hiring',
     })
+  })
+
+  it('defaults to the empty select placeholder when no initial role is provided', () => {
+    const wrapper = mount(AuthModal)
+
+    expect(wrapper.find('#auth-role').element.value).toBe('')
   })
 
   it('sends role on login', async () => {
