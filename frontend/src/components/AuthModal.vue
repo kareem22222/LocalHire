@@ -9,8 +9,8 @@ const props = defineProps({
   },
   initialRole: {
     type: String,
-    default: 'LookingForWork',
-    validator: (value) => ['LookingForWork', 'Hiring'].includes(value),
+    default: '',
+    validator: (value) => ['','LookingForWork', 'Hiring'].includes(value),
   },
   initialMode:{
     type:String,
@@ -167,6 +167,7 @@ onUnmounted(() => {
             class="auth-field__input"
             :class="{ 'auth-field__input--error': fieldErrors.role }"
           >
+          <option value="" disabled selected>Select>/option>
             <option value="LookingForWork">Looking for work</option>
             <option value="Hiring">Hiring</option>
           </select>
