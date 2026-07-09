@@ -68,7 +68,7 @@ jobs:
         id: bundle
         run: |
           safe_ref="$(printf '%s' "$GITHUB_REF_NAME" | tr -c 'A-Za-z0-9._-' '-')"
-          version_label="${safe_ref}-${GITHUB_SHA::7}-${GITHUB_RUN_NUMBER}"
+          version_label="${safe_ref}-${GITHUB_SHA::7}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
           git archive --format=zip --output=localhire-eb-docker-source.zip HEAD Dockerfile .dockerignore backend frontend certs favicon.png
           echo "version_label=$version_label" >> "$GITHUB_OUTPUT"
 
