@@ -71,4 +71,29 @@ describe('AuthModal', () => {
       role: 'LookingForWork',
     })
   })
+
+  it('normalizes validation error keys to lowercase and displays them', async () => {
+    const wrapper = mount(AuthModal)
+    const errorResponse = {
+      response: {
+        status: 400,
+        data: {
+          errors: {
+            Name: ['Name is required.'],
+            Email: ['Invalid email format.'],
+          },
+        },
+      },
+    }
+    api.post.mockRejectedValueOnce(errorResponse)
+
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    const nameError = wrapper.find('.auth-field:nth-of-type(1) .auth-field__error')
+    expect(nameError.text()).toBe('Name is required.')
+
+    const emailError = wrapper.find('.auth-field:nth-of-type(3) .auth-field__error')
+    expect(emailError.text()).toBe('Invalid email format.')
+  })
 })

@@ -84,30 +84,68 @@ async function handleSubmit() {
 
   try {
     const payload = isRegister.value
-      ? { name: form.value.name, email: form.value.email, password: form.value.password, role: form.value.role }
-      : { email: form.value.email, password: form.value.password, role: form.value.role }
+      ? {
+          name: form.value.name,
+          email: form.value.email,
+          password: form.value.password,
+          role: form.value.role,
+        }
+      : {
+          email: form.value.email,
+          password: form.value.password,
+          role: form.value.role,
+        }
 
-    const endpoint = isRegister.value ? '/auth/register' : '/auth/login'
+    const endpoint = isRegister.value
+      ? '/auth/register'
+      : '/auth/login'
+
     const { data } = await api.post(endpoint, payload)
 
     if (!data?.token) {
-      serverError.value = 'Invalid authentication response. Please try again.'
+      serverError.value =
+        'Invalid authentication response. Please try again.'
       return
     }
 
     setAuth(data.token)
     emit('success')
   } catch (err) {
+    console.log('Status:', err.response?.status)
+    console.log('Response:', err.response?.data)
+
     if (err.response?.status === 429) {
-      serverError.value = 'Too many attempts. Please wait a moment and try again.'
+      serverError.value =
+        'Too many attempts. Please wait a moment and try again.'
+
     } else if (err.response?.status === 400 && err.response?.data?.errors) {
-      fieldErrors.value = err.response.data.errors
+      const normalizedErrors = {}
+      for (const [key, value] of Object.entries(err.response.data.errors)) {
+        normalizedErrors[key.toLowerCase()] = value
+      }
+      fieldErrors.value = normalizedErrors
+
+    } else if (err.response?.status === 409) {
+      serverError.value =
+        err.response.data?.error ||
+        'An account with this email and role already exists.'
+
     } else if (err.response?.data?.title === 'Conflict') {
-      fieldErrors.value = { email: ['An account with this email and role already exists.'] }
+      fieldErrors.value = {
+        email: ['An account with this email and role already exists.'],
+      }
+
     } else if (err.response?.data?.title === 'Unauthorized') {
       serverError.value = 'Invalid email, password, or role.'
+
+    } else if (err.response?.data?.error) {
+      serverError.value = err.response.data.error
+
+    } else if (err.response?.data?.message) {
+      serverError.value = err.response.data.message
+
     } else {
-      serverError.value = err.response?.data?.message || 'Something went wrong. Please try again.'
+      serverError.value = 'Something went wrong. Please try again.'
     }
   } finally {
     loading.value = false
