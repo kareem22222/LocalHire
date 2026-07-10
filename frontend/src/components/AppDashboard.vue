@@ -55,6 +55,14 @@ function closeProfile() {
   activeTab.value = 'dashboard'
 }
 
+function handleProfileSave(details) {
+  // Merge edited profile fields into local state. Only name/email/role/location
+  // are persisted by the API today; the remaining fields are kept client-side
+  // until a profile-update endpoint is available.
+  user.value = { ...(user.value || {}), ...details }
+  activeTab.value = 'dashboard'
+}
+
 onMounted(fetchProfile)
 
 // ============================================================
@@ -226,7 +234,7 @@ function hasApplied(jobId) {
       </div>
     </header>
 
-    <ProfilePage v-if="activeTab === 'profile'" :user="user" @back="closeProfile" />
+    <ProfilePage v-if="activeTab === 'profile'" :user="user" @back="closeProfile" @save="handleProfileSave" />
 
     <HiringDashboard
       v-if="isHiringUser && activeTab !== 'profile'"

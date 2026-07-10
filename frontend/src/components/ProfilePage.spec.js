@@ -31,21 +31,52 @@ describe('ProfilePage', () => {
     expect(wrapper.props('user')).toBeNull()
   })
 
-  it('renders the placeholder copy', () => {
-    const wrapper = mountProfilePage({ user: { name: 'Pat' } })
+  it('shows initials derived from the user name', () => {
+    const wrapper = mountProfilePage({ user: { name: 'Pat Doe' } })
 
-    expect(wrapper.text()).toContain('Your profile details will appear here soon.')
-    expect(wrapper.text()).toContain('Nothing to see here yet.')
+    expect(wrapper.find('.profile-hero__avatar').text()).toBe('PD')
+  })
+
+  it('shows the hiring role badge', () => {
+    const wrapper = mountProfilePage({ user: { name: 'Acme', role: 'Hiring' } })
+
+    expect(wrapper.find('.profile-badge--role').text()).toBe('Hiring')
+  })
+
+  it('renders the personal information and location sections only', () => {
+    const wrapper = mountProfilePage({ user: { name: 'Pat', role: 'Hiring' } })
+
+    expect(wrapper.text()).toContain('Personal information')
+    expect(wrapper.text()).toContain('Location')
+    expect(wrapper.text()).not.toContain('Professional details')
+    expect(wrapper.text()).not.toContain('Company details')
   })
 
   it('emits "back" when the back button is clicked', async () => {
     const wrapper = mountProfilePage({ user: { name: 'Pat' } })
 
-    const backButton = wrapper.find('button')
-    expect(backButton.text()).toBe('Back')
+    const backButton = wrapper.findAll('button').find((b) => b.text() === 'Back')
+    expect(backButton).toBeTruthy()
 
     await backButton.trigger('click')
 
     expect(wrapper.emitted('back')).toHaveLength(1)
+  })
+
+  it('enters edit mode and emits "save" with the form payload', async () => {
+    const wrapper = mountProfilePage({ user: { name: 'Pat', role: 'Hiring' } })
+
+    const editButton = wrapper.findAll('button').find((b) => b.text() === 'Edit profile')
+    await editButton.trigger('click')
+
+    const nameInput = wrapper.find('input[type="text"]')
+    await nameInput.setValue('Pat Updated')
+
+    const saveButton = wrapper.findAll('button').find((b) => b.text() === 'Save changes')
+    await saveButton.trigger('click')
+
+    const saved = wrapper.emitted('save')
+    expect(saved).toHaveLength(1)
+    expect(saved[0][0].name).toBe('Pat Updated')
   })
 })
