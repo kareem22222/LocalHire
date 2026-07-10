@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import * as THREE from 'three'
 
 const canvasRef = ref(null)
+const showAnimation = ref(window.innerWidth >= 1024)
 let renderer, scene, camera, nodes, edges, animId, nodeGeometry, edgeGeometry, edgeMaterial
 let mouse = { x: 0, y: 0 }
 let windowSize = { w: window.innerWidth, h: window.innerHeight }
@@ -142,12 +143,19 @@ function onMouseMove(e) {
 function onResize() {
   windowSize.w = window.innerWidth
   windowSize.h = window.innerHeight
+
+  showAnimation.value = window.innerWidth >= 1024
+
+  if (!showAnimation.value) return
+
   camera.aspect = windowSize.w / windowSize.h
   camera.updateProjectionMatrix()
   renderer.setSize(windowSize.w, windowSize.h)
 }
 
 onMounted(() => {
+  if (!showAnimation.value) return
+
   createScene()
   renderer.render(scene, camera)
 
@@ -172,7 +180,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <canvas ref="canvasRef" class="network-bg"></canvas>
+  <canvas
+    v-if="showAnimation"
+    ref="canvasRef"
+    class="network-bg"
+  ></canvas>
 </template>
 
 <style scoped>
