@@ -1,4 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using FluentValidation;
 using LocalHire.Api.DTOs;
@@ -24,11 +23,7 @@ public static class AuthEndpoints
             var validation = await validator.ValidateAsync(request, ct);
             if (!validation.IsValid)
             {
-                var errors = validation.Errors
-                    .GroupBy(e => e.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-
-                return Results.ValidationProblem(errors);
+                return Results.ValidationProblem(validation.ToValidationErrors());
             }
 
             var result = await authService.RegisterAsync(request, ct);
@@ -49,11 +44,7 @@ public static class AuthEndpoints
             var validation = await validator.ValidateAsync(request, ct);
             if (!validation.IsValid)
             {
-                var errors = validation.Errors
-                    .GroupBy(e => e.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-
-                return Results.ValidationProblem(errors);
+                return Results.ValidationProblem(validation.ToValidationErrors());
             }
 
             var result = await authService.LoginAsync(request, ct);
@@ -70,10 +61,7 @@ public static class AuthEndpoints
             IAuthService authService,
             CancellationToken ct) =>
         {
-            var userIdClaim = user.FindFirstValue(JwtRegisteredClaimNames.Sub)
-                ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (userIdClaim is null || !Guid.TryParse(userIdClaim, out var userId))
+            if (!user.TryGetUserId(out var userId))
                 return Results.Unauthorized();
 
             var profile = await authService.GetProfileAsync(userId, ct);

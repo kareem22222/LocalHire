@@ -9,6 +9,13 @@ public sealed record UserProfile(
     string Email,
     [property: JsonConverter(typeof(JsonStringEnumConverter))]
     UserRole Role,
+    string? Phone,
+    DateOnly? DateOfBirth,
+    string? Gender,
+    string? AddressLine,
+    string? CityArea,
+    string? State,
+    string? Pincode,
     double? Latitude,
     double? Longitude,
     DateTimeOffset? LocationUpdatedAt,
