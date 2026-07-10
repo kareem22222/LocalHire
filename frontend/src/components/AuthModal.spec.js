@@ -32,6 +32,7 @@ describe('AuthModal', () => {
       role: 'Hiring',
     })
     expect(setAuth).toHaveBeenCalledWith('token')
+    expect(wrapper.emitted('success')).toEqual([[{ mode: 'register' }]])
   })
 
   it('uses the initial role when opening signup', async () => {
@@ -70,6 +71,7 @@ describe('AuthModal', () => {
       password: 'Password1!',
       role: 'LookingForWork',
     })
+    expect(wrapper.emitted('success')).toEqual([[{ mode: 'login' }]])
   })
 
   it('normalizes validation error keys to lowercase and displays them', async () => {

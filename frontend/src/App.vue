@@ -7,6 +7,7 @@ import NetworkBackground from './components/NetworkBackground.vue'
 import AuthModal from './components/AuthModal.vue'
 import AppDashboard from './components/AppDashboard.vue'
 import { isAuthenticated, clearAuth } from './api'
+import confetti from 'canvas-confetti'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -35,9 +36,20 @@ function openModal(email = '', role = 'LookingForWork',initialMode='register') {
   showModal.value = true
 }
 
-function onAuthSuccess() {
+function showSignupConfetti() {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+  [
+    { angle: 315, origin: { x: 0, y: 0 } },
+    { angle: 225, origin: { x: 1, y: 0 } },
+    { angle: 45, origin: { x: 0, y: 1 } },
+    { angle: 135, origin: { x: 1, y: 1 } },
+  ].forEach((corner) => confetti({ particleCount: 25, spread: 70, ...corner }))
+}
+
+function onAuthSuccess({ mode } = {}) {
   isAuth.value = true
   showModal.value = false
+  if (mode === 'register') showSignupConfetti()
 }
 
 async function handleLogout() {

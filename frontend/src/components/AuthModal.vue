@@ -83,7 +83,8 @@ async function handleSubmit() {
   fieldErrors.value = {}
 
   try {
-    const payload = isRegister.value
+    const submittedMode = mode.value
+    const payload = submittedMode === 'register'
       ? {
           name: form.value.name,
           email: form.value.email,
@@ -96,7 +97,7 @@ async function handleSubmit() {
           role: form.value.role,
         }
 
-    const endpoint = isRegister.value
+    const endpoint = submittedMode === 'register'
       ? '/auth/register'
       : '/auth/login'
 
@@ -109,7 +110,7 @@ async function handleSubmit() {
     }
 
     setAuth(data.token)
-    emit('success')
+    emit('success', { mode: submittedMode })
   } catch (err) {
 
     if (err.response?.status === 429) {

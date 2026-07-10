@@ -30,11 +30,20 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.actor == 'kareem22222'
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
     steps:
+      - name: Authorize deployment target
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          if [ "$TARGET_ENVIRONMENT" = "prod" ] && [ "$ACTOR" != "kareem22222" ]; then
+            echo "Only kareem22222 can deploy to prod." >&2
+            exit 1
+          fi
+
       - name: Checkout selected branch
         uses: actions/checkout@v4
         with:
