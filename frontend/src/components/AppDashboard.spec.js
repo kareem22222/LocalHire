@@ -212,6 +212,26 @@ describe('AppDashboard', () => {
       expect(findButtonByText(wrapper, 'Post new role')).toBeTruthy()
     })
 
+    it('restores the hiring dashboard on clicking the Hiring badge in the header', async () => {
+      api.get.mockImplementation((url) => Promise.resolve({
+        data: url === '/auth/me' ? { name: 'Pat', role: 'Hiring' } : [],
+      }))
+
+      const wrapper = mountDashboard()
+      await flushPromises()
+      expect(findButtonByText(wrapper, 'Post new role')).toBeTruthy()
+
+      await wrapper.find('.dash-user-name').trigger('click')
+
+      expect(findButtonByText(wrapper, 'Post new role')).toBeFalsy()
+      expect(wrapper.find('.profile-page').exists()).toBe(true)
+
+      await findButtonByText(wrapper, 'Hiring').trigger('click')
+
+      expect(wrapper.find('.profile-page').exists()).toBe(false)
+      expect(findButtonByText(wrapper, 'Post new role')).toBeTruthy()
+    })
+
     it('hides the worker dashboard while the profile page is open and restores it on back', async () => {
       api.get.mockImplementation((url) => Promise.resolve({
         data: url === '/auth/me' ? { name: 'Pat', role: 'LookingForWork' } : [],

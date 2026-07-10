@@ -953,12 +953,8 @@ input { font: inherit; }
    ============================================================ */
 
 .dash-role-badge {
-  cursor: default;
+  cursor: pointer;
   white-space: nowrap;
-}
-
-.dash-role-badge:hover {
-  transform: none;
 }
 
 .dash-section {

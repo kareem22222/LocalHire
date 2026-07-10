@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import api from '../api'
 import BrandLogo from './BrandLogo.vue'
 import HiringDashboard from './HiringDashboard.vue'
@@ -54,7 +54,10 @@ function handleProfileClick() {
 function closeProfile() {
   activeTab.value = 'dashboard'
 }
-
+function goToDashboard() {
+  activeTab.value = 'dashboard'
+  selectedJobApplications.value = null
+}
 onMounted(fetchProfile)
 
 // ============================================================
@@ -220,7 +223,13 @@ function hasApplied(jobId) {
     <header class="dash-header">
       <BrandLogo />
       <div class="dash-header__right">
-        <span class="dash-btn dash-btn--primary dash-role-badge">{{ isHiringUser ? 'Hiring' : isWorkerUser ? 'Worker' : 'Account' }}</span>
+        <button
+  type="button"
+  class="dash-btn dash-btn--primary dash-role-badge"
+  @click="goToDashboard"
+>
+  {{ isHiringUser ? 'Hiring' : isWorkerUser ? 'Worker' : 'Account' }}
+</button>
         <button type="button" class="dash-user-name" @click="handleProfileClick">{{ user?.name || 'User' }}</button>
         <button class="dash-logout-btn" @click="handleLogout">Sign out</button>
       </div>

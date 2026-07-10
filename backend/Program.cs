@@ -34,7 +34,18 @@ if (builder.Environment.IsEnvironment("Test"))
 else
 {
     builder.Services.AddDbContext<LocalHireDbContext>(options =>
-        options.UseNpgsql(connectionString));
+    {
+        if (connectionString.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase) ||
+            connectionString.StartsWith("DataSource=", StringComparison.OrdinalIgnoreCase) ||
+            connectionString.Contains(".db"))
+        {
+            options.UseSqlite(connectionString);
+        }
+        else
+        {
+            options.UseNpgsql(connectionString);
+        }
+    });
 }
 
 // --- JWT Authentication ---
@@ -145,7 +156,14 @@ if (!app.Environment.IsEnvironment("Test"))
 {
     using var scope = app.Services.CreateScope();
     var database = scope.ServiceProvider.GetRequiredService<LocalHireDbContext>();
-    await database.Database.MigrateAsync();
+    if (database.Database.IsSqlite())
+    {
+        await database.Database.EnsureCreatedAsync();
+    }
+    else
+    {
+        await database.Database.MigrateAsync();
+    }
 }
 
 // --- Middleware Pipeline ---
