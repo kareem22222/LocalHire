@@ -727,7 +727,7 @@ input { font: inherit; }
 /* ---------- Dashboard ---------- */
 .dash-shell {
   min-height: 100vh;
-  background: #f8fafb;
+  background: #E8F6FC;
 }
 
 .dash-header {

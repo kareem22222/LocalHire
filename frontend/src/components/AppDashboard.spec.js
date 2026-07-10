@@ -189,7 +189,7 @@ describe('AppDashboard', () => {
 
       expect(wrapper.emitted('profile')).toEqual([[{ name: 'Pat', role: 'Hiring' }]])
       expect(wrapper.find('.profile-page').exists()).toBe(true)
-      expect(wrapper.text()).toContain('Your profile details will appear here soon.')
+      expect(wrapper.text()).toContain('Personal information')
     })
 
     it('hides the hiring dashboard while the profile page is open and restores it on back', async () => {
