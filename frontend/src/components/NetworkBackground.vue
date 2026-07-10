@@ -1,6 +1,6 @@
 <script setup>
-import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import * as THREE from 'three'
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
 const canvasRef = ref(null)
 const showAnimation = ref(window.innerWidth >= 1024)
@@ -21,7 +21,9 @@ const NODE_COUNT = 60
 const CONNECT_DIST = 2.8
 
 function createScene() {
-if (renderer) return
+if (renderer) {
+  return
+}
   scene = new THREE.Scene()
   
   scene.background = new THREE.Color(0xffffff)
@@ -81,7 +83,10 @@ renderer = new THREE.WebGLRenderer({
 }
 
 function animate() {
-if (!renderer || !scene || !camera) return
+  if (!renderer || !scene || !camera || !nodes || !edges) {
+    return
+  }
+
   animId = requestAnimationFrame(animate)
 
   // Mouse influence — camera parallax
@@ -160,7 +165,9 @@ function onResize() {
 
   showAnimation.value = window.innerWidth >= 1024
 
-  if (!camera || !renderer) return
+  if (!camera || !renderer) {
+  return
+}
 
 camera.aspect = windowSize.w / windowSize.h
 camera.updateProjectionMatrix()
