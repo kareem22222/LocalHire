@@ -59,7 +59,7 @@ function handleProfileSave(details) {
   // Merge edited profile fields into local state. Only name/email/role/location
   // are persisted by the API today; the remaining fields are kept client-side
   // until a profile-update endpoint is available.
-  user.value = { ...(user.value || {}), ...details }
+  user.value = { ...user.value, ...details }
   activeTab.value = 'dashboard'
 }
 

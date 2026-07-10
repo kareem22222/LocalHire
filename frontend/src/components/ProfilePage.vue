@@ -83,6 +83,7 @@ function cancelEdit() {
   editing.value = false
 }
 
+// Kept async so a profile-update API call can be awaited here without changing callers.
 async function save() {
   saving.value = true
   try {
@@ -145,27 +146,27 @@ function goBack() {
       </div>
       <div class="profile-grid">
         <div class="profile-field">
-          <label>Full name</label>
-          <input v-if="editing" v-model="form.name" type="text" placeholder="Your full name" />
+          <label for="profile-name">Full name</label>
+          <input v-if="editing" id="profile-name" v-model="form.name" type="text" placeholder="Your full name" />
           <p v-else class="profile-value">{{ form.name || '—' }}</p>
         </div>
         <div class="profile-field">
-          <label>Email</label>
+          <span class="profile-field__label">Email</span>
           <p class="profile-value profile-value--locked">{{ form.email || '—' }}</p>
         </div>
         <div class="profile-field">
-          <label>Phone</label>
-          <input v-if="editing" v-model="form.phone" type="tel" inputmode="tel" placeholder="+91 98765 43210" />
+          <label for="profile-phone">Phone</label>
+          <input v-if="editing" id="profile-phone" v-model="form.phone" type="tel" inputmode="tel" placeholder="+91 98765 43210" />
           <p v-else class="profile-value">{{ form.phone || '—' }}</p>
         </div>
         <div class="profile-field">
-          <label>Date of birth</label>
-          <input v-if="editing" v-model="form.dateOfBirth" type="date" />
+          <label for="profile-dob">Date of birth</label>
+          <input v-if="editing" id="profile-dob" v-model="form.dateOfBirth" type="date" />
           <p v-else class="profile-value">{{ form.dateOfBirth || '—' }}</p>
         </div>
         <div class="profile-field">
-          <label>Gender</label>
-          <select v-if="editing" v-model="form.gender">
+          <label for="profile-gender">Gender</label>
+          <select v-if="editing" id="profile-gender" v-model="form.gender">
             <option value="">Select</option>
             <option v-for="option in GENDER_OPTIONS" :key="option" :value="option">{{ option }}</option>
           </select>
@@ -182,26 +183,26 @@ function goBack() {
       </div>
       <div class="profile-grid">
         <div class="profile-field profile-field--full">
-          <label>Address line</label>
-          <input v-if="editing" v-model="form.addressLine" type="text" placeholder="House / street / landmark" />
+          <label for="profile-address">Address line</label>
+          <input v-if="editing" id="profile-address" v-model="form.addressLine" type="text" placeholder="House / street / landmark" />
           <p v-else class="profile-value">{{ form.addressLine || '—' }}</p>
         </div>
         <div class="profile-field">
-          <label>City / Area</label>
-          <input v-if="editing" v-model="form.cityArea" type="text" placeholder="e.g. Indiranagar, Bengaluru" />
+          <label for="profile-city-area">City / Area</label>
+          <input v-if="editing" id="profile-city-area" v-model="form.cityArea" type="text" placeholder="e.g. Indiranagar, Bengaluru" />
           <p v-else class="profile-value">{{ form.cityArea || '—' }}</p>
         </div>
         <div class="profile-field">
-          <label>State</label>
-          <select v-if="editing" v-model="form.state">
+          <label for="profile-state">State</label>
+          <select v-if="editing" id="profile-state" v-model="form.state">
             <option value="">Select state</option>
             <option v-for="stateName in INDIAN_STATES" :key="stateName" :value="stateName">{{ stateName }}</option>
           </select>
           <p v-else class="profile-value">{{ form.state || '—' }}</p>
         </div>
         <div class="profile-field">
-          <label>Pincode</label>
-          <input v-if="editing" v-model="form.pincode" inputmode="numeric" maxlength="6" placeholder="560038" />
+          <label for="profile-pincode">Pincode</label>
+          <input v-if="editing" id="profile-pincode" v-model="form.pincode" inputmode="numeric" maxlength="6" pattern="\d{6}" placeholder="560038" />
           <p v-else class="profile-value">{{ form.pincode || '—' }}</p>
         </div>
       </div>
@@ -280,7 +281,7 @@ function goBack() {
 }
 
 .profile-badge--muted {
-  color: #7b8e98;
+  color: #5d7482;
   background: rgba(18, 50, 74, 0.04);
 }
 
@@ -304,7 +305,7 @@ function goBack() {
 
 .profile-card__hint {
   font-size: 13px;
-  color: #7b8e98;
+  color: #5d7482;
   margin-top: 4px;
 }
 
@@ -325,7 +326,8 @@ function goBack() {
   grid-column: 1 / -1;
 }
 
-.profile-field label {
+.profile-field label,
+.profile-field__label {
   font-size: 13px;
   font-weight: 600;
   color: #12324a;
@@ -355,11 +357,11 @@ function goBack() {
   font-size: 15px;
   color: #12324a;
   padding: 4px 0;
-  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .profile-value--locked {
-  color: #7b8e98;
+  color: #5d7482;
 }
 
 @media (max-width: 700px) {

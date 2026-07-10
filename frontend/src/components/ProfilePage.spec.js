@@ -69,7 +69,7 @@ describe('ProfilePage', () => {
     const editButton = wrapper.findAll('button').find((b) => b.text() === 'Edit profile')
     await editButton.trigger('click')
 
-    const nameInput = wrapper.find('input[type="text"]')
+    const nameInput = wrapper.find('#profile-name')
     await nameInput.setValue('Pat Updated')
 
     const saveButton = wrapper.findAll('button').find((b) => b.text() === 'Save changes')
