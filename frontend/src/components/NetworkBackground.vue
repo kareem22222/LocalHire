@@ -199,12 +199,14 @@ if (renderer && scene && camera) {
     edgeMaterial?.dispose()
     scene?.clear()
     renderer?.dispose()
-
-    renderer = null
-    scene = null
-    camera = null
-    nodes = null
-    edges = null
+      renderer = null
+      scene = null
+      camera = null
+      nodes = null
+      edges = null
+      nodeGeometry = null
+      edgeGeometry = null
+      edgeMaterial = null 
   }
 }, { immediate: true })
 
@@ -224,12 +226,14 @@ onUnmounted(() => {
   edgeMaterial?.dispose()
   scene?.clear()
   renderer?.dispose()
-
-  renderer = null
-  scene = null
-  camera = null
-  nodes = null
-  edges = null
+renderer = null
+scene = null
+camera = null
+nodes = null
+edges = null
+nodeGeometry = null
+edgeGeometry = null
+edgeMaterial = null
 })
 </script>
 
