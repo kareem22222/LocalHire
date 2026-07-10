@@ -80,6 +80,7 @@ jobs:
         run: |
           bucket="$(aws elasticbeanstalk create-storage-location --query S3Bucket --output text)"
           key="resources/${APPLICATION_NAME}/${VERSION_LABEL}/localhire-eb-docker-source.zip"
+          deploy_started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
           aws s3 cp localhire-eb-docker-source.zip "s3://${bucket}/${key}"
 
@@ -95,3 +96,14 @@ jobs:
 
           aws elasticbeanstalk wait environment-updated \
             --environment-name "$ENVIRONMENT_NAME"
+
+          errors="$(aws elasticbeanstalk describe-events \
+            --environment-name "$ENVIRONMENT_NAME" \
+            --start-time "$deploy_started_at" \
+            --severity ERROR \
+            --query 'Events[].Message' \
+            --output text)"
+          if [ -n "$errors" ]; then
+            printf 'Elastic Beanstalk reported deployment errors:\n%s\n' "$errors" >&2
+            exit 1
+          fi
