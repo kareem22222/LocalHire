@@ -207,8 +207,10 @@ public sealed class LocalHireApiTests
             .FindProperty(nameof(JobPost.RequiredSkills))!
             .GetValueComparer()!;
 
-        comparer.GetHashCode(null);
-        comparer.GetHashCode(new List<string> { "Billing", null!, "Stock" });
+        Assert.Equal(0, comparer.GetHashCode(null));
+        Assert.Equal(
+            comparer.GetHashCode(new List<string> { "Billing", null!, "Stock" }),
+            comparer.GetHashCode(new List<string> { "Billing", null!, "Stock" }));
     }
 
     [Fact]

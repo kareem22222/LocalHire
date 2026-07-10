@@ -163,13 +163,15 @@ public static class JobEndpoints
                     .Where(j => j.Latitude != null && j.Longitude != null)
                     .Where(j => j.Latitude >= minLat && j.Latitude <= maxLat);
 
-                nearbyQuery = lngDelta >= 180
-                    ? nearbyQuery
-                    : minLng < -180
-                        ? nearbyQuery.Where(j => j.Longitude >= minLng + 360 || j.Longitude <= maxLng)
-                        : maxLng > 180
-                            ? nearbyQuery.Where(j => j.Longitude >= minLng || j.Longitude <= maxLng - 360)
-                            : nearbyQuery.Where(j => j.Longitude >= minLng && j.Longitude <= maxLng);
+                if (lngDelta < 180)
+                {
+                    if (minLng < -180)
+                        nearbyQuery = nearbyQuery.Where(j => j.Longitude >= minLng + 360 || j.Longitude <= maxLng);
+                    else if (maxLng > 180)
+                        nearbyQuery = nearbyQuery.Where(j => j.Longitude >= minLng || j.Longitude <= maxLng - 360);
+                    else
+                        nearbyQuery = nearbyQuery.Where(j => j.Longitude >= minLng && j.Longitude <= maxLng);
+                }
 
                 var jobs = await nearbyQuery
                     .Select(j => new { Job = j, Count = j.Applications.Count })
