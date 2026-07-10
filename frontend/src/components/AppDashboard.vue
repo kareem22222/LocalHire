@@ -11,6 +11,7 @@ const user = ref(null)
 const userRole = computed(() => normalizeRole(user.value?.role))
 const isHiringUser = computed(() => userRole.value === 'hiring')
 const isWorkerUser = computed(() => userRole.value === 'worker')
+const profileSaveError = ref('')
 
 // --- Shared ---
 const activeTab = ref('dashboard')
@@ -47,6 +48,7 @@ function handleLogout() {
 }
 
 function handleProfileClick() {
+  profileSaveError.value = ''
   emit('profile', user.value)
   activeTab.value = 'profile'
 }
@@ -58,11 +60,16 @@ function closeProfile() {
 async function handleProfileSave(details) {
   // Persist the edited profile through the API, then reflect the saved values.
   // If the request fails, keep the user's edits locally so their input isn't lost.
+  profileSaveError.value = ''
   try {
     const { data } = await api.put('/me/profile', details)
     user.value = { ...user.value, ...data }
-  } catch {
+  } catch (err) {
     user.value = { ...user.value, ...details }
+    const reason = err.response?.data?.message || err.message
+    profileSaveError.value = reason
+      ? `Failed to save profile: ${reason}`
+      : 'Failed to save profile. Your edits are kept locally.'
   } finally {
     activeTab.value = 'dashboard'
   }
@@ -332,11 +339,12 @@ function formatShift(job) {
     </header>
 
     <ProfilePage v-if="activeTab === 'profile'" :user="user" @back="closeProfile" @save="handleProfileSave" />
+    <p v-if="profileSaveError" class="job-form__error" role="alert">{{ profileSaveError }}</p>
 
     <HiringDashboard
       v-if="isHiringUser && activeTab !== 'profile'"
       v-model:show-create-form="showCreateForm"
-      :job-form="jobForm"
+      v-model:job-form="jobForm"
       :job-form-error="jobFormError"
       :creating="creating"
       :my-jobs="myJobs"
@@ -463,15 +471,15 @@ function formatShift(job) {
 .job-detail-tag {
   font-size: 12px;
   font-weight: 600;
-  color: #12324a;
+  color: #0e2638;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(18, 50, 74, 0.06);
+  background: #eef3f5;
 }
 
 .job-detail-tag--salary {
-  color: #0a6b39;
-  background: rgba(18, 173, 89, 0.12);
+  color: #064b29;
+  background: #e7f6ee;
 }
 
 .job-detail-chips {
@@ -492,7 +500,7 @@ function formatShift(job) {
 .job-detail-benefits {
   margin-top: 10px;
   font-size: 13px;
-  color: #5d7482;
+  color: #40545f;
 }
 
 .job-detail-benefits strong {

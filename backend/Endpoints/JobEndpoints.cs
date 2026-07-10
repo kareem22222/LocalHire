@@ -1,4 +1,4 @@
-using System.IdentityModel.Tokens.Jwt;
+using System.Globalization;
 using System.Security.Claims;
 using FluentValidation;
 using LocalHire.Api.Data;
@@ -38,10 +38,7 @@ public static class JobEndpoints
             var validation = await validator.ValidateAsync(request, ct);
             if (!validation.IsValid)
             {
-                var errors = validation.Errors
-                    .GroupBy(e => e.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-                return Results.ValidationProblem(errors);
+                return Results.ValidationProblem(validation.ToValidationErrors());
             }
 
             if (!TryGetUserId(user, out var userId))
@@ -154,8 +151,27 @@ public static class JobEndpoints
                     });
                 }
 
-                var jobs = await query
+                var latDelta = NearbyRadiusKm / 111.32;
+                var minLat = Math.Max(-90, lat.Value - latDelta);
+                var maxLat = Math.Min(90, lat.Value + latDelta);
+                var cosLat = Math.Cos(lat.Value * Math.PI / 180);
+                var lngDelta = Math.Abs(cosLat) < 0.000001 ? 180 : NearbyRadiusKm / (111.32 * Math.Abs(cosLat));
+                var minLng = lng.Value - lngDelta;
+                var maxLng = lng.Value + lngDelta;
+
+                var nearbyQuery = query
                     .Where(j => j.Latitude != null && j.Longitude != null)
+                    .Where(j => j.Latitude >= minLat && j.Latitude <= maxLat);
+
+                nearbyQuery = lngDelta >= 180
+                    ? nearbyQuery
+                    : minLng < -180
+                        ? nearbyQuery.Where(j => j.Longitude >= minLng + 360 || j.Longitude <= maxLng)
+                        : maxLng > 180
+                            ? nearbyQuery.Where(j => j.Longitude >= minLng || j.Longitude <= maxLng - 360)
+                            : nearbyQuery.Where(j => j.Longitude >= minLng && j.Longitude <= maxLng);
+
+                var jobs = await nearbyQuery
                     .Select(j => new { Job = j, Count = j.Applications.Count })
                     .ToListAsync(ct);
 
@@ -251,11 +267,7 @@ public static class JobEndpoints
     }
 
     private static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)
-    {
-        var claim = user.FindFirstValue(JwtRegisteredClaimNames.Sub)
-            ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
-        return Guid.TryParse(claim, out userId);
-    }
+        => user.TryGetUserId(out userId);
 
     private static JobPostResponse ToResponse(JobPost j, int applicationCount) =>
         new(j.Id, j.Title, j.Description, j.WorkplaceName,
@@ -263,7 +275,7 @@ public static class JobEndpoints
             j.EmploymentType?.ToString(), j.SalaryMin, j.SalaryMax, j.SalaryPeriod?.ToString(),
             j.MinEducation, j.ExperienceMinYears, j.ExperienceMaxYears,
             j.WorkingDays,
-            j.ShiftStartTime?.ToString("HH\\:mm"), j.ShiftEndTime?.ToString("HH\\:mm"),
+            j.ShiftStartTime?.ToString("HH\\:mm", CultureInfo.InvariantCulture), j.ShiftEndTime?.ToString("HH\\:mm", CultureInfo.InvariantCulture),
             j.Openings, j.RequiredSkills, j.Languages, j.Benefits,
             j.IsActive, j.CreatedAt, applicationCount);
 
@@ -277,9 +289,9 @@ public static class JobEndpoints
     {
         if (string.IsNullOrWhiteSpace(value))
             return null;
-        if (TimeOnly.TryParseExact(value, "HH:mm", out var hm))
+        if (TimeOnly.TryParseExact(value, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var hm))
             return hm;
-        if (TimeOnly.TryParseExact(value, "HH:mm:ss", out var hms))
+        if (TimeOnly.TryParseExact(value, "HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var hms))
             return hms;
         return null;
     }

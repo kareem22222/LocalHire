@@ -1,3 +1,4 @@
+using System.Globalization;
 using FluentValidation;
 using LocalHire.Api.DTOs;
 using LocalHire.Api.Models;
@@ -132,5 +133,6 @@ public sealed class CreateJobPostRequestValidator : AbstractValidator<CreateJobP
     }
 
     private static bool BeAValidTime(string? value) =>
-        TimeOnly.TryParseExact(value, "HH:mm", out _) || TimeOnly.TryParseExact(value, "HH:mm:ss", out _);
+        TimeOnly.TryParseExact(value, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out _) ||
+        TimeOnly.TryParseExact(value, "HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
 }

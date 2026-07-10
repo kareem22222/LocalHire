@@ -334,5 +334,25 @@ describe('AppDashboard', () => {
       // Returns to the dashboard after saving
       expect(wrapper.find('.profile-page').exists()).toBe(false)
     })
+
+    it('shows profile save failures and keeps the edited profile locally', async () => {
+      api.get.mockImplementation((url) => Promise.resolve({
+        data: url === '/auth/me' ? { name: 'Pat', email: 'pat@example.com', role: 'Hiring' } : [],
+      }))
+      api.put.mockRejectedValue(new Error('Network down'))
+
+      const wrapper = mountDashboard()
+      await flushPromises()
+
+      await wrapper.find('.dash-user-name').trigger('click')
+      await findButtonByText(wrapper, 'Edit profile').trigger('click')
+      await wrapper.find('#profile-name').setValue('Pat Rao')
+      await findButtonByText(wrapper, 'Save changes').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('.profile-page').exists()).toBe(false)
+      expect(wrapper.find('[role="alert"]').text()).toBe('Failed to save profile: Network down')
+      expect(wrapper.vm.user.name).toBe('Pat Rao')
+    })
   })
 })

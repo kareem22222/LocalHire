@@ -197,6 +197,21 @@ public sealed class LocalHireApiTests
     }
 
     [Fact]
+    public void Job_string_list_comparer_hashes_null_lists_and_items()
+    {
+        using var factory = new ApiFactory();
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<LocalHireDbContext>();
+        var comparer = db.Model
+            .FindEntityType(typeof(JobPost))!
+            .FindProperty(nameof(JobPost.RequiredSkills))!
+            .GetValueComparer()!;
+
+        comparer.GetHashCode(null);
+        comparer.GetHashCode(new List<string> { "Billing", null!, "Stock" });
+    }
+
+    [Fact]
     public async Task Role_policies_jobs_and_applications_work()
     {
         using var factory = new ApiFactory();

@@ -50,7 +50,7 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
 
             var stringListComparer = new ValueComparer<List<string>>(
                 (a, b) => (a ?? new List<string>()).SequenceEqual(b ?? new List<string>()),
-                v => v == null ? 0 : v.Aggregate(0, (acc, s) => HashCode.Combine(acc, s.GetHashCode())),
+                v => v == null ? 0 : v.Aggregate(0, (acc, s) => HashCode.Combine(acc, s)),
                 v => v == null ? new List<string>() : v.ToList());
 
             entity.HasKey(j => j.Id);
