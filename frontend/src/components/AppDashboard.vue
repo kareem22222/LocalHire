@@ -52,6 +52,8 @@ function handleProfileClick() {
 }
 
 function closeProfile() {
+  selectedJobApplications.value = null
+  showCreateForm.value = false
   activeTab.value = 'dashboard'
 }
 
