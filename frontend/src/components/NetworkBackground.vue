@@ -1,10 +1,18 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import * as THREE from 'three'
 
 const canvasRef = ref(null)
 const showAnimation = ref(window.innerWidth >= 1024)
-let renderer, scene, camera, nodes, edges, animId, nodeGeometry, edgeGeometry, edgeMaterial
+let renderer = null,
+    scene = null,
+    camera = null,
+    nodes,
+    edges,
+    animId,
+    nodeGeometry,
+    edgeGeometry,
+    edgeMaterial
 let mouse = { x: 0, y: 0 }
 let windowSize = { w: window.innerWidth, h: window.innerHeight }
 
@@ -13,13 +21,18 @@ const NODE_COUNT = 60
 const CONNECT_DIST = 2.8
 
 function createScene() {
+if (renderer) return
   scene = new THREE.Scene()
+  
   scene.background = new THREE.Color(0xffffff)
 
   camera = new THREE.PerspectiveCamera(60, windowSize.w / windowSize.h, 0.1, 100)
-  camera.position.z = 8
+camera.position.z = 8
 
-  renderer = new THREE.WebGLRenderer({ canvas: canvasRef.value, antialias: true })
+renderer = new THREE.WebGLRenderer({
+  canvas: canvasRef.value,
+  antialias: true
+})
   renderer.setSize(windowSize.w, windowSize.h)
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
@@ -68,6 +81,7 @@ function createScene() {
 }
 
 function animate() {
+if (!renderer || !scene || !camera) return
   animId = requestAnimationFrame(animate)
 
   // Mouse influence — camera parallax
@@ -146,36 +160,69 @@ function onResize() {
 
   showAnimation.value = window.innerWidth >= 1024
 
-  if (!showAnimation.value) return
+  if (!camera || !renderer) return
 
-  camera.aspect = windowSize.w / windowSize.h
-  camera.updateProjectionMatrix()
-  renderer.setSize(windowSize.w, windowSize.h)
+camera.aspect = windowSize.w / windowSize.h
+camera.updateProjectionMatrix()
+renderer.setSize(windowSize.w, windowSize.h)
 }
 
-onMounted(() => {
-  if (!showAnimation.value) return
+watch(showAnimation, async (enabled) => {
+  if (enabled) {
+    await nextTick()
 
-  createScene()
+    createScene()
+
+if (renderer && scene && camera) {
   renderer.render(scene, camera)
+}
 
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    window.addEventListener('mousemove', onMouseMove, { passive: true })
 
-  animate()
-  window.addEventListener('mousemove', onMouseMove, { passive: true })
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      animate()
+    }
+  } else {
+    cancelAnimationFrame(animId)
+    window.removeEventListener('mousemove', onMouseMove)
+
+    nodes?.forEach(node => node.material.dispose())
+    nodeGeometry?.dispose()
+    edgeGeometry?.dispose()
+    edgeMaterial?.dispose()
+    scene?.clear()
+    renderer?.dispose()
+
+    renderer = null
+    scene = null
+    camera = null
+    nodes = null
+    edges = null
+  }
+}, { immediate: true })
+
+onMounted(() => {
   window.addEventListener('resize', onResize, { passive: true })
 })
 
 onUnmounted(() => {
   cancelAnimationFrame(animId)
+
   window.removeEventListener('mousemove', onMouseMove)
   window.removeEventListener('resize', onResize)
+
   nodes?.forEach(node => node.material.dispose())
   nodeGeometry?.dispose()
   edgeGeometry?.dispose()
   edgeMaterial?.dispose()
   scene?.clear()
   renderer?.dispose()
+
+  renderer = null
+  scene = null
+  camera = null
+  nodes = null
+  edges = null
 })
 </script>
 
