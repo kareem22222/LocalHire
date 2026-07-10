@@ -25,6 +25,24 @@ const candidates = computed(() => props.candidates)
 
 const roles = computed(() => ['All', ...new Set(candidates.value.map((candidate) => candidate.role))])
 const availabilityOptions = ['All', 'Immediate', 'This week', 'Next week']
+const employmentTypeOptions = [
+  { value: 'FullTime', label: 'Full-time' },
+  { value: 'PartTime', label: 'Part-time' },
+  { value: 'Contract', label: 'Contract' },
+  { value: 'Temporary', label: 'Temporary' },
+  { value: 'Internship', label: 'Internship' },
+  { value: 'Daily', label: 'Daily wage' },
+]
+const salaryPeriodOptions = ['Hourly', 'Daily', 'Weekly', 'Monthly', 'Yearly']
+const educationOptions = [
+  'No formal education',
+  'Below 10th',
+  '10th pass',
+  '12th pass',
+  'Diploma',
+  'Graduate',
+  'Post Graduate',
+]
 const indianStates = [
   'Andhra Pradesh',
   'Arunachal Pradesh',
@@ -70,7 +88,7 @@ const openRoles = computed(() => {
     return {
       id: job.id,
       title: job.title,
-      area: job.cityArea,
+      area: [job.cityArea, job.state].filter(Boolean).join(', '),
       workplaceName: job.workplaceName,
       applicants,
       shortlisted: Math.min(Math.round(applicants * 0.35), applicants),
@@ -245,6 +263,86 @@ watch(
           <input v-else id="job-city-area" v-model="jobForm.cityArea" placeholder="" />
           <span v-if="areaOptions.length > 1" class="job-form__hint">Choose the nearest area for this role.</span>
         </div>
+
+        <div class="job-form__row">
+          <div class="job-form__field">
+            <label for="job-employment-type">Employment type</label>
+            <select id="job-employment-type" v-model="jobForm.employmentType">
+              <option value="">Select type</option>
+              <option v-for="opt in employmentTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </select>
+          </div>
+          <div class="job-form__field">
+            <label for="job-openings">Number of openings</label>
+            <input id="job-openings" v-model="jobForm.openings" type="number" min="1" inputmode="numeric" placeholder="e.g. 3" />
+          </div>
+        </div>
+
+        <div class="job-form__row">
+          <div class="job-form__field">
+            <label for="job-salary-min">Salary (min)</label>
+            <input id="job-salary-min" v-model="jobForm.salaryMin" type="number" min="0" inputmode="numeric" placeholder="e.g. 15000" />
+          </div>
+          <div class="job-form__field">
+            <label for="job-salary-max">Salary (max)</label>
+            <input id="job-salary-max" v-model="jobForm.salaryMax" type="number" min="0" inputmode="numeric" placeholder="e.g. 25000" />
+          </div>
+          <div class="job-form__field">
+            <label for="job-salary-period">Pay period</label>
+            <select id="job-salary-period" v-model="jobForm.salaryPeriod">
+              <option value="">Select period</option>
+              <option v-for="period in salaryPeriodOptions" :key="period" :value="period">{{ period }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="job-form__row">
+          <div class="job-form__field">
+            <label for="job-education">Minimum education</label>
+            <input id="job-education" v-model="jobForm.minEducation" list="job-education-options" placeholder="e.g. 10th pass" />
+            <datalist id="job-education-options">
+              <option v-for="edu in educationOptions" :key="edu" :value="edu"></option>
+            </datalist>
+          </div>
+          <div class="job-form__field">
+            <label for="job-exp-min">Experience (min yrs)</label>
+            <input id="job-exp-min" v-model="jobForm.experienceMinYears" type="number" min="0" max="60" inputmode="numeric" placeholder="e.g. 0" />
+          </div>
+          <div class="job-form__field">
+            <label for="job-exp-max">Experience (max yrs)</label>
+            <input id="job-exp-max" v-model="jobForm.experienceMaxYears" type="number" min="0" max="60" inputmode="numeric" placeholder="e.g. 3" />
+          </div>
+        </div>
+
+        <div class="job-form__row">
+          <div class="job-form__field">
+            <label for="job-working-days">Working days</label>
+            <input id="job-working-days" v-model="jobForm.workingDays" placeholder="e.g. Mon–Sat" />
+          </div>
+          <div class="job-form__field">
+            <label for="job-shift-start">Shift start</label>
+            <input id="job-shift-start" v-model="jobForm.shiftStartTime" type="time" />
+          </div>
+          <div class="job-form__field">
+            <label for="job-shift-end">Shift end</label>
+            <input id="job-shift-end" v-model="jobForm.shiftEndTime" type="time" />
+          </div>
+        </div>
+
+        <div class="job-form__field">
+          <label for="job-skills">Required skills</label>
+          <input id="job-skills" v-model="jobForm.requiredSkills" placeholder="Comma separated, e.g. Billing, Customer service" />
+          <span class="job-form__hint">Separate each skill with a comma.</span>
+        </div>
+        <div class="job-form__field">
+          <label for="job-languages">Languages needed</label>
+          <input id="job-languages" v-model="jobForm.languages" placeholder="Comma separated, e.g. Hindi, English" />
+        </div>
+        <div class="job-form__field">
+          <label for="job-benefits">Extra benefits</label>
+          <input id="job-benefits" v-model="jobForm.benefits" placeholder="Comma separated, e.g. Provident Fund, Meals" />
+        </div>
+
         <p v-if="jobFormError" class="job-form__error">{{ jobFormError }}</p>
         <button class="dash-btn dash-btn--primary" :disabled="creating" @click="emit('create-job')">
           {{ creating ? 'Posting...' : 'Post Job' }}

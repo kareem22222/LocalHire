@@ -55,12 +55,17 @@ function closeProfile() {
   activeTab.value = 'dashboard'
 }
 
-function handleProfileSave(details) {
-  // Merge edited profile fields into local state. Only name/email/role/location
-  // are persisted by the API today; the remaining fields are kept client-side
-  // until a profile-update endpoint is available.
-  user.value = { ...user.value, ...details }
-  activeTab.value = 'dashboard'
+async function handleProfileSave(details) {
+  // Persist the edited profile through the API, then reflect the saved values.
+  // If the request fails, keep the user's edits locally so their input isn't lost.
+  try {
+    const { data } = await api.put('/me/profile', details)
+    user.value = { ...user.value, ...data }
+  } catch {
+    user.value = { ...user.value, ...details }
+  } finally {
+    activeTab.value = 'dashboard'
+  }
 }
 
 onMounted(fetchProfile)
@@ -77,6 +82,20 @@ const jobForm = ref({
   state: '',
   latitude: null,
   longitude: null,
+  employmentType: '',
+  salaryMin: '',
+  salaryMax: '',
+  salaryPeriod: '',
+  minEducation: '',
+  experienceMinYears: '',
+  experienceMaxYears: '',
+  workingDays: '',
+  shiftStartTime: '',
+  shiftEndTime: '',
+  openings: '',
+  requiredSkills: '',
+  languages: '',
+  benefits: '',
 })
 const jobFormError = ref('')
 const creating = ref(false)
@@ -99,6 +118,20 @@ function hasValidCoordinates(latitude, longitude) {
   return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
 }
 
+function numberOrNull(value) {
+  const text = String(value ?? '').trim()
+  if (text === '') return null
+  const num = Number(text)
+  return Number.isFinite(num) ? num : null
+}
+
+function splitList(value) {
+  return String(value ?? '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
 async function createJob() {
   jobFormError.value = ''
   if (!jobForm.value.title.trim() || !jobForm.value.description.trim() || !jobForm.value.workplaceName.trim() || !jobForm.value.cityArea.trim()) {
@@ -116,18 +149,39 @@ async function createJob() {
 
   creating.value = true
   try {
-    const location = `${jobForm.value.cityArea.trim()}, ${jobForm.value.state.trim()} - ${jobForm.value.pincode.trim()}`
     const hasCoords = hasValidCoordinates(jobForm.value.latitude, jobForm.value.longitude)
     const payload = {
       title: jobForm.value.title.trim(),
       description: jobForm.value.description.trim(),
       workplaceName: jobForm.value.workplaceName.trim(),
-      cityArea: location,
+      cityArea: jobForm.value.cityArea.trim(),
+      state: jobForm.value.state.trim() || null,
+      pincode: jobForm.value.pincode.trim() || null,
       latitude: hasCoords ? Number(jobForm.value.latitude) : null,
       longitude: hasCoords ? Number(jobForm.value.longitude) : null,
+      employmentType: jobForm.value.employmentType || null,
+      salaryMin: numberOrNull(jobForm.value.salaryMin),
+      salaryMax: numberOrNull(jobForm.value.salaryMax),
+      salaryPeriod: jobForm.value.salaryPeriod || null,
+      minEducation: jobForm.value.minEducation.trim() || null,
+      experienceMinYears: numberOrNull(jobForm.value.experienceMinYears),
+      experienceMaxYears: numberOrNull(jobForm.value.experienceMaxYears),
+      workingDays: jobForm.value.workingDays.trim() || null,
+      shiftStartTime: jobForm.value.shiftStartTime || null,
+      shiftEndTime: jobForm.value.shiftEndTime || null,
+      openings: numberOrNull(jobForm.value.openings),
+      requiredSkills: splitList(jobForm.value.requiredSkills),
+      languages: splitList(jobForm.value.languages),
+      benefits: splitList(jobForm.value.benefits),
     }
     await api.post('/hiring/jobs', payload)
-    jobForm.value = { title: '', description: '', workplaceName: '', cityArea: '', pincode: '', state: '', latitude: null, longitude: null }
+    jobForm.value = {
+      title: '', description: '', workplaceName: '', cityArea: '', pincode: '', state: '',
+      latitude: null, longitude: null, employmentType: '', salaryMin: '', salaryMax: '',
+      salaryPeriod: '', minEducation: '', experienceMinYears: '', experienceMaxYears: '',
+      workingDays: '', shiftStartTime: '', shiftEndTime: '', openings: '',
+      requiredSkills: '', languages: '', benefits: '',
+    }
     showCreateForm.value = false
     await loadMyJobs()
   } catch (err) {
@@ -221,6 +275,49 @@ async function applyToJob(jobId) {
 function hasApplied(jobId) {
   return myApplications.value.some((a) => a.jobPostId === jobId)
 }
+
+function formatJobLocation(job) {
+  const base = [job.cityArea, job.state].filter(Boolean).join(', ')
+  return job.pincode ? [base, job.pincode].filter(Boolean).join(' - ') : base
+}
+
+const EMPLOYMENT_TYPE_LABELS = {
+  FullTime: 'Full-time',
+  PartTime: 'Part-time',
+  Contract: 'Contract',
+  Temporary: 'Temporary',
+  Internship: 'Internship',
+  Daily: 'Daily wage',
+}
+
+function formatEmploymentType(job) {
+  if (!job.employmentType) return ''
+  return EMPLOYMENT_TYPE_LABELS[job.employmentType] || job.employmentType
+}
+
+function formatSalary(job) {
+  if (job.salaryMin == null && job.salaryMax == null) return ''
+  const money = (n) => `₹${Number(n).toLocaleString('en-IN')}`
+  const range = job.salaryMin != null && job.salaryMax != null
+    ? `${money(job.salaryMin)} – ${money(job.salaryMax)}`
+    : money(job.salaryMin ?? job.salaryMax)
+  return job.salaryPeriod ? `${range} / ${job.salaryPeriod.toLowerCase()}` : range
+}
+
+function formatExperience(job) {
+  if (job.experienceMinYears == null && job.experienceMaxYears == null) return ''
+  if (job.experienceMinYears != null && job.experienceMaxYears != null) {
+    return `${job.experienceMinYears}–${job.experienceMaxYears} yrs exp`
+  }
+  return `${job.experienceMinYears ?? job.experienceMaxYears}+ yrs exp`
+}
+
+function formatShift(job) {
+  const time = job.shiftStartTime && job.shiftEndTime
+    ? `${job.shiftStartTime}–${job.shiftEndTime}`
+    : (job.shiftStartTime || '')
+  return [job.workingDays, time].filter(Boolean).join(', ')
+}
 </script>
 
 <template>
@@ -298,8 +395,23 @@ function hasApplied(jobId) {
           <div v-for="job in nearbyJobs" :key="job.id" class="job-card">
             <div class="job-card__body">
               <h3 class="job-card__title">{{ job.title }}</h3>
-              <p class="job-card__meta">{{ job.workplaceName }} &middot; {{ job.cityArea }}</p>
+              <p class="job-card__meta">{{ job.workplaceName }} &middot; {{ formatJobLocation(job) }}</p>
               <p class="job-card__desc">{{ job.description }}</p>
+              <div class="job-detail-tags">
+                <span v-if="formatEmploymentType(job)" class="job-detail-tag">{{ formatEmploymentType(job) }}</span>
+                <span v-if="formatSalary(job)" class="job-detail-tag job-detail-tag--salary">{{ formatSalary(job) }}</span>
+                <span v-if="formatExperience(job)" class="job-detail-tag">{{ formatExperience(job) }}</span>
+                <span v-if="job.minEducation" class="job-detail-tag">{{ job.minEducation }}</span>
+                <span v-if="formatShift(job)" class="job-detail-tag">{{ formatShift(job) }}</span>
+                <span v-if="job.openings" class="job-detail-tag">{{ job.openings }} opening{{ job.openings !== 1 ? 's' : '' }}</span>
+                <span v-for="lang in job.languages || []" :key="`lang-${lang}`" class="job-detail-tag">{{ lang }}</span>
+              </div>
+              <div v-if="(job.requiredSkills || []).length" class="job-detail-chips">
+                <span v-for="skill in job.requiredSkills" :key="skill">{{ skill }}</span>
+              </div>
+              <div v-if="(job.benefits || []).length" class="job-detail-benefits">
+                <strong>Benefits:</strong> {{ job.benefits.join(', ') }}
+              </div>
             </div>
             <div class="job-card__actions">
               <span class="job-card__count">{{ job.applicationCount }} applicant{{ job.applicationCount !== 1 ? 's' : '' }}</span>
@@ -339,3 +451,51 @@ function hasApplied(jobId) {
     </main>
   </div>
 </template>
+
+<style scoped>
+.job-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.job-detail-tag {
+  font-size: 12px;
+  font-weight: 600;
+  color: #12324a;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(18, 50, 74, 0.06);
+}
+
+.job-detail-tag--salary {
+  color: #0a6b39;
+  background: rgba(18, 173, 89, 0.12);
+}
+
+.job-detail-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.job-detail-chips span {
+  font-size: 12px;
+  color: #07559a;
+  padding: 3px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(7, 85, 154, 0.2);
+}
+
+.job-detail-benefits {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #5d7482;
+}
+
+.job-detail-benefits strong {
+  color: #12324a;
+}
+</style>

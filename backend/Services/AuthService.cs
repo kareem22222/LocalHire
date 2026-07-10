@@ -85,6 +85,27 @@ public sealed class AuthService : IAuthService
         return profile;
     }
 
+    public async Task<UserProfile> UpdateProfileAsync(Guid userId, UpdateProfileRequest request, CancellationToken ct)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct)
+            ?? throw new NotFoundException("User not found.");
+
+        user.Name = request.Name.Trim();
+        user.Phone = NormalizeOptional(request.Phone);
+        user.DateOfBirth = request.DateOfBirth;
+        user.Gender = NormalizeOptional(request.Gender);
+        user.AddressLine = NormalizeOptional(request.AddressLine);
+        user.CityArea = NormalizeOptional(request.CityArea);
+        user.State = NormalizeOptional(request.State);
+        user.Pincode = NormalizeOptional(request.Pincode);
+
+        await _db.SaveChangesAsync(ct);
+
+        _cache.Remove($"user_profile_{userId}");
+
+        return ToProfile(user);
+    }
+
     public async Task<UserProfile> UpdateLocationAsync(Guid userId, UpdateLocationRequest request, CancellationToken ct)
     {
         if (request is not { Latitude: double latitude, Longitude: double longitude })
@@ -108,7 +129,13 @@ public sealed class AuthService : IAuthService
     }
 
     private static UserProfile ToProfile(User user) =>
-        new(user.Id, user.Name, user.Email, user.Role, user.Latitude, user.Longitude, user.LocationUpdatedAt, user.CreatedAt);
+        new(user.Id, user.Name, user.Email, user.Role,
+            user.Phone, user.DateOfBirth, user.Gender, user.AddressLine,
+            user.CityArea, user.State, user.Pincode,
+            user.Latitude, user.Longitude, user.LocationUpdatedAt, user.CreatedAt);
+
+    private static string? NormalizeOptional(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static bool IsDuplicateUserViolation(DbUpdateException exception)
     {
