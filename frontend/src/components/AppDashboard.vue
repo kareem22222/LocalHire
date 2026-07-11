@@ -14,7 +14,7 @@ const isWorkerUser = computed(() => userRole.value === 'worker')
 const profileSaveError = ref('')
 
 // --- Shared ---
-const activeTab = ref(localStorage.getItem('dashboard_tab') || 'dashboard')
+const activeTab = ref(typeof localStorage!=='undefined'?(localStorage.getItem('dashboard_tab') || 'dashboard'):'dashboard')
 
 async function fetchProfile() {
   try {
@@ -51,12 +51,16 @@ function handleProfileClick() {
   profileSaveError.value = ''
   emit('profile', user.value)
   activeTab.value = 'profile'
+  if(typeof localStorage!=='undefined'){
   localStorage.setItem('dashboard_tab','profile')
+  }
 }
 
 function closeProfile() {
   activeTab.value = 'dashboard'
+  if(typeof localStorage!=='undefined'){
   localStorage.setItem('dashboard_tab','dashboard')
+}
 }
 
 async function handleProfileSave(details) {
@@ -67,7 +71,9 @@ async function handleProfileSave(details) {
     const { data } = await api.put('/me/profile', details)
     Object.assign(user.value,data)
     activeTab.value='profile'
+    if(typeof localStorage!=='undefined'){
     localStorage.setItem('dashboard_tab','profile')
+    }
   } catch (err) {
     user.value = { ...user.value, ...details }
     const reason = err.response?.data?.message || err.message
