@@ -1,12 +1,13 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import confetti from 'canvas-confetti'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { onMounted, onUnmounted, ref } from 'vue'
+import { clearAuth, isAuthenticated } from './api'
+import AppDashboard from './components/AppDashboard.vue'
+import AuthModal from './components/AuthModal.vue'
 import BrandLogo from './components/BrandLogo.vue'
 import NetworkBackground from './components/NetworkBackground.vue'
-import AuthModal from './components/AuthModal.vue'
-import AppDashboard from './components/AppDashboard.vue'
-import { isAuthenticated, clearAuth } from './api'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -35,9 +36,20 @@ function openModal(email = '', role = '',initialMode='register') {
   showModal.value = true
 }
 
-function onAuthSuccess() {
+function showSignupConfetti() {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+  [
+    { angle: 315, origin: { x: 0, y: 0 } },
+    { angle: 225, origin: { x: 1, y: 0 } },
+    { angle: 45, origin: { x: 0, y: 1 } },
+    { angle: 135, origin: { x: 1, y: 1 } },
+  ].forEach((corner) => confetti({ particleCount: 25, spread: 70, ...corner }))
+}
+
+function onAuthSuccess({ mode } = {}) {
   isAuth.value = true
   showModal.value = false
+  if (mode === 'register') showSignupConfetti()
 }
 
 async function handleLogout() {
@@ -234,7 +246,7 @@ onUnmounted(() => {
         <p class="cta-desc">Join thousands who've already signed up. We're launching in your city soon.</p>
         <form class="cta-form" @submit.prevent="handleCtaSubmit">
           <input v-model="ctaEmail" type="email" class="cta-input" placeholder="Enter your email" aria-label="Email address" required />
-          <button type="submit" class="btn btn--primary btn--lg">Get early access</button>
+          <button type="submit" class="btn btn--primary btn--lg">Sign up</button>
         </form>
       </div>
     </section>

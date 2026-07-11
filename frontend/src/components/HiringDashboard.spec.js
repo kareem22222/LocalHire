@@ -15,7 +15,8 @@ function createJobForm(overrides = {}) {
 }
 
 function mountHiringDashboard(props = {}) {
-  return mount(HiringDashboard, {
+  let wrapper
+  wrapper = mount(HiringDashboard, {
     props: {
       jobForm: createJobForm(),
       jobFormError: '',
@@ -23,8 +24,10 @@ function mountHiringDashboard(props = {}) {
       myJobs: [],
       showCreateForm: false,
       ...props,
+      'onUpdate:jobForm': (value) => wrapper.setProps({ jobForm: value }),
     },
   })
+  return wrapper
 }
 
 function mockPincodeLookup(postOffices = [
@@ -118,12 +121,13 @@ describe('HiringDashboard', () => {
     await flushPromises()
 
     expect(fetch).toHaveBeenCalledWith('https://api.postalpincode.in/pincode/400050')
-    expect(jobForm.state).toBe('Maharashtra')
-    expect(jobForm.cityArea).toBe('Bandra West, Mumbai')
+    expect(wrapper.props('jobForm').state).toBe('Maharashtra')
+    expect(wrapper.props('jobForm').cityArea).toBe('Bandra West, Mumbai')
     expect(wrapper.findAll('.job-form__field select')[1].text()).toContain('Khar Colony, Mumbai, Mumbai')
 
     await wrapper.findAll('.job-form__field select')[1].setValue('Khar Colony, Mumbai')
-    expect(jobForm.cityArea).toBe('Khar Colony, Mumbai')
+    await flushPromises()
+    expect(wrapper.props('jobForm').cityArea).toBe('Khar Colony, Mumbai')
   })
 
   it('sanitizes pincode input before lookup', async () => {
@@ -134,7 +138,7 @@ describe('HiringDashboard', () => {
     await wrapper.find('input[inputmode="numeric"]').setValue('400050abc')
     await flushPromises()
 
-    expect(jobForm.pincode).toBe('400050')
+    expect(wrapper.props('jobForm').pincode).toBe('400050')
     expect(fetch).toHaveBeenCalledWith('https://api.postalpincode.in/pincode/400050')
   })
 
@@ -148,7 +152,7 @@ describe('HiringDashboard', () => {
     await wrapper.find('input[inputmode="numeric"]').setValue('999999')
     await flushPromises()
 
-    expect(jobForm.state).toBe('')
+    expect(wrapper.props('jobForm').state).toBe('')
     expect(wrapper.find('.job-form__error-text').text()).toBe('No location found for this pincode.')
   })
 
@@ -192,9 +196,27 @@ describe('HiringDashboard', () => {
     }])
     await flushPromises()
 
-    expect(jobForm.pincode).toBe('')
-    expect(jobForm.state).toBe('')
-    expect(jobForm.cityArea).toBe('')
+    expect(wrapper.props('jobForm').pincode).toBe('')
+    expect(wrapper.props('jobForm').state).toBe('')
+    expect(wrapper.props('jobForm').cityArea).toBe('')
+  })
+
+  it('emits job form updates without mutating the prop object', async () => {
+    const jobForm = createJobForm()
+    const wrapper = mount(HiringDashboard, {
+      props: {
+        jobForm,
+        jobFormError: '',
+        creating: false,
+        myJobs: [],
+        showCreateForm: true,
+      },
+    })
+
+    await wrapper.find('#job-title').setValue('Cashier')
+
+    expect(jobForm.title).toBe('')
+    expect(wrapper.emitted('update:jobForm')[0][0]).toEqual({ ...jobForm, title: 'Cashier' })
   })
 
 

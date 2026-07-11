@@ -32,6 +32,7 @@ describe('AuthModal', () => {
       role: 'Hiring',
     })
     expect(setAuth).toHaveBeenCalledWith('token')
+    expect(wrapper.emitted('success')).toEqual([[{ mode: 'register' }]])
   })
 
   it('uses the initial role when opening signup', async () => {
@@ -70,5 +71,31 @@ describe('AuthModal', () => {
       password: 'Password1!',
       role: 'LookingForWork',
     })
+    expect(wrapper.emitted('success')).toEqual([[{ mode: 'login' }]])
+  })
+
+  it('normalizes validation error keys to lowercase and displays them', async () => {
+    const wrapper = mount(AuthModal)
+    const errorResponse = {
+      response: {
+        status: 400,
+        data: {
+          errors: {
+            Name: ['Name is required.'],
+            Email: ['Invalid email format.'],
+          },
+        },
+      },
+    }
+    api.post.mockRejectedValueOnce(errorResponse)
+
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    const nameError = wrapper.find('.auth-field:nth-of-type(1) .auth-field__error')
+    expect(nameError.text()).toBe('Name is required.')
+
+    const emailError = wrapper.find('.auth-field:nth-of-type(3) .auth-field__error')
+    expect(emailError.text()).toBe('Invalid email format.')
   })
 })

@@ -3,17 +3,20 @@ using System;
 using LocalHire.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace LocalHire.Api.Migrations
+namespace LocalHire.Api.Data.Migrations
 {
     [DbContext(typeof(LocalHireDbContext))]
-    partial class LocalHireDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260710125813_AddProfileAndJobLocationFields")]
+    partial class AddProfileAndJobLocationFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -65,10 +68,6 @@ namespace LocalHire.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Benefits")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<string>("CityArea")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -92,24 +91,10 @@ namespace LocalHire.Api.Migrations
                         .HasColumnType("character varying(50)")
                         .HasDefaultValue("Hiring");
 
-                    b.Property<string>("EmploymentType")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<int?>("ExperienceMaxYears")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("ExperienceMinYears")
-                        .HasColumnType("integer");
-
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
-
-                    b.Property<string>("Languages")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<double?>("Latitude")
                         .HasColumnType("double precision");
@@ -117,38 +102,9 @@ namespace LocalHire.Api.Migrations
                     b.Property<double?>("Longitude")
                         .HasColumnType("double precision");
 
-                    b.Property<string>("MinEducation")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<int?>("Openings")
-                        .HasColumnType("integer");
-
                     b.Property<string>("Pincode")
                         .HasMaxLength(6)
                         .HasColumnType("character varying(6)");
-
-                    b.Property<string>("RequiredSkills")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<decimal?>("SalaryMax")
-                        .HasPrecision(12, 2)
-                        .HasColumnType("numeric(12,2)");
-
-                    b.Property<decimal?>("SalaryMin")
-                        .HasPrecision(12, 2)
-                        .HasColumnType("numeric(12,2)");
-
-                    b.Property<string>("SalaryPeriod")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<TimeOnly?>("ShiftEndTime")
-                        .HasColumnType("time without time zone");
-
-                    b.Property<TimeOnly?>("ShiftStartTime")
-                        .HasColumnType("time without time zone");
 
                     b.Property<string>("State")
                         .HasMaxLength(100)
@@ -156,10 +112,6 @@ namespace LocalHire.Api.Migrations
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("WorkingDays")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 

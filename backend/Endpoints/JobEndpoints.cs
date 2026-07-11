@@ -1,4 +1,4 @@
-using System.IdentityModel.Tokens.Jwt;
+using System.Globalization;
 using System.Security.Claims;
 using FluentValidation;
 using LocalHire.Api.Data;
@@ -38,10 +38,7 @@ public static class JobEndpoints
             var validation = await validator.ValidateAsync(request, ct);
             if (!validation.IsValid)
             {
-                var errors = validation.Errors
-                    .GroupBy(e => e.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
-                return Results.ValidationProblem(errors);
+                return Results.ValidationProblem(validation.ToValidationErrors());
             }
 
             if (!TryGetUserId(user, out var userId))
@@ -55,8 +52,24 @@ public static class JobEndpoints
                 Description = request.Description.Trim(),
                 WorkplaceName = request.WorkplaceName.Trim(),
                 CityArea = request.CityArea.Trim(),
+                State = NormalizeText(request.State),
+                Pincode = NormalizeText(request.Pincode),
                 Latitude = request.Latitude is not null ? Math.Round(request.Latitude.Value, 3) : null,
                 Longitude = request.Longitude is not null ? Math.Round(request.Longitude.Value, 3) : null,
+                EmploymentType = ParseEnum<EmploymentType>(request.EmploymentType),
+                SalaryMin = request.SalaryMin,
+                SalaryMax = request.SalaryMax,
+                SalaryPeriod = ParseEnum<SalaryPeriod>(request.SalaryPeriod),
+                MinEducation = NormalizeText(request.MinEducation),
+                ExperienceMinYears = request.ExperienceMinYears,
+                ExperienceMaxYears = request.ExperienceMaxYears,
+                WorkingDays = NormalizeText(request.WorkingDays),
+                ShiftStartTime = ParseTime(request.ShiftStartTime),
+                ShiftEndTime = ParseTime(request.ShiftEndTime),
+                Openings = request.Openings,
+                RequiredSkills = NormalizeList(request.RequiredSkills),
+                Languages = NormalizeList(request.Languages),
+                Benefits = NormalizeList(request.Benefits),
                 IsActive = true,
                 CreatedAt = DateTimeOffset.UtcNow
             };
@@ -64,10 +77,7 @@ public static class JobEndpoints
             db.JobPosts.Add(jobPost);
             await db.SaveChangesAsync(ct);
 
-            return Results.Created($"/api/hiring/jobs/{jobPost.Id}", new JobPostResponse(
-                jobPost.Id, jobPost.Title, jobPost.Description, jobPost.WorkplaceName,
-                jobPost.CityArea, jobPost.Latitude, jobPost.Longitude,
-                jobPost.IsActive, jobPost.CreatedAt, 0));
+            return Results.Created($"/api/hiring/jobs/{jobPost.Id}", ToResponse(jobPost, 0));
         })
         .WithName("CreateJobPost");
 
@@ -81,13 +91,12 @@ public static class JobEndpoints
 
             var jobs = await db.JobPosts
                 .Where(j => j.EmployerId == userId)
-                .Select(j => new JobPostResponse(
-                    j.Id, j.Title, j.Description, j.WorkplaceName,
-                    j.CityArea, j.Latitude, j.Longitude,
-                    j.IsActive, j.CreatedAt, j.Applications.Count))
+                .Select(j => new { Job = j, Count = j.Applications.Count })
                 .ToListAsync(ct);
 
-            return Results.Ok(jobs.OrderByDescending(j => j.CreatedAt));
+            return Results.Ok(jobs
+                .OrderByDescending(x => x.Job.CreatedAt)
+                .Select(x => ToResponse(x.Job, x.Count)));
         })
         .WithName("GetMyJobPosts");
 
@@ -142,41 +151,54 @@ public static class JobEndpoints
                     });
                 }
 
-                var jobs = await query
+                var latDelta = NearbyRadiusKm / 111.32;
+                var minLat = Math.Max(-90, lat.Value - latDelta);
+                var maxLat = Math.Min(90, lat.Value + latDelta);
+                var cosLat = Math.Cos(lat.Value * Math.PI / 180);
+                var lngDelta = Math.Abs(cosLat) < 0.000001 ? 180 : NearbyRadiusKm / (111.32 * Math.Abs(cosLat));
+                var minLng = lng.Value - lngDelta;
+                var maxLng = lng.Value + lngDelta;
+
+                var nearbyQuery = query
                     .Where(j => j.Latitude != null && j.Longitude != null)
-                    .Select(j => new
-                    {
-                        Response = new JobPostResponse(
-                            j.Id, j.Title, j.Description, j.WorkplaceName,
-                            j.CityArea, j.Latitude, j.Longitude,
-                            j.IsActive, j.CreatedAt, j.Applications.Count),
-                        j.Latitude,
-                        j.Longitude
-                    })
+                    .Where(j => j.Latitude >= minLat && j.Latitude <= maxLat);
+
+                if (lngDelta < 180)
+                {
+                    if (minLng < -180)
+                        nearbyQuery = nearbyQuery.Where(j => j.Longitude >= minLng + 360 || j.Longitude <= maxLng);
+                    else if (maxLng > 180)
+                        nearbyQuery = nearbyQuery.Where(j => j.Longitude >= minLng || j.Longitude <= maxLng - 360);
+                    else
+                        nearbyQuery = nearbyQuery.Where(j => j.Longitude >= minLng && j.Longitude <= maxLng);
+                }
+
+                var jobs = await nearbyQuery
+                    .Select(j => new { Job = j, Count = j.Applications.Count })
                     .ToListAsync(ct);
 
                 var nearby = jobs
-                    .Select(j => new
+                    .Select(x => new
                     {
-                        j.Response,
-                        Distance = HaversineDistance(lat.Value, lng.Value, j.Latitude, j.Longitude)
+                        x.Job,
+                        x.Count,
+                        Distance = HaversineDistance(lat.Value, lng.Value, x.Job.Latitude, x.Job.Longitude)
                     })
                     .Where(x => x.Distance <= NearbyRadiusKm)
                     .OrderBy(x => x.Distance)
-                    .Select(x => x.Response)
+                    .Select(x => ToResponse(x.Job, x.Count))
                     .ToList();
 
                 return Results.Ok(nearby);
             }
 
             var allJobs = await query
-                .Select(j => new JobPostResponse(
-                    j.Id, j.Title, j.Description, j.WorkplaceName,
-                    j.CityArea, j.Latitude, j.Longitude,
-                    j.IsActive, j.CreatedAt, j.Applications.Count))
+                .Select(j => new { Job = j, Count = j.Applications.Count })
                 .ToListAsync(ct);
 
-            return Results.Ok(allJobs.OrderByDescending(j => j.CreatedAt));
+            return Results.Ok(allJobs
+                .OrderByDescending(x => x.Job.CreatedAt)
+                .Select(x => ToResponse(x.Job, x.Count)));
         })
         .WithName("GetNearbyJobs");
 
@@ -247,11 +269,44 @@ public static class JobEndpoints
     }
 
     private static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)
+        => user.TryGetUserId(out userId);
+
+    private static JobPostResponse ToResponse(JobPost j, int applicationCount) =>
+        new(j.Id, j.Title, j.Description, j.WorkplaceName,
+            j.CityArea, j.State, j.Pincode, j.Latitude, j.Longitude,
+            j.EmploymentType?.ToString(), j.SalaryMin, j.SalaryMax, j.SalaryPeriod?.ToString(),
+            j.MinEducation, j.ExperienceMinYears, j.ExperienceMaxYears,
+            j.WorkingDays,
+            j.ShiftStartTime?.ToString("HH\\:mm", CultureInfo.InvariantCulture), j.ShiftEndTime?.ToString("HH\\:mm", CultureInfo.InvariantCulture),
+            j.Openings, j.RequiredSkills, j.Languages, j.Benefits,
+            j.IsActive, j.CreatedAt, applicationCount);
+
+    private static string? NormalizeText(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static TEnum? ParseEnum<TEnum>(string? value) where TEnum : struct, Enum =>
+        Enum.TryParse<TEnum>(value, out var parsed) ? parsed : null;
+
+    private static TimeOnly? ParseTime(string? value)
     {
-        var claim = user.FindFirstValue(JwtRegisteredClaimNames.Sub)
-            ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
-        return Guid.TryParse(claim, out userId);
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+        if (TimeOnly.TryParseExact(value, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var hm))
+            return hm;
+        if (TimeOnly.TryParseExact(value, "HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var hms))
+            return hms;
+        return null;
     }
+
+    private static List<string> NormalizeList(List<string>? values) =>
+        values is null
+            ? new List<string>()
+            : values
+                .Select(v => v?.Trim())
+                .Where(v => !string.IsNullOrEmpty(v))
+                .Select(v => v!)
+                .Distinct()
+                .ToList();
 
     private static bool IsValidCoordinates(double lat, double lng) =>
         double.IsFinite(lat) && double.IsFinite(lng) &&

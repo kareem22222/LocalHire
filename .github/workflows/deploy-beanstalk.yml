@@ -1,0 +1,118 @@
+name: Deploy Elastic Beanstalk
+
+on:
+  workflow_dispatch:
+    inputs:
+      application_name:
+        description: Elastic Beanstalk application name
+        required: true
+        default: LocalHire
+      target_environment:
+        description: Elastic Beanstalk deployment target
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - prod
+      aws_region:
+        description: AWS region
+        required: true
+        default: ap-south-2
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: elastic-beanstalk-${{ inputs.target_environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Authorize deployment target
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          if [ "$TARGET_ENVIRONMENT" = "prod" ] && [ "$ACTOR" != "kareem22222" ]; then
+            echo "Only kareem22222 can deploy to prod." >&2
+            exit 1
+          fi
+
+      - name: Checkout selected branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.1.0
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Select deployment target
+        id: target
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
+        run: |
+          case "$TARGET_ENVIRONMENT" in
+            dev)
+              echo "environment_name=LocalHire-dev" >> "$GITHUB_OUTPUT"
+              ;;
+            prod)
+              echo "environment_name=LocalHire-prod" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unknown target environment: $TARGET_ENVIRONMENT" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Create source bundle
+        id: bundle
+        run: |
+          safe_ref="$(printf '%s' "$GITHUB_REF_NAME" | tr -c 'A-Za-z0-9._-' '-')"
+          version_label="${safe_ref}-${GITHUB_SHA::7}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
+          git archive --format=zip --output=localhire-eb-docker-source.zip HEAD Dockerfile .dockerignore backend frontend certs favicon.png
+          echo "version_label=$version_label" >> "$GITHUB_OUTPUT"
+
+      - name: Upload and deploy
+        env:
+          APPLICATION_NAME: ${{ inputs.application_name }}
+          ENVIRONMENT_NAME: ${{ steps.target.outputs.environment_name }}
+          VERSION_LABEL: ${{ steps.bundle.outputs.version_label }}
+        run: |
+          bucket="$(aws elasticbeanstalk create-storage-location --query S3Bucket --output text)"
+          key="resources/${APPLICATION_NAME}/${VERSION_LABEL}/localhire-eb-docker-source.zip"
+          deploy_started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          aws s3 cp localhire-eb-docker-source.zip "s3://${bucket}/${key}"
+
+          aws elasticbeanstalk create-application-version \
+            --application-name "$APPLICATION_NAME" \
+            --version-label "$VERSION_LABEL" \
+            --source-bundle S3Bucket="$bucket",S3Key="$key" \
+            --process
+
+          aws elasticbeanstalk update-environment \
+            --environment-name "$ENVIRONMENT_NAME" \
+            --version-label "$VERSION_LABEL"
+
+          aws elasticbeanstalk wait environment-updated \
+            --environment-name "$ENVIRONMENT_NAME"
+
+          errors="$(aws elasticbeanstalk describe-events \
+            --environment-name "$ENVIRONMENT_NAME" \
+            --start-time "$deploy_started_at" \
+            --severity ERROR \
+            --query 'Events[].Message' \
+            --output text)"
+          if [ -n "$errors" ]; then
+            printf 'Elastic Beanstalk reported deployment errors:\n%s\n' "$errors" >&2
+            exit 1
+          fi

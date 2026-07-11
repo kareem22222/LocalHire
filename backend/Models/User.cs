@@ -7,6 +7,16 @@ public sealed class User
     public required string Email { get; set; }
     public required string PasswordHash { get; set; }
     public required UserRole Role { get; set; }
+
+    // Profile details (all optional; populated via the profile-update endpoint)
+    public string? Phone { get; set; }
+    public DateOnly? DateOfBirth { get; set; }
+    public string? Gender { get; set; }
+    public string? AddressLine { get; set; }
+    public string? CityArea { get; set; }
+    public string? State { get; set; }
+    public string? Pincode { get; set; }
+
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
     public DateTimeOffset? LocationUpdatedAt { get; set; }
