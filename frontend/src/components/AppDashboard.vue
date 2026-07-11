@@ -63,7 +63,8 @@ async function handleProfileSave(details) {
   profileSaveError.value = ''
   try {
     const { data } = await api.put('/me/profile', details)
-    user.value = { ...user.value, ...data }
+    user.value = { ...user.value, ...data}
+    activeTab.value='profile'
   } catch (err) {
     user.value = { ...user.value, ...details }
     const reason = err.response?.data?.message || err.message
