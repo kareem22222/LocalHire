@@ -332,7 +332,7 @@ describe('AppDashboard', () => {
         pincode: '',
       }))
       // Returns to the dashboard after saving
-      expect(wrapper.find('.profile-page').exists()).toBe(false)
+      expect(wrapper.find('.profile-page').exists()).toBe(true)
     })
 
     it('shows profile save failures and keeps the edited profile locally', async () => {
@@ -350,7 +350,7 @@ describe('AppDashboard', () => {
       await findButtonByText(wrapper, 'Save changes').trigger('click')
       await flushPromises()
 
-      expect(wrapper.find('.profile-page').exists()).toBe(false)
+      expect(wrapper.find('.profile-page').exists()).toBe(true)
       expect(wrapper.find('[role="alert"]').text()).toBe('Failed to save profile: Network down')
       expect(wrapper.vm.user.name).toBe('Pat Rao')
     })

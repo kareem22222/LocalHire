@@ -14,7 +14,7 @@ const isWorkerUser = computed(() => userRole.value === 'worker')
 const profileSaveError = ref('')
 
 // --- Shared ---
-const activeTab = ref('dashboard')
+const activeTab = ref(typeof localStorage!=='undefined'?(localStorage.getItem('dashboard_tab') || 'dashboard'):'dashboard')
 
 async function fetchProfile() {
   try {
@@ -51,10 +51,16 @@ function handleProfileClick() {
   profileSaveError.value = ''
   emit('profile', user.value)
   activeTab.value = 'profile'
+  if(typeof localStorage!=='undefined'){
+  localStorage.setItem('dashboard_tab','profile')
+  }
 }
 
 function closeProfile() {
   activeTab.value = 'dashboard'
+  if(typeof localStorage!=='undefined'){
+  localStorage.setItem('dashboard_tab','dashboard')
+}
 }
 
 async function handleProfileSave(details) {
@@ -63,15 +69,17 @@ async function handleProfileSave(details) {
   profileSaveError.value = ''
   try {
     const { data } = await api.put('/me/profile', details)
-    user.value = { ...user.value, ...data }
+    Object.assign(user.value,data)
+    activeTab.value='profile'
+    if(typeof localStorage!=='undefined'){
+    localStorage.setItem('dashboard_tab','profile')
+    }
   } catch (err) {
     user.value = { ...user.value, ...details }
     const reason = err.response?.data?.message || err.message
     profileSaveError.value = reason
       ? `Failed to save profile: ${reason}`
       : 'Failed to save profile. Your edits are kept locally.'
-  } finally {
-    activeTab.value = 'dashboard'
   }
 }
 
