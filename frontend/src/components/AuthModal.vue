@@ -29,7 +29,7 @@ const form = ref({
   name: '',
   email: props.initialEmail,
   password: '',
-  role:'',
+  role: props.initialRole,
 })
 
 const isRegister = computed(() => mode.value === 'register')
