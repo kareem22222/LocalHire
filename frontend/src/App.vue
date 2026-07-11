@@ -29,7 +29,7 @@ const footerRef = ref(null)
 let ctx
 let onScroll
 
-function openModal(email = '', role = 'LookingForWork',initialMode='register') {
+function openModal(email = '', role = '',initialMode='register') {
   authEmail.value = typeof email === 'string' ? email : ''
   authRole.value = role
   authMode.value=initialMode
