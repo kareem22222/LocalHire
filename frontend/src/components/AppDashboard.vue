@@ -340,7 +340,7 @@ function formatShift(job) {
     <header class="dash-header">
       <BrandLogo />
       <div class="dash-header__right">
-        <button class="dash-btn dash-btn--primary dash-role-badge">{{ isHiringUser ? 'Hiring' : isWorkerUser ? 'Worker' : 'Account' }}</button>
+        <button type="button" class="dash-btn dash-btn--primary dash-role-badge" @click="closeProfile">{{ isHiringUser ? 'Hiring' : isWorkerUser ? 'Worker' : 'Account' }}</button>
         <button type="button" class="dash-user-name" @click="handleProfileClick">{{ user?.name || 'User' }}</button>
         <button class="dash-logout-btn" @click="handleLogout">Sign out</button>
       </div>
