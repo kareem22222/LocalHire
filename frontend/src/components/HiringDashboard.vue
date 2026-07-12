@@ -185,40 +185,62 @@ watch(
 <template>
   <main class="hiring-dashboard">
     <section class="hiring-search-panel">
-      <div class="hiring-search">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input v-model="search" type="search" placeholder="Search candidate, role, area, or skill" aria-label="Search candidates" />
-      </div>
+        <div class="hiring-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input v-model="search" type="search" placeholder="Search candidate, role, area, or skill" aria-label="Search candidates" />
+        </div>
 
-      <label>
-        <span>Role</span>
-        <select v-model="role">
-          <option v-for="item in roles" :key="item" :value="item">{{ item }}</option>
-        </select>
-      </label>
+        <label>
+          <span>Role</span>
+          <select v-model="role">
+            <option v-for="item in roles" :key="item" :value="item">{{ item }}</option>
+          </select>
+        </label>
 
-      <label>
-        <span>Availability</span>
-        <select v-model="availability">
-          <option v-for="item in availabilityOptions" :key="item" :value="item">{{ item }}</option>
-        </select>
-      </label>
-    </section>
+        <label>
+          <span>Availability</span>
+          <select v-model="availability">
+            <option v-for="item in availabilityOptions" :key="item" :value="item">{{ item }}</option>
+          </select>
+        </label>
+      </section>
 
-    <section class="hiring-metrics">
-      <div>
-        <strong>{{ filteredCandidates.length }}</strong>
-        <span>matching candidates</span>
+      <section class="hiring-metrics">
+        <div>
+          <strong>{{ filteredCandidates.length }}</strong>
+          <span>matching candidates</span>
+        </div>
+        <div>
+          <strong>{{ openRoles.length }}</strong>
+          <span>open hiring roles</span>
+        </div>
+        <div>
+          <strong>24h</strong>
+          <span>avg response time</span>
+        </div>
+      </section>
+
+      <div class="hiring-side-stack">
+        <aside class="hiring-sidebar">
+          <h2>Hiring pipeline</h2>
+          <p>Move fast: shortlist high-match candidates, schedule interviews, and keep the role status current.</p>
+          <div class="hiring-progress">
+            <span>Pipeline health</span>
+            <strong>88%</strong>
+            <i><b></b></i>
+          </div>
+        </aside>
+
+        <aside class="hiring-sidebar hiring-quick">
+          <h2>Quick actions</h2>
+          <p>Jump straight into the work that keeps candidates moving.</p>
+          <div class="hiring-quick__actions">
+            <button type="button" class="dash-btn dash-btn--primary" @click="emit('update:showCreateForm', !showCreateForm)">{{ showCreateForm ? 'Cancel' : 'Post new role' }}</button>
+            <button type="button" class="hiring-quick__link">Review shortlists</button>
+            <button type="button" class="hiring-quick__link">Schedule interviews</button>
+          </div>
+        </aside>
       </div>
-      <div>
-        <strong>{{ openRoles.length }}</strong>
-        <span>open hiring roles</span>
-      </div>
-      <div>
-        <strong>24h</strong>
-        <span>avg response time</span>
-      </div>
-    </section>
 
     <section class="hiring-roles">
       <div class="hiring-roles__head">
@@ -226,9 +248,6 @@ watch(
           <span class="hiring-kicker">Hiring desk</span>
           <h2>Open roles you are hiring for</h2>
         </div>
-        <button type="button" class="dash-btn dash-btn--primary" @click="emit('update:showCreateForm', !showCreateForm)">
-          {{ showCreateForm ? 'Cancel' : 'Post new role' }}
-        </button>
       </div>
 
       <div v-if="showCreateForm" class="job-form">
@@ -375,57 +394,45 @@ watch(
       </div>
     </section>
 
-    <section class="hiring-layout">
-      <aside class="hiring-sidebar">
-        <h2>Hiring pipeline</h2>
-        <p>Move fast: shortlist high-match candidates, schedule interviews, and keep the role status current.</p>
-        <div class="hiring-progress">
-          <span>Pipeline health</span>
-          <strong>88%</strong>
-          <i><b></b></i>
+    <section class="candidate-list">
+      <div class="candidate-list__head">
+        <div>
+          <span class="hiring-kicker">Recommended</span>
+          <h2>Talent near your business</h2>
         </div>
-      </aside>
+        <span>{{ filteredCandidates.length }} results</span>
+      </div>
 
-      <div class="candidate-list">
-        <div class="candidate-list__head">
-          <div>
-            <span class="hiring-kicker">Recommended</span>
-            <h2>Talent near your business</h2>
+      <article v-for="candidate in filteredCandidates" :key="candidate.id" class="candidate-card">
+        <div class="candidate-card__avatar">{{ candidate.name.slice(0, 1) }}</div>
+        <div class="candidate-card__body">
+          <div class="candidate-card__top">
+            <div>
+              <h3>{{ candidate.name }}</h3>
+              <p>{{ candidate.role }} - {{ candidate.area }}, {{ candidate.city }}</p>
+            </div>
+            <span>{{ candidate.match }}% match</span>
           </div>
-          <span>{{ filteredCandidates.length }} results</span>
+
+          <div class="candidate-card__meta">
+            <span>{{ candidate.experience }}</span>
+            <span>{{ candidate.availability }}</span>
+            <span>{{ candidate.rate }}</span>
+          </div>
+
+          <div class="candidate-card__skills">
+            <span v-for="skill in candidate.skills" :key="skill">{{ skill }}</span>
+          </div>
         </div>
-
-        <article v-for="candidate in filteredCandidates" :key="candidate.id" class="candidate-card">
-          <div class="candidate-card__avatar">{{ candidate.name.slice(0, 1) }}</div>
-          <div class="candidate-card__body">
-            <div class="candidate-card__top">
-              <div>
-                <h3>{{ candidate.name }}</h3>
-                <p>{{ candidate.role }} - {{ candidate.area }}, {{ candidate.city }}</p>
-              </div>
-              <span>{{ candidate.match }}% match</span>
-            </div>
-
-            <div class="candidate-card__meta">
-              <span>{{ candidate.experience }}</span>
-              <span>{{ candidate.availability }}</span>
-              <span>{{ candidate.rate }}</span>
-            </div>
-
-            <div class="candidate-card__skills">
-              <span v-for="skill in candidate.skills" :key="skill">{{ skill }}</span>
-            </div>
-          </div>
-          <div class="candidate-actions">
-            <button type="button" @click="shortlist(candidate)">Shortlist</button>
-            <button type="button" class="candidate-actions__ghost">Interview</button>
-          </div>
-        </article>
-
-        <div v-if="!filteredCandidates.length" class="candidate-empty">
-          <strong>No talent found</strong>
-          <p>Try a wider role, availability, or area search.</p>
+        <div class="candidate-actions">
+          <button type="button" @click="shortlist(candidate)">Shortlist</button>
+          <button type="button" class="candidate-actions__ghost">Interview</button>
         </div>
+      </article>
+
+      <div v-if="!filteredCandidates.length" class="candidate-empty">
+        <strong>No talent found</strong>
+        <p>Try a wider role, availability, or area search.</p>
       </div>
     </section>
   </main>

@@ -104,12 +104,52 @@ describe('HiringDashboard', () => {
     expect(wrapper.text()).toContain('No open roles yet')
   })
 
-  it('emits create form toggle when post new role is clicked', async () => {
+  it('emits create form toggle when the quick action post new role is clicked', async () => {
     const wrapper = mountHiringDashboard()
 
-    await wrapper.find('.hiring-roles__head button').trigger('click')
+    await wrapper.find('.hiring-quick .dash-btn').trigger('click')
 
     expect(wrapper.emitted('update:showCreateForm')).toEqual([[true]])
+  })
+
+  it('does not render a redundant post new role button in the hiring desk header', () => {
+    const wrapper = mountHiringDashboard()
+
+    expect(wrapper.find('.hiring-roles__head button').exists()).toBe(false)
+  })
+
+  it('renders the hiring pipeline card with its health metric', () => {
+    const wrapper = mountHiringDashboard()
+
+    const pipeline = wrapper.find('.hiring-side-stack .hiring-sidebar')
+    expect(pipeline.exists()).toBe(true)
+    expect(pipeline.find('h2').text()).toBe('Hiring pipeline')
+    expect(pipeline.find('.hiring-progress span').text()).toBe('Pipeline health')
+    expect(pipeline.find('.hiring-progress strong').text()).toBe('88%')
+  })
+
+  it('renders the quick actions card with the available actions', () => {
+    const wrapper = mountHiringDashboard()
+
+    const quick = wrapper.find('.hiring-quick')
+    expect(quick.exists()).toBe(true)
+    expect(quick.find('h2').text()).toBe('Quick actions')
+    const actionLabels = quick.findAll('button').map((button) => button.text())
+    expect(actionLabels).toEqual(['Post new role', 'Review shortlists', 'Schedule interviews'])
+  })
+
+  it('shows the quick action toggle as Cancel while the create form is open', () => {
+    const wrapper = mountHiringDashboard({ showCreateForm: true })
+
+    expect(wrapper.find('.hiring-quick .dash-btn').text()).toBe('Cancel')
+  })
+
+  it('emits the toggle to close the create form from the quick action', async () => {
+    const wrapper = mountHiringDashboard({ showCreateForm: true })
+
+    await wrapper.find('.hiring-quick .dash-btn').trigger('click')
+
+    expect(wrapper.emitted('update:showCreateForm')).toEqual([[false]])
   })
 
   it('fetches pincode locations and lets the user choose an area', async () => {

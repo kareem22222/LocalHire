@@ -760,11 +760,12 @@ input { font: inherit; }
   border: none;
   border-radius: 999px;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .dash-user-name:hover {
   background: rgba(18, 50, 74, 0.06);
+  box-shadow: 0 8px 24px rgba(7, 85, 154, 0.25);
 }
 
 .dash-user-name:focus-visible {
