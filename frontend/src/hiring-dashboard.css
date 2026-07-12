@@ -6,6 +6,13 @@
   gap: 22px;
 }
 
+.hiring-side-stack {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  align-items: stretch;
+}
+
 .hiring-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
@@ -314,17 +321,35 @@
   font-weight: 800;
 }
 
-.hiring-layout {
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  gap: 22px;
-  align-items: start;
+.hiring-sidebar {
+  padding: 24px;
 }
 
-.hiring-sidebar {
-  position: sticky;
-  top: 94px;
-  padding: 24px;
+.hiring-quick__actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.hiring-quick__actions .dash-btn {
+  width: 100%;
+}
+
+.hiring-quick__link {
+  width: 100%;
+  padding: 12px 16px;
+  color: #07559a;
+  text-align: left;
+  border: 1px solid rgba(7, 85, 154, 0.14);
+  border-radius: 13px;
+  background: #ffffff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.hiring-quick__link:hover {
+  border-color: rgba(7, 85, 154, 0.4);
+  background: #f1f7fb;
 }
 
 .hiring-sidebar p {
@@ -471,7 +496,7 @@
 
   .hiring-hero,
   .hiring-search-panel,
-  .hiring-layout,
+  .hiring-side-stack,
   .hiring-role-grid,
   .candidate-card {
     grid-template-columns: 1fr;
