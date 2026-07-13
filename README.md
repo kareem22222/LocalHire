@@ -131,6 +131,45 @@ cd backend
 dotnet test .\LocalHire.Api.slnx
 ```
 
+## Code Coverage (SonarCloud)
+
+Coverage for both the frontend and backend is reported to SonarCloud. Because
+SonarCloud does not calculate coverage itself and does not support coverage
+under automatic analysis, coverage is produced in CI and imported through
+CI-based analysis with the SonarScanner for .NET
+(`.github/workflows/sonarcloud.yml`).
+
+Generate the coverage reports locally the same way CI does:
+
+```powershell
+# Frontend: Vitest (v8) writes LCOV to frontend/coverage/lcov.info
+cd frontend
+npm ci
+npm run test:coverage
+
+# Backend: Coverlet writes OpenCover XML under backend/**/TestResults/**
+cd ../backend
+dotnet test .\LocalHire.Api.slnx --collect:"XPlat Code Coverage" --settings .\coverlet.runsettings
+```
+
+The scanner imports these reports using
+`sonar.javascript.lcov.reportPaths` (frontend) and
+`sonar.cs.opencover.reportsPaths` (backend); see `sonar-project.properties`.
+
+One-time SonarCloud setup:
+
+- Turn **automatic analysis OFF** in SonarCloud under
+  **Administration > Analysis Method** so CI-based analysis is used.
+- Add a `SONAR_TOKEN` repository secret (SonarCloud user/project token) under
+  **GitHub repo > Settings > Secrets and variables > Actions**.
+- The project key and organization default to `kareem22222_LocalHire` and
+  `kareem22222`. Override them with `SONAR_PROJECT_KEY` and
+  `SONAR_ORGANIZATION` repository variables if they differ.
+
+The workflow runs on every push and pull request: it installs dependencies,
+runs frontend and backend tests with coverage, then runs the SonarScanner
+`begin`/build/test/`end` cycle to publish results to SonarCloud.
+
 ## Database
 
 Install the EF Core CLI once:

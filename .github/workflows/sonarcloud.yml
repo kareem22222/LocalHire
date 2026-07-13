@@ -1,0 +1,86 @@
+name: SonarCloud
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  sonarcloud:
+    name: Analyze and report coverage
+    runs-on: windows-latest
+
+    env:
+      # SonarCloud project identity. Override these via GitHub repository
+      # variables (Settings > Secrets and variables > Actions > Variables)
+      # if your SonarCloud project key/organization differ from the defaults.
+      SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY || 'kareem22222_LocalHire' }}
+      SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION || 'kareem22222' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history so SonarCloud can assign issues to the correct authors
+          # and compute new-code metrics accurately.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install SonarScanner for .NET
+        run: dotnet tool install --global dotnet-sonarscanner
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run frontend tests with coverage
+        working-directory: frontend
+        run: npm run test:coverage
+
+      - name: SonarScanner begin
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >
+          dotnet sonarscanner begin
+          /k:"$env:SONAR_PROJECT_KEY"
+          /o:"$env:SONAR_ORGANIZATION"
+          /d:sonar.host.url="https://sonarcloud.io"
+          /d:sonar.token="$env:SONAR_TOKEN"
+          /d:sonar.cs.opencover.reportsPaths="**/TestResults/**/coverage.opencover.xml"
+          /d:sonar.javascript.lcov.reportPaths="frontend/coverage/lcov.info"
+          /d:sonar.exclusions="backend/Data/Migrations/**,backend/wwwroot/**,frontend/coverage/**,frontend/dist/**"
+          /d:sonar.cpd.exclusions="backend/Data/Migrations/**"
+          /d:sonar.coverage.exclusions="backend/Data/Migrations/**,**/*.spec.js,**/test/**,**/__tests__/**"
+
+      - name: Build backend
+        run: dotnet build backend/LocalHire.Api.slnx --configuration Release
+
+      - name: Run backend tests with coverage
+        run: >
+          dotnet test backend/LocalHire.Api.slnx
+          --configuration Release
+          --no-build
+          --collect:"XPlat Code Coverage"
+          --settings backend/coverlet.runsettings
+
+      - name: SonarScanner end
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: dotnet sonarscanner end /d:sonar.token="$env:SONAR_TOKEN"

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Coverlet configuration for SonarCloud coverage import.
+     Produces an OpenCover-format report that the SonarScanner reads via
+     sonar.cs.opencover.reportsPaths. Generated EF Core migrations are excluded. -->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>opencover</Format>
+          <ExcludeByFile>**/Data/Migrations/*.cs</ExcludeByFile>
+          <Exclude>[LocalHire.Api.Tests]*</Exclude>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

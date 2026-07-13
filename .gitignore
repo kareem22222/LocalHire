@@ -5,6 +5,7 @@
 **/obj/
 **/.vs/
 **/coverage/
+**/TestResults/
 *.log
 backend/wwwroot/
 !.gitkeep
