@@ -131,7 +131,7 @@ function goBack() {
         </template>
         <template v-else>
           <button type="button" class="dash-btn dash-btn--primary" :disabled="saving" @click="save">
-            {{ saving ? 'Saving...' : 'Save changes' }}
+            {{ saving ? 'Saving...' : 'Save' }}
           </button>
           <button type="button" class="dash-btn dash-btn--outline" :disabled="saving" @click="cancelEdit">Cancel</button>
         </template>

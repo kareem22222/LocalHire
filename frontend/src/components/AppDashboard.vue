@@ -220,6 +220,15 @@ function closeApplications() {
   activeTab.value = 'dashboard'
 }
 
+// Return to the main dashboard view (used by the brand logo in the header).
+function goToDashboard() {
+  selectedJobApplications.value = null
+  activeTab.value = 'dashboard'
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('dashboard_tab', 'dashboard')
+  }
+}
+
 // ============================================================
 //  WORKER
 // ============================================================
@@ -338,7 +347,7 @@ function formatShift(job) {
 <template>
   <div class="dash-shell">
     <header class="dash-header">
-      <BrandLogo />
+      <BrandLogo @click.prevent="goToDashboard" />
       <div class="dash-header__right">
         <button type="button" class="dash-btn dash-btn--primary dash-role-badge" @click="closeProfile">{{ isHiringUser ? 'Hiring' : isWorkerUser ? 'Worker' : 'Account' }}</button>
         <button type="button" class="dash-user-name" @click="handleProfileClick">{{ user?.name || 'User' }}</button>
