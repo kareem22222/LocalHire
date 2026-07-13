@@ -63,6 +63,7 @@ jobs:
           /o:"$env:SONAR_ORGANIZATION"
           /d:sonar.host.url="https://sonarcloud.io"
           /d:sonar.token="$env:SONAR_TOKEN"
+          /d:sonar.projectBaseDir="$env:GITHUB_WORKSPACE"
           /d:sonar.cs.opencover.reportsPaths="**/TestResults/**/coverage.opencover.xml"
           /d:sonar.javascript.lcov.reportPaths="frontend/coverage/lcov.info"
           /d:sonar.exclusions="backend/Data/Migrations/**,backend/wwwroot/**,frontend/coverage/**,frontend/dist/**"

@@ -154,7 +154,11 @@ dotnet test .\LocalHire.Api.slnx --collect:"XPlat Code Coverage" --settings .\co
 
 The scanner imports these reports using
 `sonar.javascript.lcov.reportPaths` (frontend) and
-`sonar.cs.opencover.reportsPaths` (backend); see `sonar-project.properties`.
+`sonar.cs.opencover.reportsPaths` (backend). These parameters, along with the
+project key/organization and exclusions, are passed on the scanner `begin`
+command in `.github/workflows/sonarcloud.yml`. The SonarScanner for .NET does
+not read a `sonar-project.properties` file and will fail if one exists in the
+repository root, so all configuration lives in the workflow.
 
 One-time SonarCloud setup:
 
