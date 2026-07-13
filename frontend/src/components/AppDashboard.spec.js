@@ -356,7 +356,7 @@ describe('AppDashboard', () => {
 
       await wrapper.find('.dash-user-name').trigger('click')
       await findButtonByText(wrapper, 'Edit profile').trigger('click')
-      await findButtonByText(wrapper, 'Save changes').trigger('click')
+      await findButtonByText(wrapper, 'Save').trigger('click')
       await flushPromises()
 
       expect(api.put).toHaveBeenCalledWith('/me/profile', expect.objectContaining({
@@ -381,7 +381,7 @@ describe('AppDashboard', () => {
       await wrapper.find('.dash-user-name').trigger('click')
       await findButtonByText(wrapper, 'Edit profile').trigger('click')
       await wrapper.find('#profile-name').setValue('Pat Rao')
-      await findButtonByText(wrapper, 'Save changes').trigger('click')
+      await findButtonByText(wrapper, 'Save').trigger('click')
       await flushPromises()
 
       expect(wrapper.find('.profile-page').exists()).toBe(true)
