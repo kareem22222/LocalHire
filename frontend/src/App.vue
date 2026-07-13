@@ -3,8 +3,7 @@ import confetti from 'canvas-confetti'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { onMounted, onUnmounted, ref } from 'vue'
-import { clearAuth, isAuthenticated } from './api'
-import AppDashboard from './components/AppDashboard.vue'
+import { isAuthenticated } from './api'
 import AuthModal from './components/AuthModal.vue'
 import BrandLogo from './components/BrandLogo.vue'
 import NetworkBackground from './components/NetworkBackground.vue'
@@ -50,12 +49,6 @@ function onAuthSuccess({ mode } = {}) {
   isAuth.value = true
   showModal.value = false
   if (mode === 'register') showSignupConfetti()
-}
-
-async function handleLogout() {
-  await clearAuth()
-  isAuth.value = false
-  window.location.reload()
 }
 
 function handleCtaSubmit() {
@@ -152,7 +145,7 @@ onUnmounted(() => {
 
 <template>
   <AuthModal v-if="showModal" :initial-email="authEmail" :initial-role="authRole" :initial-mode="authMode" @close="showModal = false" @success="onAuthSuccess" />
-  <AppDashboard v-if="isAuth === true" @logout="handleLogout" />
+  <router-view v-if="isAuth === true" />
 
   <div v-if="isAuth === false" class="app-shell">
     <NetworkBackground />

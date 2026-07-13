@@ -98,4 +98,83 @@ describe('AuthModal', () => {
     const emailError = wrapper.find('.auth-field:nth-of-type(3) .auth-field__error')
     expect(emailError.text()).toBe('Invalid email format.')
   })
+
+  it('toggles between register and login modes', async () => {
+    const wrapper = mount(AuthModal)
+
+    // Register mode shows the name field.
+    expect(wrapper.find('#auth-name').exists()).toBe(true)
+    expect(wrapper.find('.auth-modal__title').text()).toBe('Create your account')
+
+    await wrapper.find('.auth-modal__toggle').trigger('click')
+
+    expect(wrapper.find('#auth-name').exists()).toBe(false)
+    expect(wrapper.find('.auth-modal__title').text()).toBe('Welcome back')
+
+    await wrapper.find('.auth-modal__toggle').trigger('click')
+
+    expect(wrapper.find('#auth-name').exists()).toBe(true)
+    expect(wrapper.find('.auth-modal__title').text()).toBe('Create your account')
+  })
+
+  it('shows an invalid-credentials message on 401', async () => {
+    const wrapper = mount(AuthModal)
+    api.post.mockRejectedValueOnce({ response: { status: 401, data: { title: 'Unauthorized' } } })
+
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('.auth-form__error').text()).toBe('Invalid email, password, or role.')
+    expect(wrapper.emitted('success')).toBeUndefined()
+  })
+
+  it('shows a rate-limit message on 429', async () => {
+    const wrapper = mount(AuthModal)
+    api.post.mockRejectedValueOnce({ response: { status: 429, data: {} } })
+
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('.auth-form__error').text()).toBe('Too many attempts. Please wait a moment and try again.')
+  })
+
+  it('shows the conflict message on 409', async () => {
+    const wrapper = mount(AuthModal)
+    api.post.mockRejectedValueOnce({ response: { status: 409, data: { error: 'That account already exists.' } } })
+
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('.auth-form__error').text()).toBe('That account already exists.')
+  })
+
+  it('reports a missing token in the response as an error', async () => {
+    const wrapper = mount(AuthModal)
+    api.post.mockResolvedValueOnce({ data: {} })
+
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('.auth-form__error').text()).toBe('Invalid authentication response. Please try again.')
+    expect(setAuth).not.toHaveBeenCalled()
+    expect(wrapper.emitted('success')).toBeUndefined()
+  })
+
+  it('shows a generic message for unexpected errors', async () => {
+    const wrapper = mount(AuthModal)
+    api.post.mockRejectedValueOnce({ response: { status: 500, data: {} } })
+
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('.auth-form__error').text()).toBe('Something went wrong. Please try again.')
+  })
+
+  it('emits close when the close button is clicked', async () => {
+    const wrapper = mount(AuthModal)
+
+    await wrapper.find('.auth-modal__close').trigger('click')
+
+    expect(wrapper.emitted('close')).toHaveLength(1)
+  })
 })

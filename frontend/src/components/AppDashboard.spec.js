@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AppDashboard from './AppDashboard.vue'
 import api from '../api'
+import { createTestRouter } from '../test/router'
 
 vi.mock('../api', () => ({
   default: {
@@ -11,9 +12,13 @@ vi.mock('../api', () => ({
   },
 }))
 
+let router
+
 function mountDashboard() {
+  router = createTestRouter()
   return mount(AppDashboard, {
     global: {
+      plugins: [router],
       stubs: { BrandLogo: true },
     },
   })
@@ -21,15 +26,6 @@ function mountDashboard() {
 
 function findButtonByText(wrapper, text) {
   return wrapper.findAll('button').find((button) => button.text() === text)
-}
-
-function mockPincodeLookup(postOffices = [
-  { Name: 'Bandra West', Block: 'Mumbai', District: 'Mumbai', State: 'Maharashtra' },
-  { Name: 'Khar Colony', Block: 'Mumbai', District: 'Mumbai', State: 'Maharashtra' },
-]) {
-  fetch.mockResolvedValue({
-    json: vi.fn().mockResolvedValue([{ Status: 'Success', PostOffice: postOffices }]),
-  })
 }
 
 describe('AppDashboard', () => {
@@ -111,80 +107,18 @@ describe('AppDashboard', () => {
     expect(api.get).toHaveBeenCalledWith('/work/jobs/nearby', { params: {} })
   })
 
-  it('creating a job submits structured cityArea, state, and pincode', async () => {
-    mockPincodeLookup()
+  it('navigates to the Post New Job route when Post new role is clicked', async () => {
     api.get.mockImplementation((url) => Promise.resolve({
       data: url === '/auth/me' ? { name: 'Pat', role: 'Hiring' } : [],
     }))
 
     const wrapper = mountDashboard()
     await flushPromises()
+    const push = vi.spyOn(router, 'push')
+
     await findButtonByText(wrapper, 'Post new role').trigger('click')
 
-    const form = wrapper.find('.job-form')
-    await form.find('input[placeholder="e.g. Store Associate"]').setValue('Cashier')
-    await form.find('textarea').setValue('Front desk')
-    await form.find('input[placeholder="e.g. FreshMart Store"]').setValue('Corner Shop')
-    await form.find('input[inputmode="numeric"]').setValue('400050')
-    await flushPromises()
-    await wrapper.find('.job-form > .dash-btn').trigger('click')
-
-    expect(api.post).toHaveBeenCalledWith('/hiring/jobs', expect.objectContaining({
-      title: 'Cashier',
-      description: 'Front desk',
-      workplaceName: 'Corner Shop',
-      cityArea: 'Bandra West, Mumbai',
-      state: 'Maharashtra',
-      pincode: '400050',
-      latitude: null,
-      longitude: null,
-      employmentType: null,
-      salaryMin: null,
-      salaryMax: null,
-      salaryPeriod: null,
-      requiredSkills: [],
-      languages: [],
-      benefits: [],
-    }))
-  })
-
-  it('creating a job submits the rich role details', async () => {
-    mockPincodeLookup()
-    api.get.mockImplementation((url) => Promise.resolve({
-      data: url === '/auth/me' ? { name: 'Pat', role: 'Hiring' } : [],
-    }))
-
-    const wrapper = mountDashboard()
-    await flushPromises()
-    await findButtonByText(wrapper, 'Post new role').trigger('click')
-
-    const form = wrapper.find('.job-form')
-    await form.find('input[placeholder="e.g. Store Associate"]').setValue('Cashier')
-    await form.find('textarea').setValue('Front desk')
-    await form.find('input[placeholder="e.g. FreshMart Store"]').setValue('Corner Shop')
-    await form.find('input[inputmode="numeric"]').setValue('400050')
-    await flushPromises()
-
-    await form.find('#job-employment-type').setValue('FullTime')
-    await form.find('#job-salary-min').setValue('15000')
-    await form.find('#job-salary-max').setValue('25000')
-    await form.find('#job-salary-period').setValue('Monthly')
-    await form.find('#job-openings').setValue('3')
-    await form.find('#job-skills').setValue('Billing, Customer service')
-    await form.find('#job-languages').setValue('Hindi, English')
-    await form.find('#job-benefits').setValue('Provident Fund, Meals')
-    await wrapper.find('.job-form > .dash-btn').trigger('click')
-
-    expect(api.post).toHaveBeenCalledWith('/hiring/jobs', expect.objectContaining({
-      employmentType: 'FullTime',
-      salaryMin: 15000,
-      salaryMax: 25000,
-      salaryPeriod: 'Monthly',
-      openings: 3,
-      requiredSkills: ['Billing', 'Customer service'],
-      languages: ['Hindi', 'English'],
-      benefits: ['Provident Fund', 'Meals'],
-    }))
+    expect(push).toHaveBeenCalledWith('/PostNewJob')
   })
 
   it('renders the applicants overlay as a dialog', async () => {
@@ -202,26 +136,6 @@ describe('AppDashboard', () => {
     expect(modal.attributes('aria-modal')).toBe('true')
     expect(modal.attributes('aria-labelledby')).toBe('applicants-dialog-title')
     expect(wrapper.find('.auth-modal__close').attributes('aria-label')).toBe('Close applicants dialog')
-  })
-
-  it('fetches state and area options from an Indian pincode', async () => {
-    mockPincodeLookup()
-    api.get.mockImplementation((url) => Promise.resolve({
-      data: url === '/auth/me' ? { name: 'Pat', role: 'Hiring' } : [],
-    }))
-
-    const wrapper = mountDashboard()
-    await flushPromises()
-    await findButtonByText(wrapper, 'Post new role').trigger('click')
-
-    await wrapper.find('.job-form input[inputmode="numeric"]').setValue('400050')
-    await flushPromises()
-
-    expect(fetch).toHaveBeenCalledWith('https://api.postalpincode.in/pincode/400050')
-    expect(wrapper.vm.jobForm.state).toBe('Maharashtra')
-    expect(wrapper.vm.jobForm.cityArea).toBe('Bandra West, Mumbai')
-    expect(wrapper.findAll('.job-form__field select')[1].exists()).toBe(true)
-    expect(wrapper.findAll('.job-form__field select')[1].text()).toContain('Khar Colony, Mumbai, Mumbai')
   })
 
   describe('profile navigation', () => {

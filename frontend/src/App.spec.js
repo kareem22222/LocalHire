@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
 import { isAuthenticated } from './api'
 import confetti from 'canvas-confetti'
+import { createTestRouter } from './test/router'
 
 vi.mock('gsap', () => ({
   gsap: {
@@ -31,6 +32,7 @@ vi.mock('canvas-confetti', () => ({
 function mountAppWithAuthMode(mode) {
   return mount(App, {
     global: {
+      plugins: [createTestRouter()],
       stubs: {
         AppDashboard: { template: '<div class="fake-dashboard" />' },
         AuthModal: {
@@ -73,6 +75,17 @@ describe('App signup confetti', () => {
     await wrapper.find('.fake-auth').trigger('click')
 
     expect(confetti).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('opens the auth modal from the CTA email form', async () => {
+    const wrapper = mountAppWithAuthMode('register')
+
+    await flushPromises()
+    await wrapper.find('.cta-input').setValue('cta@example.com')
+    await wrapper.find('.cta-form').trigger('submit')
+
+    expect(wrapper.find('.fake-auth').exists()).toBe(true)
     wrapper.unmount()
   })
 })
