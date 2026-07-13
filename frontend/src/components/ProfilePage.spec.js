@@ -119,7 +119,7 @@ describe('ProfilePage', () => {
     await wrapper.find('#profile-city-area').setValue('  Indiranagar  ')
     await wrapper.find('#profile-state').setValue('Karnataka')
     await wrapper.find('#profile-pincode').setValue('560038')
-    await wrapper.findAll('button').find((b) => b.text() === 'Save changes').trigger('click')
+    await wrapper.findAll('button').find((b) => b.text() === 'Save').trigger('click')
 
     const saved = wrapper.emitted('save')
     expect(saved).toHaveLength(1)
@@ -141,7 +141,7 @@ describe('ProfilePage', () => {
     await wrapper.findAll('button').find((b) => b.text() === 'Edit profile').trigger('click')
     expect(wrapper.find('#profile-name').exists()).toBe(true)
 
-    await wrapper.findAll('button').find((b) => b.text() === 'Save changes').trigger('click')
+    await wrapper.findAll('button').find((b) => b.text() === 'Save').trigger('click')
 
     expect(wrapper.find('#profile-name').exists()).toBe(false)
     expect(wrapper.findAll('button').find((b) => b.text() === 'Edit profile')).toBeTruthy()
