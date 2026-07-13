@@ -323,6 +323,67 @@ public sealed class LocalHireApiTests
         await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
     }
 
+    [Fact]
+    public async Task Job_can_be_fetched_by_id_and_updated()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+
+        await Register(client, "Hiring");
+        var token = await Login(client, "Hiring");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var create = await client.PostAsJsonAsync("/api/hiring/jobs",
+            new CreateJobPostRequest("Cashier", "Front desk", "Corner Shop", "Bandra", "Maharashtra", "400050", 0, 0,
+                EmploymentType: "FullTime", SalaryMin: 15000, SalaryMax: 25000, SalaryPeriod: "Monthly"));
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        var created = await create.Content.ReadFromJsonAsync<JobPostResponse>();
+
+        // GET by id returns the job.
+        var fetched = await client.GetFromJsonAsync<JobPostResponse>($"/api/hiring/jobs/{created!.Id}");
+        Assert.Equal("Cashier", fetched!.Title);
+        Assert.Equal("FullTime", fetched.EmploymentType);
+
+        // Unknown id -> 404.
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/hiring/jobs/{Guid.NewGuid()}")).StatusCode);
+
+        // PUT updates the job and returns the new values.
+        var update = await client.PutAsJsonAsync($"/api/hiring/jobs/{created.Id}",
+            new CreateJobPostRequest("Senior Cashier", "Lead the till", "Corner Shop", "Bandra", "Maharashtra", "400050", 0, 0,
+                EmploymentType: "PartTime", SalaryMin: 20000, SalaryMax: 30000, SalaryPeriod: "Monthly",
+                RequiredSkills: new List<string> { "Billing" }));
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+        var updated = await update.Content.ReadFromJsonAsync<JobPostResponse>();
+        Assert.Equal("Senior Cashier", updated!.Title);
+        Assert.Equal("PartTime", updated.EmploymentType);
+        Assert.Equal(30000, updated.SalaryMax);
+        Assert.Equal(new[] { "Billing" }, updated.RequiredSkills);
+
+        // The change is persisted.
+        var refetched = await client.GetFromJsonAsync<JobPostResponse>($"/api/hiring/jobs/{created.Id}");
+        Assert.Equal("Senior Cashier", refetched!.Title);
+
+        // Invalid update is rejected.
+        var bad = await client.PutAsJsonAsync($"/api/hiring/jobs/{created.Id}",
+            new CreateJobPostRequest("", "x", "y", "z"));
+        Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+
+        // Updating an unknown job -> 404.
+        var missing = await client.PutAsJsonAsync($"/api/hiring/jobs/{Guid.NewGuid()}",
+            new CreateJobPostRequest("Cashier", "Front desk", "Corner Shop", "Bandra", "Maharashtra", "400050", 0, 0));
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+
+        // A worker account cannot read or update hiring jobs.
+        await Register(client, "LookingForWork");
+        var workerToken = await Login(client, "LookingForWork");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", workerToken);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"/api/hiring/jobs/{created.Id}")).StatusCode);
+        var workerUpdate = await client.PutAsJsonAsync($"/api/hiring/jobs/{created.Id}",
+            new CreateJobPostRequest("Hacked", "x", "y", "z", "Maharashtra", "400050", 0, 0));
+        Assert.Equal(HttpStatusCode.Forbidden, workerUpdate.StatusCode);
+    }
+
     private static Task<HttpResponseMessage> Register(HttpClient client, string role) =>
         client.PostAsJsonAsync("/api/auth/register",
             new RegisterRequest("Person", "person@example.com", Password, role));

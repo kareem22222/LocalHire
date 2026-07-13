@@ -100,6 +100,76 @@ public static class JobEndpoints
         })
         .WithName("GetMyJobPosts");
 
+        hiringGroup.MapGet("/jobs/{id:guid}", async (
+            Guid id,
+            ClaimsPrincipal user,
+            LocalHireDbContext db,
+            CancellationToken ct) =>
+        {
+            if (!TryGetUserId(user, out var userId))
+                return Results.Unauthorized();
+
+            var result = await db.JobPosts
+                .Where(j => j.Id == id && j.EmployerId == userId)
+                .Select(j => new { Job = j, Count = j.Applications.Count })
+                .FirstOrDefaultAsync(ct);
+
+            if (result is null)
+                throw new NotFoundException("Job post not found.");
+
+            return Results.Ok(ToResponse(result.Job, result.Count));
+        })
+        .WithName("GetJobPost");
+
+        hiringGroup.MapPut("/jobs/{id:guid}", async (
+            Guid id,
+            CreateJobPostRequest request,
+            IValidator<CreateJobPostRequest> validator,
+            ClaimsPrincipal user,
+            LocalHireDbContext db,
+            CancellationToken ct) =>
+        {
+            var validation = await validator.ValidateAsync(request, ct);
+            if (!validation.IsValid)
+                return Results.ValidationProblem(validation.ToValidationErrors());
+
+            if (!TryGetUserId(user, out var userId))
+                return Results.Unauthorized();
+
+            var jobPost = await db.JobPosts.FirstOrDefaultAsync(j => j.Id == id && j.EmployerId == userId, ct);
+            if (jobPost is null)
+                throw new NotFoundException("Job post not found.");
+
+            jobPost.Title = request.Title.Trim();
+            jobPost.Description = request.Description.Trim();
+            jobPost.WorkplaceName = request.WorkplaceName.Trim();
+            jobPost.CityArea = request.CityArea.Trim();
+            jobPost.State = NormalizeText(request.State);
+            jobPost.Pincode = NormalizeText(request.Pincode);
+            jobPost.Latitude = request.Latitude is not null ? Math.Round(request.Latitude.Value, 3) : null;
+            jobPost.Longitude = request.Longitude is not null ? Math.Round(request.Longitude.Value, 3) : null;
+            jobPost.EmploymentType = ParseEnum<EmploymentType>(request.EmploymentType);
+            jobPost.SalaryMin = request.SalaryMin;
+            jobPost.SalaryMax = request.SalaryMax;
+            jobPost.SalaryPeriod = ParseEnum<SalaryPeriod>(request.SalaryPeriod);
+            jobPost.MinEducation = NormalizeText(request.MinEducation);
+            jobPost.ExperienceMinYears = request.ExperienceMinYears;
+            jobPost.ExperienceMaxYears = request.ExperienceMaxYears;
+            jobPost.WorkingDays = NormalizeText(request.WorkingDays);
+            jobPost.ShiftStartTime = ParseTime(request.ShiftStartTime);
+            jobPost.ShiftEndTime = ParseTime(request.ShiftEndTime);
+            jobPost.Openings = request.Openings;
+            jobPost.RequiredSkills = NormalizeList(request.RequiredSkills);
+            jobPost.Languages = NormalizeList(request.Languages);
+            jobPost.Benefits = NormalizeList(request.Benefits);
+
+            await db.SaveChangesAsync(ct);
+
+            var count = await db.JobApplications.CountAsync(a => a.JobPostId == id, ct);
+            return Results.Ok(ToResponse(jobPost, count));
+        })
+        .WithName("UpdateJobPost");
+
         hiringGroup.MapGet("/jobs/{id:guid}/applications", async (
             Guid id,
             ClaimsPrincipal user,

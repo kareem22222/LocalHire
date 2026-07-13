@@ -99,6 +99,10 @@ function goCreateJob() {
   router.push('/PostNewJob')
 }
 
+function goViewJob(id) {
+  router.push(`/jobs/${id}`)
+}
+
 async function loadMyJobs() {
   try {
     const { data } = await api.get('/hiring/jobs')
@@ -264,6 +268,7 @@ function formatShift(job) {
       :my-jobs="myJobs"
       @open-create-job="goCreateJob"
       @view-applications="viewApplications"
+      @view-job="goViewJob"
       @shortlist="() => {}"
     />
 

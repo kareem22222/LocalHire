@@ -59,6 +59,56 @@ describe('PostJobPage', () => {
     expect(wrapper.findAll('button').map((b) => b.text())).toContain('Back')
   })
 
+  it('hides the submit button and shows a configurable title in readonly mode', () => {
+    const wrapper = mountPostJobPage({
+      readonly: true,
+      title: 'Job details',
+      subtitle: 'A read-only view of this role.',
+    })
+
+    expect(wrapper.find('.post-job-page h1').text()).toBe('Job details')
+    expect(wrapper.find('.job-form > .dash-btn').exists()).toBe(false)
+    // The fieldset wrapper is disabled so the fields cannot be edited.
+    expect(wrapper.find('.job-form__fields').attributes('disabled')).toBeDefined()
+  })
+
+  it('shows an Edit action only when canEdit is set and emits edit on click', async () => {
+    const viewOnly = mountPostJobPage({ readonly: true, canEdit: false })
+    expect(viewOnly.find('.post-job-page__edit').exists()).toBe(false)
+
+    const wrapper = mountPostJobPage({ readonly: true, canEdit: true })
+    const editButton = wrapper.find('.post-job-page__edit')
+    expect(editButton.exists()).toBe(true)
+    expect(editButton.text()).toBe('Edit')
+
+    await editButton.trigger('click')
+    expect(wrapper.emitted('edit')).toHaveLength(1)
+  })
+
+  it('shows a Cancel action when cancelable and emits cancel on click', async () => {
+    const wrapper = mountPostJobPage({ cancelable: true })
+    const cancelButton = wrapper.find('.post-job-page__edit')
+    expect(cancelButton.exists()).toBe(true)
+    expect(cancelButton.text()).toBe('Cancel')
+
+    await cancelButton.trigger('click')
+    expect(wrapper.emitted('cancel')).toHaveLength(1)
+  })
+
+  it('hides the Hiring desk kicker and subtitle when empty', () => {
+    const wrapper = mountPostJobPage({ kicker: '', subtitle: '' })
+    expect(wrapper.find('.hiring-kicker').exists()).toBe(false)
+    expect(wrapper.find('.post-job-page__head p').exists()).toBe(false)
+  })
+
+  it('uses configurable submit and busy labels', async () => {
+    const wrapper = mountPostJobPage({ submitLabel: 'Save changes', busyLabel: 'Saving...' })
+    expect(wrapper.find('.job-form > .dash-btn').text()).toBe('Save changes')
+
+    await wrapper.setProps({ creating: true })
+    expect(wrapper.find('.job-form > .dash-btn').text()).toBe('Saving...')
+  })
+
   it('emits back when the back button is clicked', async () => {
     const wrapper = mountPostJobPage()
 
