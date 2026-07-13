@@ -121,6 +121,27 @@ describe('AppDashboard', () => {
     expect(push).toHaveBeenCalledWith('/PostNewJob')
   })
 
+  it('navigates to the view route from the role-card eye icon', async () => {
+    api.get.mockImplementation((url) => Promise.resolve({
+      data: url === '/auth/me'
+        ? { name: 'Pat', role: 'Hiring' }
+        : url === '/hiring/jobs'
+          ? [{ id: 'job-1', title: 'Cashier', workplaceName: 'Shop', cityArea: 'Bandra', applicationCount: 0, isActive: true }]
+          : [],
+    }))
+
+    const wrapper = mountDashboard()
+    await flushPromises()
+    const push = vi.spyOn(router, 'push')
+
+    const icons = wrapper.findAll('.hiring-role-card__icon')
+    expect(icons).toHaveLength(1)
+
+    await icons[0].trigger('click')
+
+    expect(push).toHaveBeenCalledWith('/jobs/job-1')
+  })
+
   it('renders the applicants overlay as a dialog', async () => {
     api.get.mockImplementation((url) => Promise.resolve({
       data: url === '/auth/me' ? { name: 'Pat', role: 'Hiring' } : [],

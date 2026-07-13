@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
-import api, { setAuth } from '../api'
+import { setAuth } from '../api'
+import { login, register } from '../api/auth'
 
 const props = defineProps({
   initialEmail: {
@@ -97,11 +98,9 @@ async function handleSubmit() {
           role: form.value.role,
         }
 
-    const endpoint = submittedMode === 'register'
-      ? '/auth/register'
-      : '/auth/login'
-
-    const { data } = await api.post(endpoint, payload)
+    const { data } = submittedMode === 'register'
+      ? await register(payload)
+      : await login(payload)
 
     if (!data?.token) {
       serverError.value =

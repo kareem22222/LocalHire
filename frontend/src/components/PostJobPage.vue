@@ -6,9 +6,17 @@ const props = defineProps({
   jobForm: { type: Object, required: true },
   jobFormError: { type: String, default: '' },
   creating: { type: Boolean, default: false },
+  readonly: { type: Boolean, default: false },
+  title: { type: String, default: 'Post a new job' },
+  subtitle: { type: String, default: 'Fill in the role details, then publish it to nearby candidates.' },
+  submitLabel: { type: String, default: 'Post Job' },
+  busyLabel: { type: String, default: 'Posting...' },
+  kicker: { type: String, default: 'Hiring desk' },
+  canEdit: { type: Boolean, default: false },
+  cancelable: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['update:jobForm', 'submit', 'back'])
+const emit = defineEmits(['update:jobForm', 'submit', 'back', 'edit', 'cancel'])
 
 const pincodeStatus = ref('idle')
 const pincodeError = ref('')
@@ -139,15 +147,24 @@ watch(
 <template>
   <main class="post-job-page">
     <div class="post-job-page__head">
-      <button type="button" class="dash-btn dash-btn--outline post-job-page__back" @click="emit('back')">Back</button>
-      <div>
-        <span class="hiring-kicker">Hiring desk</span>
-        <h1>Post a new job</h1>
-        <p>Fill in the role details, then publish it to nearby candidates.</p>
+      <div class="post-job-page__title">
+        <span v-if="kicker" class="hiring-kicker">{{ kicker }}</span>
+        <h1>{{ title }}</h1>
+        <p v-if="subtitle">{{ subtitle }}</p>
+      </div>
+      <div class="post-job-page__actions">
+        <button v-if="canEdit" type="button" class="dash-btn dash-btn--primary post-job-page__edit" @click="emit('edit')">
+          Edit
+        </button>
+        <button v-else-if="cancelable" type="button" class="dash-btn dash-btn--outline post-job-page__edit" @click="emit('cancel')">
+          Cancel
+        </button>
+        <button type="button" class="dash-btn dash-btn--outline post-job-page__back" @click="emit('back')">Back</button>
       </div>
     </div>
 
     <div class="job-form">
+      <fieldset class="job-form__fields" :disabled="readonly">
       <div class="job-form__field">
         <label for="job-title">Title</label>
         <input id="job-title" :value="props.jobForm.title" placeholder="e.g. Store Associate" @input="updateJobFormField('title', $event)" />
@@ -262,10 +279,11 @@ watch(
         <label for="job-benefits">Extra benefits</label>
         <input id="job-benefits" :value="props.jobForm.benefits" placeholder="Comma separated, e.g. Provident Fund, Meals" @input="updateJobFormField('benefits', $event)" />
       </div>
+      </fieldset>
 
       <p v-if="jobFormError" class="job-form__error">{{ jobFormError }}</p>
-      <button class="dash-btn dash-btn--primary" :disabled="creating" @click="emit('submit')">
-        {{ creating ? 'Posting...' : 'Post Job' }}
+      <button v-if="!readonly" class="dash-btn dash-btn--primary" :disabled="creating" @click="emit('submit')">
+        {{ creating ? busyLabel : submitLabel }}
       </button>
     </div>
   </main>
@@ -280,7 +298,8 @@ watch(
 
 .post-job-page__head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: space-between;
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -297,7 +316,26 @@ watch(
   font-size: 14px;
 }
 
-.post-job-page__back {
+.post-job-page__title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.post-job-page__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
   flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* The fieldset only exists to disable every control at once in read-only mode.
+   display: contents keeps the existing form layout unchanged. */
+.job-form__fields {
+  display: contents;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
 }
 </style>

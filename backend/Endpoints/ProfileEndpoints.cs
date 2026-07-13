@@ -17,7 +17,7 @@ public static class ProfileEndpoints
             UpdateProfileRequest request,
             IValidator<UpdateProfileRequest> validator,
             ClaimsPrincipal user,
-            IAuthService authService,
+            IProfileService profileService,
             CancellationToken ct) =>
         {
             var validation = await validator.ValidateAsync(request, ct);
@@ -29,7 +29,7 @@ public static class ProfileEndpoints
             if (!user.TryGetUserId(out var userId))
                 return Results.Unauthorized();
 
-            var profile = await authService.UpdateProfileAsync(userId, request, ct);
+            var profile = await profileService.UpdateProfileAsync(userId, request, ct);
             return Results.Ok(profile);
         })
         .WithName("UpdateProfile")
@@ -41,7 +41,7 @@ public static class ProfileEndpoints
             UpdateLocationRequest request,
             IValidator<UpdateLocationRequest> validator,
             ClaimsPrincipal user,
-            IAuthService authService,
+            IProfileService profileService,
             CancellationToken ct) =>
         {
             var validation = await validator.ValidateAsync(request, ct);
@@ -53,7 +53,7 @@ public static class ProfileEndpoints
             if (!user.TryGetUserId(out var userId))
                 return Results.Unauthorized();
 
-            var profile = await authService.UpdateLocationAsync(userId, request, ct);
+            var profile = await profileService.UpdateLocationAsync(userId, request, ct);
             return Results.Ok(profile);
         })
         .WithName("UpdateLocation");

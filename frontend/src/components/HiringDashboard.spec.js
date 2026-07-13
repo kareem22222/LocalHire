@@ -127,6 +127,29 @@ describe('HiringDashboard', () => {
     expect(wrapper.emitted('view-applications')).toEqual([[7]])
   })
 
+  it('emits view-job from the role card eye icon', async () => {
+    const wrapper = mountHiringDashboard({
+      myJobs: [
+        {
+          id: 7,
+          title: 'Cashier',
+          workplaceName: 'Corner Shop',
+          cityArea: 'Bandra, Maharashtra - 400050',
+          applicationCount: 3,
+          isActive: true,
+        },
+      ],
+    })
+
+    const icons = wrapper.findAll('.hiring-role-card__icon')
+    expect(icons).toHaveLength(1)
+
+    await icons[0].trigger('click')
+
+    expect(wrapper.emitted('view-job')).toEqual([[7]])
+    expect(wrapper.emitted('edit-job')).toBeUndefined()
+  })
+
   it('emits shortlist without changing the search filter', async () => {
     const wrapper = mountHiringDashboard()
     const candidate = { id: 1, name: 'Worker', role: 'Cashier', skills: [] }

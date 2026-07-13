@@ -118,6 +118,8 @@ builder.Services.AddMemoryCache();
 // --- Dependency Injection ---
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IProfileService, ProfileService>();
+builder.Services.AddScoped<IJobService, JobService>();
 
 // --- Validation ---
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
