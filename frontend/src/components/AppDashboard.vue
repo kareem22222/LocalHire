@@ -1,7 +1,17 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import api, { clearAuth } from '../api'
+import * as jobsApi from '../api/jobs'
+import * as profileApi from '../api/profile'
+import { normalizeRole } from '../utils/role'
+import { logout } from '../utils/session'
+import {
+  formatEmploymentType,
+  formatExperience,
+  formatJobLocation,
+  formatSalary,
+  formatShift,
+} from '../utils/jobDisplay'
 import BrandLogo from './BrandLogo.vue'
 import HiringDashboard from './HiringDashboard.vue'
 import ProfilePage from './ProfilePage.vue'
@@ -21,7 +31,7 @@ const activeTab = ref(typeof localStorage!=='undefined'?(localStorage.getItem('d
 
 async function fetchProfile() {
   try {
-    const { data } = await api.get('/auth/me')
+    const { data } = await profileApi.getMe()
     user.value = data
 
     // Auto-load role-specific data after profile fetch
@@ -36,19 +46,8 @@ async function fetchProfile() {
   }
 }
 
-function normalizeRole(role) {
-  if (role === 1 || role === '1') return 'hiring'
-  if (role === 0 || role === '0') return 'worker'
-
-  const value = String(role || '').trim().toLowerCase()
-  if (['hiring', 'employer'].includes(value)) return 'hiring'
-  if (['lookingforwork', 'looking_for_work', 'worker'].includes(value)) return 'worker'
-  return ''
-}
-
 function handleLogout() {
-  clearAuth()
-  window.location.reload()
+  logout()
 }
 
 function handleProfileClick() {
@@ -72,7 +71,7 @@ async function handleProfileSave(details) {
   // If the request fails, keep the user's edits locally so their input isn't lost.
   profileSaveError.value = ''
   try {
-    const { data } = await api.put('/me/profile', details)
+    const { data } = await profileApi.updateProfile(details)
     Object.assign(user.value,data)
     activeTab.value='profile'
     if(typeof localStorage!=='undefined'){
@@ -105,7 +104,7 @@ function goViewJob(id) {
 
 async function loadMyJobs() {
   try {
-    const { data } = await api.get('/hiring/jobs')
+    const { data } = await jobsApi.getMyJobs()
     myJobs.value = data
   } catch {
   }
@@ -113,7 +112,7 @@ async function loadMyJobs() {
 
 async function viewApplications(jobId) {
   try {
-    const { data } = await api.get(`/hiring/jobs/${jobId}/applications`)
+    const { data } = await jobsApi.getJobApplications(jobId)
     selectedJobApplications.value = data
     activeTab.value = 'applications'
   } catch {
@@ -156,7 +155,7 @@ function requestLocation() {
       workerCoords.value = { lat, lng }
       locationStatus.value = 'done'
       try {
-        await api.put('/me/location', { latitude: lat, longitude: lng })
+        await profileApi.updateLocation({ latitude: lat, longitude: lng })
       } catch {
       }
       await loadNearbyJobs(lat, lng)
@@ -174,7 +173,7 @@ function requestLocation() {
 async function loadNearbyJobs(lat, lng) {
   try {
     const params = lat != null && lng != null ? { lat, lng } : {}
-    const { data } = await api.get('/work/jobs/nearby', { params })
+    const { data } = await jobsApi.getNearbyJobs(params)
     nearbyJobs.value = data
   } catch {
   }
@@ -182,7 +181,7 @@ async function loadNearbyJobs(lat, lng) {
 
 async function loadMyApplications() {
   try {
-    const { data } = await api.get('/work/applications')
+    const { data } = await jobsApi.getMyApplications()
     myApplications.value = data
   } catch {
   }
@@ -191,7 +190,7 @@ async function loadMyApplications() {
 async function applyToJob(jobId) {
   applying.value = jobId
   try {
-    await api.post(`/work/jobs/${jobId}/apply`)
+    await jobsApi.applyToJob(jobId)
     await loadMyApplications()
     await loadNearbyJobs(workerCoords.value?.lat, workerCoords.value?.lng)
   } catch (err) {
@@ -203,49 +202,6 @@ async function applyToJob(jobId) {
 
 function hasApplied(jobId) {
   return myApplications.value.some((a) => a.jobPostId === jobId)
-}
-
-function formatJobLocation(job) {
-  const base = [job.cityArea, job.state].filter(Boolean).join(', ')
-  return job.pincode ? [base, job.pincode].filter(Boolean).join(' - ') : base
-}
-
-const EMPLOYMENT_TYPE_LABELS = {
-  FullTime: 'Full-time',
-  PartTime: 'Part-time',
-  Contract: 'Contract',
-  Temporary: 'Temporary',
-  Internship: 'Internship',
-  Daily: 'Daily wage',
-}
-
-function formatEmploymentType(job) {
-  if (!job.employmentType) return ''
-  return EMPLOYMENT_TYPE_LABELS[job.employmentType] || job.employmentType
-}
-
-function formatSalary(job) {
-  if (job.salaryMin == null && job.salaryMax == null) return ''
-  const money = (n) => `₹${Number(n).toLocaleString('en-IN')}`
-  const range = job.salaryMin != null && job.salaryMax != null
-    ? `${money(job.salaryMin)} – ${money(job.salaryMax)}`
-    : money(job.salaryMin ?? job.salaryMax)
-  return job.salaryPeriod ? `${range} / ${job.salaryPeriod.toLowerCase()}` : range
-}
-
-function formatExperience(job) {
-  if (job.experienceMinYears == null && job.experienceMaxYears == null) return ''
-  if (job.experienceMinYears != null && job.experienceMaxYears != null) {
-    return `${job.experienceMinYears}–${job.experienceMaxYears} yrs exp`
-  }
-  return `${job.experienceMinYears ?? job.experienceMaxYears}+ yrs exp`
-}
-
-function formatShift(job) {
-  const time = job.shiftStartTime && job.shiftEndTime
-    ? `${job.shiftStartTime}–${job.shiftEndTime}`
-    : (job.shiftStartTime || '')
-  return [job.workingDays, time].filter(Boolean).join(', ')
 }
 </script>
 

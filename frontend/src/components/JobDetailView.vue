@@ -1,8 +1,9 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import api, { clearAuth } from '../api'
-import { buildJobPayload, jobResponseToForm, validateJobForm } from '../composables/jobForm'
+import { getJob, updateJob } from '../api/jobs'
+import { buildJobPayload, jobResponseToForm, validateJobForm } from '../utils/jobForm'
+import { logout } from '../utils/session'
 import BrandLogo from './BrandLogo.vue'
 import PostJobPage from './PostJobPage.vue'
 
@@ -26,7 +27,7 @@ const editing = ref(false)
 // the user back to the dashboard (a 401 reloads via the API interceptor).
 onMounted(async () => {
   try {
-    const { data } = await api.get(`/hiring/jobs/${props.id}`)
+    const { data } = await getJob(props.id)
     jobForm.value = jobResponseToForm(data)
     originalForm.value = { ...jobForm.value }
     editing.value = props.mode === 'edit'
@@ -38,11 +39,6 @@ onMounted(async () => {
 
 function goDashboard() {
   router.push('/')
-}
-
-function logout() {
-  clearAuth()
-  window.location.reload()
 }
 
 function startEdit() {
@@ -65,7 +61,7 @@ async function saveJob() {
 
   saving.value = true
   try {
-    const { data } = await api.put(`/hiring/jobs/${props.id}`, buildJobPayload(jobForm.value))
+    const { data } = await updateJob(props.id, buildJobPayload(jobForm.value))
     // Stay on this page: reflect the saved values in the read-only view.
     jobForm.value = jobResponseToForm(data)
     originalForm.value = { ...jobForm.value }

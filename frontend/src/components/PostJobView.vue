@@ -1,8 +1,11 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import api, { clearAuth } from '../api'
-import { buildJobPayload, emptyJobForm, validateJobForm } from '../composables/jobForm'
+import { getMe } from '../api/profile'
+import { createJob as submitJobPost } from '../api/jobs'
+import { buildJobPayload, emptyJobForm, validateJobForm } from '../utils/jobForm'
+import { normalizeRole } from '../utils/role'
+import { logout } from '../utils/session'
 import BrandLogo from './BrandLogo.vue'
 import PostJobPage from './PostJobPage.vue'
 
@@ -12,20 +15,10 @@ const jobForm = ref(emptyJobForm())
 const jobFormError = ref('')
 const creating = ref(false)
 
-function normalizeRole(role) {
-  if (role === 1 || role === '1') return 'hiring'
-  if (role === 0 || role === '0') return 'worker'
-
-  const value = String(role || '').trim().toLowerCase()
-  if (['hiring', 'employer'].includes(value)) return 'hiring'
-  if (['lookingforwork', 'looking_for_work', 'worker'].includes(value)) return 'worker'
-  return ''
-}
-
 // Only hiring accounts may post jobs. Send everyone else back to the dashboard.
 onMounted(async () => {
   try {
-    const { data } = await api.get('/auth/me')
+    const { data } = await getMe()
     if (normalizeRole(data.role) !== 'hiring') {
       router.replace('/')
     }
@@ -39,18 +32,13 @@ function goDashboard() {
   router.push('/')
 }
 
-function logout() {
-  clearAuth()
-  window.location.reload()
-}
-
 async function createJob() {
   jobFormError.value = validateJobForm(jobForm.value)
   if (jobFormError.value) return
 
   creating.value = true
   try {
-    await api.post('/hiring/jobs', buildJobPayload(jobForm.value))
+    await submitJobPost(buildJobPayload(jobForm.value))
     jobForm.value = emptyJobForm()
     router.push('/')
   } catch (err) {

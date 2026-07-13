@@ -58,13 +58,13 @@ public static class AuthEndpoints
 
         group.MapGet("/me", async (
             ClaimsPrincipal user,
-            IAuthService authService,
+            IProfileService profileService,
             CancellationToken ct) =>
         {
             if (!user.TryGetUserId(out var userId))
                 return Results.Unauthorized();
 
-            var profile = await authService.GetProfileAsync(userId, ct);
+            var profile = await profileService.GetProfileAsync(userId, ct);
             return Results.Ok(profile);
         })
         .WithName("GetProfile")
