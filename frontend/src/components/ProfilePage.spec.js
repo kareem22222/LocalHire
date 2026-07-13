@@ -72,7 +72,7 @@ describe('ProfilePage', () => {
     const nameInput = wrapper.find('#profile-name')
     await nameInput.setValue('Pat Updated')
 
-    const saveButton = wrapper.findAll('button').find((b) => b.text() === 'Save changes')
+    const saveButton = wrapper.findAll('button').find((b) => b.text() === 'Save')
     await saveButton.trigger('click')
 
     const saved = wrapper.emitted('save')
