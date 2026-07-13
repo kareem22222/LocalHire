@@ -15,6 +15,11 @@ public sealed class LocalHireApiTests
 {
     private const string Password = "Password1!";
 
+    private static readonly string[] ExpectedRoundTripSkills = { "Billing", "Customer service" };
+    private static readonly string[] ExpectedRoundTripLanguages = { "Kannada", "Hindi" };
+    private static readonly string[] ExpectedRoundTripBenefits = { "Provident Fund", "Meals" };
+    private static readonly string[] ExpectedUpdatedSkills = { "Billing" };
+
     [Fact]
     public void Validators_reject_bad_roles_passwords_and_coordinates()
     {
@@ -176,9 +181,9 @@ public sealed class LocalHireApiTests
         Assert.Equal("09:30", created.ShiftStartTime);
         Assert.Equal("18:30", created.ShiftEndTime);
         Assert.Equal(3, created.Openings);
-        Assert.Equal(new[] { "Billing", "Customer service" }, created.RequiredSkills);
-        Assert.Equal(new[] { "Kannada", "Hindi" }, created.Languages);
-        Assert.Equal(new[] { "Provident Fund", "Meals" }, created.Benefits);
+        Assert.Equal(ExpectedRoundTripSkills, created.RequiredSkills);
+        Assert.Equal(ExpectedRoundTripLanguages, created.Languages);
+        Assert.Equal(ExpectedRoundTripBenefits, created.Benefits);
 
         // Persisted: re-read through the list endpoint
         var jobs = await client.GetFromJsonAsync<List<JobPostResponse>>("/api/hiring/jobs");
@@ -357,7 +362,7 @@ public sealed class LocalHireApiTests
         Assert.Equal("Senior Cashier", updated!.Title);
         Assert.Equal("PartTime", updated.EmploymentType);
         Assert.Equal(30000, updated.SalaryMax);
-        Assert.Equal(new[] { "Billing" }, updated.RequiredSkills);
+        Assert.Equal(ExpectedUpdatedSkills, updated.RequiredSkills);
 
         // The change is persisted.
         var refetched = await client.GetFromJsonAsync<JobPostResponse>($"/api/hiring/jobs/{created.Id}");
@@ -382,6 +387,73 @@ public sealed class LocalHireApiTests
         var workerUpdate = await client.PutAsJsonAsync($"/api/hiring/jobs/{created.Id}",
             new CreateJobPostRequest("Hacked", "x", "y", "z", "Maharashtra", "400050", 0, 0));
         Assert.Equal(HttpStatusCode.Forbidden, workerUpdate.StatusCode);
+    }
+
+    [Fact]
+    public async Task Applications_listing_and_unfiltered_nearby_work()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+
+        await Register(client, "Hiring");
+        await Register(client, "LookingForWork");
+        var hiringToken = await Login(client, "Hiring");
+        var workerToken = await Login(client, "LookingForWork");
+
+        // Hiring creates a job.
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", hiringToken);
+        var createJob = await client.PostAsJsonAsync("/api/hiring/jobs",
+            new CreateJobPostRequest("Cashier", "Front desk", "Corner Shop", "Bandra", "Maharashtra", "400050", 0, 0));
+        var job = await createJob.Content.ReadFromJsonAsync<JobPostResponse>();
+
+        // Applications for an unknown job -> 404; for a real job with none -> empty.
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await client.GetAsync($"/api/hiring/jobs/{Guid.NewGuid()}/applications")).StatusCode);
+        var noApplicants = await client.GetFromJsonAsync<List<ApplicantResponse>>($"/api/hiring/jobs/{job!.Id}/applications");
+        Assert.Empty(noApplicants!);
+
+        // Worker applies, lists their applications, and browses all active jobs (no coordinates).
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", workerToken);
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsync($"/api/work/jobs/{job.Id}/apply", null)).StatusCode);
+
+        var myApplications = await client.GetFromJsonAsync<List<JobApplicationResponse>>("/api/work/applications");
+        Assert.Single(myApplications!);
+        Assert.Equal(job.Id, myApplications![0].JobPostId);
+        Assert.Equal("Cashier", myApplications[0].JobTitle);
+
+        var allActive = await client.GetFromJsonAsync<List<JobPostResponse>>("/api/work/jobs/nearby");
+        Assert.Contains(allActive!, j => j.Id == job.Id);
+
+        // Hiring now sees the applicant.
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", hiringToken);
+        var applicants = await client.GetFromJsonAsync<List<ApplicantResponse>>($"/api/hiring/jobs/{job.Id}/applications");
+        Assert.Single(applicants!);
+        Assert.Equal("Applied", applicants![0].Status);
+        Assert.Equal("Person", applicants[0].WorkerName);
+    }
+
+    [Fact]
+    public async Task Nearby_matches_jobs_across_the_antimeridian()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+
+        await Register(client, "Hiring");
+        await Register(client, "LookingForWork");
+        var hiringToken = await Login(client, "Hiring");
+        var workerToken = await Login(client, "LookingForWork");
+
+        // Job sits just west of the +180° meridian.
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", hiringToken);
+        var create = await client.PostAsJsonAsync("/api/hiring/jobs",
+            new CreateJobPostRequest("Dock hand", "Port work", "Harbour", "Taveuni", "Fiji", "111111", 0, 179.95));
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        var job = await create.Content.ReadFromJsonAsync<JobPostResponse>();
+
+        // Worker sits just east of it: the bounding box must wrap around -180°.
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", workerToken);
+        var nearby = await client.GetFromJsonAsync<List<JobPostResponse>>("/api/work/jobs/nearby?lat=0&lng=-179.95");
+        Assert.Contains(nearby!, j => j.Id == job!.Id);
     }
 
     private static Task<HttpResponseMessage> Register(HttpClient client, string role) =>

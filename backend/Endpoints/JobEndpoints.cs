@@ -123,7 +123,9 @@ public static class JobEndpoints
                 });
             }
 
-            if (lat is not null && lng is not null && !GeoCalculator.IsValidCoordinates(lat.Value, lng.Value))
+            // lat/lng are supplied together (validated above), so checking lat
+            // is enough to know both are present.
+            if (lat is not null && !GeoCalculator.IsValidCoordinates(lat.Value, lng!.Value))
             {
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
