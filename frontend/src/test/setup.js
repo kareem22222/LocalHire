@@ -1,8 +1,10 @@
+import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, vi } from 'vitest'
 
 const originalGeolocation = Object.getOwnPropertyDescriptor(navigator, 'geolocation')
 
 beforeEach(() => {
+  setActivePinia(createPinia())
   Object.defineProperty(navigator, 'geolocation', {
     value: { getCurrentPosition: vi.fn() },
     configurable: true,

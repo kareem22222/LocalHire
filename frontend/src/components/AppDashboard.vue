@@ -1,8 +1,9 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import * as jobsApi from '../api/jobs'
-import * as profileApi from '../api/profile'
+import { useJobsStore } from '../stores/jobs'
+import { useProfileStore } from '../stores/profile'
 import { normalizeRole } from '../utils/role'
 import { logout } from '../utils/session'
 import {
@@ -17,24 +18,27 @@ import HiringDashboard from './HiringDashboard.vue'
 import ProfilePage from './ProfilePage.vue'
 
 const emit = defineEmits(['logout', 'profile'])
-
 const router = useRouter()
+const profileStore = useProfileStore()
+const jobsStore = useJobsStore()
+const { profile: user } = storeToRefs(profileStore)
+const { myJobs, myApplications } = storeToRefs(jobsStore)
 
-const user = ref(null)
 const userRole = computed(() => normalizeRole(user.value?.role))
 const isHiringUser = computed(() => userRole.value === 'hiring')
 const isWorkerUser = computed(() => userRole.value === 'worker')
 const profileSaveError = ref('')
 
 // --- Shared ---
-const activeTab = ref(typeof localStorage!=='undefined'?(localStorage.getItem('dashboard_tab') || 'dashboard'):'dashboard')
+const activeTab = ref(typeof localStorage !== 'undefined' ? (localStorage.getItem('dashboard_tab') || 'dashboard') : 'dashboard')
+
+watch(activeTab, (tab) => {
+  if (typeof localStorage !== 'undefined') localStorage.setItem('dashboard_tab', tab)
+})
 
 async function fetchProfile() {
   try {
-    const { data } = await profileApi.getMe()
-    user.value = data
-
-    // Auto-load role-specific data after profile fetch
+    const data = await profileStore.fetchProfile()
     const role = normalizeRole(data.role)
     if (role === 'hiring') {
       await loadMyJobs()
@@ -47,6 +51,8 @@ async function fetchProfile() {
 }
 
 function handleLogout() {
+  profileStore.clear()
+  jobsStore.clear()
   logout()
 }
 
@@ -54,29 +60,17 @@ function handleProfileClick() {
   profileSaveError.value = ''
   emit('profile', user.value)
   activeTab.value = 'profile'
-  if(typeof localStorage!=='undefined'){
-  localStorage.setItem('dashboard_tab','profile')
-  }
 }
 
 function closeProfile() {
   activeTab.value = 'dashboard'
-  if(typeof localStorage!=='undefined'){
-  localStorage.setItem('dashboard_tab','dashboard')
-}
 }
 
 async function handleProfileSave(details) {
-  // Persist the edited profile through the API, then reflect the saved values.
-  // If the request fails, keep the user's edits locally so their input isn't lost.
   profileSaveError.value = ''
   try {
-    const { data } = await profileApi.updateProfile(details)
-    Object.assign(user.value,data)
-    activeTab.value='profile'
-    if(typeof localStorage!=='undefined'){
-    localStorage.setItem('dashboard_tab','profile')
-    }
+    await profileStore.updateProfile(details)
+    activeTab.value = 'profile'
   } catch (err) {
     user.value = { ...user.value, ...details }
     const reason = err.response?.data?.message || err.message
@@ -91,7 +85,6 @@ onMounted(fetchProfile)
 // ============================================================
 //  HIRING
 // ============================================================
-const myJobs = ref([])
 const selectedJobApplications = ref(null)
 
 function goCreateJob() {
@@ -104,16 +97,14 @@ function goViewJob(id) {
 
 async function loadMyJobs() {
   try {
-    const { data } = await jobsApi.getMyJobs()
-    myJobs.value = data
+    await jobsStore.loadMyJobs()
   } catch {
   }
 }
 
 async function viewApplications(jobId) {
   try {
-    const { data } = await jobsApi.getJobApplications(jobId)
-    selectedJobApplications.value = data
+    selectedJobApplications.value = await jobsStore.loadJobApplications(jobId)
     activeTab.value = 'applications'
   } catch {
   }
@@ -124,13 +115,9 @@ function closeApplications() {
   activeTab.value = 'dashboard'
 }
 
-// Return to the main dashboard view (used by the brand logo in the header).
 function goToDashboard() {
   selectedJobApplications.value = null
   activeTab.value = 'dashboard'
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('dashboard_tab', 'dashboard')
-  }
 }
 
 // ============================================================
@@ -138,7 +125,6 @@ function goToDashboard() {
 // ============================================================
 const locationStatus = ref('idle') // idle | prompt | denied | done
 const nearbyJobs = ref([])
-const myApplications = ref([])
 const workerCoords = ref(null)
 const applying = ref(null)
 
@@ -155,7 +141,7 @@ function requestLocation() {
       workerCoords.value = { lat, lng }
       locationStatus.value = 'done'
       try {
-        await profileApi.updateLocation({ latitude: lat, longitude: lng })
+        await profileStore.updateLocation({ latitude: lat, longitude: lng })
       } catch {
       }
       await loadNearbyJobs(lat, lng)
@@ -173,16 +159,14 @@ function requestLocation() {
 async function loadNearbyJobs(lat, lng) {
   try {
     const params = lat != null && lng != null ? { lat, lng } : {}
-    const { data } = await jobsApi.getNearbyJobs(params)
-    nearbyJobs.value = data
+    nearbyJobs.value = await jobsStore.loadNearbyJobs(params)
   } catch {
   }
 }
 
 async function loadMyApplications() {
   try {
-    const { data } = await jobsApi.getMyApplications()
-    myApplications.value = data
+    await jobsStore.loadMyApplications()
   } catch {
   }
 }
@@ -190,7 +174,7 @@ async function loadMyApplications() {
 async function applyToJob(jobId) {
   applying.value = jobId
   try {
-    await jobsApi.applyToJob(jobId)
+    await jobsStore.applyToJob(jobId)
     await loadMyApplications()
     await loadNearbyJobs(workerCoords.value?.lat, workerCoords.value?.lng)
   } catch (err) {
@@ -201,7 +185,7 @@ async function applyToJob(jobId) {
 }
 
 function hasApplied(jobId) {
-  return myApplications.value.some((a) => a.jobPostId === jobId)
+  return myApplications.value.some((application) => application.jobPostId === jobId)
 }
 </script>
 

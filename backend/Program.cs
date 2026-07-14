@@ -119,7 +119,9 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
-builder.Services.AddScoped<IJobService, JobService>();
+builder.Services.AddSingleton<JobCacheVersion>();
+builder.Services.AddScoped<JobService>();
+builder.Services.AddScoped<IJobService, CachedJobService>();
 
 // --- Validation ---
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
