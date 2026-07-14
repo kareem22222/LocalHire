@@ -5,6 +5,7 @@ import '../hiring-dashboard.css'
 const props = defineProps({
   jobForm: { type: Object, required: true },
   jobFormError: { type: String, default: '' },
+  fieldErrors: { type: Object, default: () => ({}) },
   creating: { type: Boolean, default: false },
   readonly: { type: Boolean, default: false },
   title: { type: String, default: 'Post a new job' },
@@ -167,117 +168,137 @@ watch(
       <fieldset class="job-form__fields" :disabled="readonly">
       <div class="job-form__field">
         <label for="job-title">Title</label>
-        <input id="job-title" :value="props.jobForm.title" placeholder="e.g. Store Associate" @input="updateJobFormField('title', $event)" />
+        <input id="job-title" :value="props.jobForm.title" placeholder="e.g. Store Associate" :aria-invalid="!!props.fieldErrors.title" @input="updateJobFormField('title', $event)" />
+        <span v-if="props.fieldErrors.title" class="job-form__error-text">{{ props.fieldErrors.title }}</span>
       </div>
       <div class="job-form__field">
         <label for="job-description">Description</label>
-        <textarea id="job-description" :value="props.jobForm.description" placeholder="Describe the role, hours, pay..." rows="3" @input="updateJobFormField('description', $event)"></textarea>
+        <textarea id="job-description" :value="props.jobForm.description" placeholder="Describe the role, hours, pay..." rows="3" :aria-invalid="!!props.fieldErrors.description" @input="updateJobFormField('description', $event)"></textarea>
+        <span v-if="props.fieldErrors.description" class="job-form__error-text">{{ props.fieldErrors.description }}</span>
       </div>
       <div class="job-form__field">
         <label for="job-workplace">Workplace name</label>
-        <input id="job-workplace" :value="props.jobForm.workplaceName" placeholder="e.g. FreshMart Store" @input="updateJobFormField('workplaceName', $event)" />
+        <input id="job-workplace" :value="props.jobForm.workplaceName" placeholder="e.g. FreshMart Store" :aria-invalid="!!props.fieldErrors.workplaceName" @input="updateJobFormField('workplaceName', $event)" />
+        <span v-if="props.fieldErrors.workplaceName" class="job-form__error-text">{{ props.fieldErrors.workplaceName }}</span>
       </div>
       <div class="job-form__row">
         <div class="job-form__field">
           <label for="job-pincode">Pincode</label>
-          <input id="job-pincode" :value="props.jobForm.pincode" inputmode="numeric" maxlength="6" placeholder="" @input="updateJobFormField('pincode', $event)" />
+          <input id="job-pincode" :value="props.jobForm.pincode" inputmode="numeric" maxlength="6" placeholder="" :aria-invalid="!!props.fieldErrors.pincode" @input="updateJobFormField('pincode', $event)" />
           <span v-if="pincodeStatus === 'loading'" class="job-form__hint">Fetching area and state...</span>
+          <span v-else-if="props.fieldErrors.pincode" class="job-form__error-text">{{ props.fieldErrors.pincode }}</span>
           <span v-else-if="pincodeError" class="job-form__error-text">{{ pincodeError }}</span>
         </div>
         <div class="job-form__field">
           <label for="job-state">State</label>
-          <select id="job-state" :value="props.jobForm.state" @change="updateJobFormField('state', $event)">
+          <select id="job-state" :value="props.jobForm.state" :aria-invalid="!!props.fieldErrors.state" @change="updateJobFormField('state', $event)">
             <option value="">Select state</option>
             <option v-for="state in indianStates" :key="state" :value="state">{{ state }}</option>
           </select>
+          <span v-if="props.fieldErrors.state" class="job-form__error-text">{{ props.fieldErrors.state }}</span>
         </div>
       </div>
       <div class="job-form__field">
         <label for="job-city-area">City / Village / Area</label>
-        <select v-if="areaOptions.length" id="job-city-area" :value="props.jobForm.cityArea" @change="updateJobFormField('cityArea', $event)">
+        <select v-if="areaOptions.length" id="job-city-area" :value="props.jobForm.cityArea" :aria-invalid="!!props.fieldErrors.cityArea" @change="updateJobFormField('cityArea', $event)">
           <option v-for="area in areaOptions" :key="area.value" :value="area.value">{{ area.label }}</option>
         </select>
-        <input v-else id="job-city-area" :value="props.jobForm.cityArea" placeholder="" @input="updateJobFormField('cityArea', $event)" />
+        <input v-else id="job-city-area" :value="props.jobForm.cityArea" placeholder="" :aria-invalid="!!props.fieldErrors.cityArea" @input="updateJobFormField('cityArea', $event)" />
+        <span v-if="props.fieldErrors.cityArea" class="job-form__error-text">{{ props.fieldErrors.cityArea }}</span>
         <span v-if="areaOptions.length > 1" class="job-form__hint">Choose the nearest area for this role.</span>
       </div>
 
       <div class="job-form__row">
         <div class="job-form__field">
           <label for="job-employment-type">Employment type</label>
-          <select id="job-employment-type" :value="props.jobForm.employmentType" @change="updateJobFormField('employmentType', $event)">
+          <select id="job-employment-type" :value="props.jobForm.employmentType" :aria-invalid="!!props.fieldErrors.employmentType" @change="updateJobFormField('employmentType', $event)">
             <option value="">Select type</option>
             <option v-for="opt in employmentTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
           </select>
+          <span v-if="props.fieldErrors.employmentType" class="job-form__error-text">{{ props.fieldErrors.employmentType }}</span>
         </div>
         <div class="job-form__field">
           <label for="job-openings">Number of openings</label>
-          <input id="job-openings" :value="props.jobForm.openings" type="number" min="1" inputmode="numeric" placeholder="e.g. 3" @input="updateJobFormField('openings', $event)" />
+          <input id="job-openings" :value="props.jobForm.openings" type="number" min="1" inputmode="numeric" placeholder="e.g. 3" :aria-invalid="!!props.fieldErrors.openings" @input="updateJobFormField('openings', $event)" />
+          <span v-if="props.fieldErrors.openings" class="job-form__error-text">{{ props.fieldErrors.openings }}</span>
         </div>
       </div>
 
       <div class="job-form__row">
         <div class="job-form__field">
           <label for="job-salary-min">Salary (min)</label>
-          <input id="job-salary-min" :value="props.jobForm.salaryMin" type="number" min="0" inputmode="numeric" placeholder="e.g. 15000" @input="updateJobFormField('salaryMin', $event)" />
+          <input id="job-salary-min" :value="props.jobForm.salaryMin" type="number" min="0" inputmode="numeric" placeholder="e.g. 15000" :aria-invalid="!!props.fieldErrors.salaryMin" @input="updateJobFormField('salaryMin', $event)" />
+          <span v-if="props.fieldErrors.salaryMin" class="job-form__error-text">{{ props.fieldErrors.salaryMin }}</span>
         </div>
         <div class="job-form__field">
           <label for="job-salary-max">Salary (max)</label>
-          <input id="job-salary-max" :value="props.jobForm.salaryMax" type="number" min="0" inputmode="numeric" placeholder="e.g. 25000" @input="updateJobFormField('salaryMax', $event)" />
+          <input id="job-salary-max" :value="props.jobForm.salaryMax" type="number" min="0" inputmode="numeric" placeholder="e.g. 25000" :aria-invalid="!!props.fieldErrors.salaryMax" @input="updateJobFormField('salaryMax', $event)" />
+          <span v-if="props.fieldErrors.salaryMax" class="job-form__error-text">{{ props.fieldErrors.salaryMax }}</span>
         </div>
         <div class="job-form__field">
           <label for="job-salary-period">Pay period</label>
-          <select id="job-salary-period" :value="props.jobForm.salaryPeriod" @change="updateJobFormField('salaryPeriod', $event)">
+          <select id="job-salary-period" :value="props.jobForm.salaryPeriod" :aria-invalid="!!props.fieldErrors.salaryPeriod" @change="updateJobFormField('salaryPeriod', $event)">
             <option value="">Select period</option>
             <option v-for="period in salaryPeriodOptions" :key="period" :value="period">{{ period }}</option>
           </select>
+          <span v-if="props.fieldErrors.salaryPeriod" class="job-form__error-text">{{ props.fieldErrors.salaryPeriod }}</span>
         </div>
       </div>
 
       <div class="job-form__row">
         <div class="job-form__field">
           <label for="job-education">Minimum education</label>
-          <input id="job-education" :value="props.jobForm.minEducation" list="job-education-options" placeholder="e.g. 10th pass" @input="updateJobFormField('minEducation', $event)" />
+          <input id="job-education" :value="props.jobForm.minEducation" list="job-education-options" placeholder="e.g. 10th pass" :aria-invalid="!!props.fieldErrors.minEducation" @input="updateJobFormField('minEducation', $event)" />
           <datalist id="job-education-options">
             <option v-for="edu in educationOptions" :key="edu" :value="edu"></option>
           </datalist>
+          <span v-if="props.fieldErrors.minEducation" class="job-form__error-text">{{ props.fieldErrors.minEducation }}</span>
         </div>
         <div class="job-form__field">
           <label for="job-exp-min">Experience (min yrs)</label>
-          <input id="job-exp-min" :value="props.jobForm.experienceMinYears" type="number" min="0" max="60" inputmode="numeric" placeholder="e.g. 0" @input="updateJobFormField('experienceMinYears', $event)" />
+          <input id="job-exp-min" :value="props.jobForm.experienceMinYears" type="number" min="0" max="60" inputmode="numeric" placeholder="e.g. 0" :aria-invalid="!!props.fieldErrors.experienceMinYears" @input="updateJobFormField('experienceMinYears', $event)" />
+          <span v-if="props.fieldErrors.experienceMinYears" class="job-form__error-text">{{ props.fieldErrors.experienceMinYears }}</span>
         </div>
         <div class="job-form__field">
           <label for="job-exp-max">Experience (max yrs)</label>
-          <input id="job-exp-max" :value="props.jobForm.experienceMaxYears" type="number" min="0" max="60" inputmode="numeric" placeholder="e.g. 3" @input="updateJobFormField('experienceMaxYears', $event)" />
+          <input id="job-exp-max" :value="props.jobForm.experienceMaxYears" type="number" min="0" max="60" inputmode="numeric" placeholder="e.g. 3" :aria-invalid="!!props.fieldErrors.experienceMaxYears" @input="updateJobFormField('experienceMaxYears', $event)" />
+          <span v-if="props.fieldErrors.experienceMaxYears" class="job-form__error-text">{{ props.fieldErrors.experienceMaxYears }}</span>
         </div>
       </div>
 
       <div class="job-form__row">
         <div class="job-form__field">
           <label for="job-working-days">Working days</label>
-          <input id="job-working-days" :value="props.jobForm.workingDays" placeholder="e.g. Mon–Sat" @input="updateJobFormField('workingDays', $event)" />
+          <input id="job-working-days" :value="props.jobForm.workingDays" placeholder="e.g. Mon–Sat" :aria-invalid="!!props.fieldErrors.workingDays" @input="updateJobFormField('workingDays', $event)" />
+          <span v-if="props.fieldErrors.workingDays" class="job-form__error-text">{{ props.fieldErrors.workingDays }}</span>
         </div>
         <div class="job-form__field">
           <label for="job-shift-start">Shift start</label>
-          <input id="job-shift-start" :value="props.jobForm.shiftStartTime" type="time" @input="updateJobFormField('shiftStartTime', $event)" />
+          <input id="job-shift-start" :value="props.jobForm.shiftStartTime" type="time" :aria-invalid="!!props.fieldErrors.shiftStartTime" @input="updateJobFormField('shiftStartTime', $event)" />
+          <span v-if="props.fieldErrors.shiftStartTime" class="job-form__error-text">{{ props.fieldErrors.shiftStartTime }}</span>
         </div>
         <div class="job-form__field">
           <label for="job-shift-end">Shift end</label>
-          <input id="job-shift-end" :value="props.jobForm.shiftEndTime" type="time" @input="updateJobFormField('shiftEndTime', $event)" />
+          <input id="job-shift-end" :value="props.jobForm.shiftEndTime" type="time" :aria-invalid="!!props.fieldErrors.shiftEndTime" @input="updateJobFormField('shiftEndTime', $event)" />
+          <span v-if="props.fieldErrors.shiftEndTime" class="job-form__error-text">{{ props.fieldErrors.shiftEndTime }}</span>
         </div>
       </div>
 
       <div class="job-form__field">
         <label for="job-skills">Required skills</label>
-        <input id="job-skills" :value="props.jobForm.requiredSkills" placeholder="Comma separated, e.g. Billing, Customer service" @input="updateJobFormField('requiredSkills', $event)" />
+        <input id="job-skills" :value="props.jobForm.requiredSkills" placeholder="Comma separated, e.g. Billing, Customer service" :aria-invalid="!!props.fieldErrors.requiredSkills" @input="updateJobFormField('requiredSkills', $event)" />
+        <span v-if="props.fieldErrors.requiredSkills" class="job-form__error-text">{{ props.fieldErrors.requiredSkills }}</span>
         <span class="job-form__hint">Separate each skill with a comma.</span>
       </div>
       <div class="job-form__field">
         <label for="job-languages">Languages needed</label>
-        <input id="job-languages" :value="props.jobForm.languages" placeholder="Comma separated, e.g. Hindi, English" @input="updateJobFormField('languages', $event)" />
+        <input id="job-languages" :value="props.jobForm.languages" placeholder="Comma separated, e.g. Hindi, English" :aria-invalid="!!props.fieldErrors.languages" @input="updateJobFormField('languages', $event)" />
+        <span v-if="props.fieldErrors.languages" class="job-form__error-text">{{ props.fieldErrors.languages }}</span>
       </div>
       <div class="job-form__field">
         <label for="job-benefits">Extra benefits</label>
-        <input id="job-benefits" :value="props.jobForm.benefits" placeholder="Comma separated, e.g. Provident Fund, Meals" @input="updateJobFormField('benefits', $event)" />
+        <input id="job-benefits" :value="props.jobForm.benefits" placeholder="Comma separated, e.g. Provident Fund, Meals" :aria-invalid="!!props.fieldErrors.benefits" @input="updateJobFormField('benefits', $event)" />
+        <span v-if="props.fieldErrors.benefits" class="job-form__error-text">{{ props.fieldErrors.benefits }}</span>
       </div>
       </fieldset>
 
@@ -337,5 +358,12 @@ watch(
   padding: 0;
   border: 0;
   min-width: 0;
+}
+
+/* Highlight controls the user needs to fix. Pairs with the per-field
+   .job-form__error-text messages rendered beneath each input. */
+.job-form__field :is(input, textarea, select)[aria-invalid="true"] {
+  border-color: #dc2626;
+  outline-color: #dc2626;
 }
 </style>

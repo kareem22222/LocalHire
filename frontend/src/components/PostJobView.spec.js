@@ -71,8 +71,41 @@ describe('PostJobView', () => {
     await wrapper.find('.job-form > .dash-btn').trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('.job-form__error').text()).toContain('Please fill in all required fields.')
+    expect(wrapper.find('.job-form__error').text()).toContain('Please fix the highlighted fields below.')
+    expect(wrapper.find('#job-title').attributes('aria-invalid')).toBe('true')
+    expect(wrapper.findAll('.job-form__error-text').some((el) => el.text() === 'Title is required.')).toBe(true)
     expect(api.post).not.toHaveBeenCalled()
+  })
+
+  it('surfaces server-side validation errors under the matching fields', async () => {
+    mockPincodeLookup()
+    const wrapper = mountView()
+    await flushPromises()
+
+    const form = wrapper.find('.job-form')
+    await form.find('input[placeholder="e.g. Store Associate"]').setValue('Cashier')
+    await form.find('textarea').setValue('Front desk')
+    await form.find('input[placeholder="e.g. FreshMart Store"]').setValue('Corner Shop')
+    await form.find('input[inputmode="numeric"]').setValue('400050')
+    await flushPromises()
+
+    api.post.mockRejectedValueOnce({
+      response: {
+        status: 400,
+        data: {
+          title: 'One or more validation errors occurred.',
+          errors: { SalaryMax: ['Maximum salary must be greater than or equal to minimum salary.'] },
+        },
+      },
+    })
+
+    await wrapper.find('.job-form > .dash-btn').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('#job-salary-max').attributes('aria-invalid')).toBe('true')
+    expect(wrapper.findAll('.job-form__error-text').some(
+      (el) => el.text() === 'Maximum salary must be greater than or equal to minimum salary.',
+    )).toBe(true)
   })
 
   it('submits the job posting and navigates back to the dashboard', async () => {

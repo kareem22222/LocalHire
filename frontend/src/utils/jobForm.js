@@ -78,19 +78,113 @@ function splitList(value) {
     .map((item) => item.trim())
     .filter(Boolean)
 }
+const SERVER_FIELD_TO_FORM = {
+  Title: 'title',
+  Description: 'description',
+  WorkplaceName: 'workplaceName',
+  CityArea: 'cityArea',
+  Pincode: 'pincode',
+  State: 'state',
+  Latitude: 'latitude',
+  Longitude: 'longitude',
+  EmploymentType: 'employmentType',
+  SalaryMin: 'salaryMin',
+  SalaryMax: 'salaryMax',
+  SalaryPeriod: 'salaryPeriod',
+  MinEducation: 'minEducation',
+  ExperienceMinYears: 'experienceMinYears',
+  ExperienceMaxYears: 'experienceMaxYears',
+  WorkingDays: 'workingDays',
+  ShiftStartTime: 'shiftStartTime',
+  ShiftEndTime: 'shiftEndTime',
+  Openings: 'openings',
+  RequiredSkills: 'requiredSkills',
+  Languages: 'languages',
+  Benefits: 'benefits',
+}
 
-// Returns an error message string, or '' when the form passes client-side checks.
-export function validateJobForm(form) {
-  if (!form.title.trim() || !form.description.trim() || !form.workplaceName.trim() || !form.cityArea.trim()) {
-    return 'Please fill in all required fields.'
+function serverKeyToField(key) {
+  // Strip any "[index]" or ".Count" suffix down to the base property name.
+  const base = String(key).split(/[.[]/)[0]
+  return SERVER_FIELD_TO_FORM[base] || null
+}
+
+// Validates the form on the client and returns a { fieldKey: message } object.
+// Empty object means the form passed all client-side checks. The rules mirror
+// the backend CreateJobPostRequestValidator so users get the same feedback
+// instantly, before a request is sent.
+export function validateJobFormFields(form) {
+  const errors = {}
+
+  if (!String(form.title ?? '').trim()) errors.title = 'Title is required.'
+  if (!String(form.description ?? '').trim()) errors.description = 'Description is required.'
+  if (!String(form.workplaceName ?? '').trim()) errors.workplaceName = 'Workplace name is required.'
+  if (!String(form.cityArea ?? '').trim()) errors.cityArea = 'City / area is required.'
+
+  if (!/^\d{6}$/.test(String(form.pincode ?? '').trim())) {
+    errors.pincode = 'Enter a valid 6-digit pincode.'
+  } else if (!String(form.state ?? '').trim()) {
+    errors.state = 'Please wait for the state to load from the pincode.'
   }
-  if (!/^\d{6}$/.test(String(form.pincode || '').trim())) {
-    return 'Please enter a valid 6-digit pincode.'
+
+  const salaryMin = numberOrNull(form.salaryMin)
+  const salaryMax = numberOrNull(form.salaryMax)
+  if (salaryMin != null && salaryMin < 0) errors.salaryMin = 'Salary cannot be negative.'
+  if (salaryMax != null && salaryMax < 0) errors.salaryMax = 'Salary cannot be negative.'
+  if (salaryMin != null && salaryMax != null && salaryMax < salaryMin) {
+    errors.salaryMax = 'Maximum salary must be greater than or equal to minimum salary.'
   }
-  if (!form.state.trim()) {
-    return 'Please wait for the state to load from the pincode.'
+  if ((salaryMin != null || salaryMax != null) && !String(form.salaryPeriod ?? '').trim()) {
+    errors.salaryPeriod = 'Select a pay period when you enter a salary.'
   }
-  return ''
+
+  const expMin = numberOrNull(form.experienceMinYears)
+  const expMax = numberOrNull(form.experienceMaxYears)
+  if (expMin != null && (expMin < 0 || expMin > 60)) {
+    errors.experienceMinYears = 'Experience must be between 0 and 60 years.'
+  }
+  if (expMax != null && (expMax < 0 || expMax > 60)) {
+    errors.experienceMaxYears = 'Experience must be between 0 and 60 years.'
+  }
+  if (expMin != null && expMax != null && expMax < expMin) {
+    errors.experienceMaxYears = 'Maximum experience must be greater than or equal to minimum experience.'
+  }
+
+  const openings = numberOrNull(form.openings)
+  if (openings != null && (openings < 1 || openings > 10000)) {
+    errors.openings = 'Openings must be between 1 and 10,000.'
+  }
+
+  return errors
+}
+
+// Turns an API error response body (RFC 7807 ValidationProblemDetails) into
+// per-field messages plus a general fallback message. Field-specific entries go
+// into fieldErrors keyed by form field; anything that can't be mapped to a field
+// (or a plain error/message payload) becomes generalMessage.
+export function mapServerErrors(data) {
+  const fieldErrors = {}
+  let generalMessage = ''
+
+  const serverErrors = data?.errors
+  if (serverErrors && typeof serverErrors === 'object') {
+    for (const [key, value] of Object.entries(serverErrors)) {
+      const text = Array.isArray(value) ? value.join(' ') : String(value)
+      if (!text) continue
+      const field = serverKeyToField(key)
+      if (field) {
+        fieldErrors[field] = fieldErrors[field] ? `${fieldErrors[field]} ${text}` : text
+      } else {
+        generalMessage = generalMessage ? `${generalMessage} ${text}` : text
+      }
+    }
+  }
+
+  if (!generalMessage && Object.keys(fieldErrors).length === 0) {
+    generalMessage = data?.message || data?.error || data?.title || ''
+  }
+
+  return { fieldErrors, generalMessage }
 }
 
 // Builds the API payload (matches CreateJobPostRequest) from the form state.

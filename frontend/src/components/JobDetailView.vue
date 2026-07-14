@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useJobsStore } from '../stores/jobs'
-import { buildJobPayload, jobResponseToForm, validateJobForm } from '../utils/jobForm'
+import { buildJobPayload, jobResponseToForm, mapServerErrors, validateJobFormFields } from '../utils/jobForm'
 import { logout } from '../utils/session'
 import BrandLogo from './BrandLogo.vue'
 import PostJobPage from './PostJobPage.vue'
@@ -19,6 +19,7 @@ const jobForm = ref(null)
 // Snapshot of the last-saved values so "Cancel" can discard in-progress edits.
 const originalForm = ref(null)
 const jobFormError = ref('')
+const fieldErrors = ref({})
 const saving = ref(false)
 const loaded = ref(false)
 const editing = ref(false)
@@ -44,6 +45,7 @@ function goDashboard() {
 
 function startEdit() {
   jobFormError.value = ''
+  fieldErrors.value = {}
   editing.value = true
   router.replace(`/jobs/${props.id}/edit`)
 }
@@ -52,13 +54,18 @@ function cancelEdit() {
   // Discard any in-progress edits by restoring the last-saved snapshot.
   jobForm.value = { ...originalForm.value }
   jobFormError.value = ''
+  fieldErrors.value = {}
   editing.value = false
   router.replace(`/jobs/${props.id}`)
 }
 
 async function saveJob() {
-  jobFormError.value = validateJobForm(jobForm.value)
-  if (jobFormError.value) return
+  fieldErrors.value = validateJobFormFields(jobForm.value)
+  if (Object.keys(fieldErrors.value).length > 0) {
+    jobFormError.value = 'Please fix the highlighted fields below.'
+    return
+  }
+  jobFormError.value = ''
 
   saving.value = true
   try {
@@ -69,7 +76,13 @@ async function saveJob() {
     editing.value = false
     router.replace(`/jobs/${props.id}`)
   } catch (err) {
-    jobFormError.value = err.response?.data?.message || err.message || 'Failed to update job post.'
+    const { fieldErrors: serverFields, generalMessage } = mapServerErrors(err.response?.data)
+    fieldErrors.value = serverFields
+    if (Object.keys(serverFields).length > 0) {
+      jobFormError.value = generalMessage || 'Please fix the highlighted fields below.'
+    } else {
+      jobFormError.value = generalMessage || err.message || 'Failed to update job post.'
+    }
   } finally {
     saving.value = false
   }
@@ -90,6 +103,7 @@ async function saveJob() {
       v-if="loaded"
       :job-form="jobForm"
       :job-form-error="jobFormError"
+      :field-errors="fieldErrors"
       :creating="saving"
       :readonly="!editing"
       title="Job details"
