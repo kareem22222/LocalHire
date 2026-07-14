@@ -11,13 +11,7 @@ const emit = defineEmits(['back'])
       </button>
 
       <h1>Privacy Policy</h1>
-      <p class="last-updated">
-        Last updated: July 14, 2026
-      </p>
-<h2>Privacy Policy</h2>
-
-<p><strong>Last updated:</strong> July 14, 2026</p>
-
+      <p class="last-updated">Last updated: July 14, 2026</p>
 <p>
 This Privacy Policy describes Our policies and procedures on the collection,
 use and disclosure of Your information when You use the Service and tells
