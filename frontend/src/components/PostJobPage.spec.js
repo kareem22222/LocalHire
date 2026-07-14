@@ -59,6 +59,46 @@ describe('PostJobPage', () => {
     expect(wrapper.findAll('button').map((b) => b.text())).toContain('Back')
   })
 
+  it('renders a message and marks the control invalid for every field error', () => {
+    const fieldErrors = {
+      title: 'Title is required.',
+      description: 'Description is required.',
+      workplaceName: 'Workplace name is required.',
+      cityArea: 'City / area is required.',
+      pincode: 'Enter a valid 6-digit pincode.',
+      state: 'Please wait for the state to load from the pincode.',
+      employmentType: 'Invalid employment type.',
+      openings: 'Openings must be between 1 and 10,000.',
+      salaryMin: 'Salary cannot be negative.',
+      salaryMax: 'Maximum salary must be greater than or equal to minimum salary.',
+      salaryPeriod: 'Select a pay period when you enter a salary.',
+      minEducation: 'Education is too long.',
+      experienceMinYears: 'Experience must be between 0 and 60 years.',
+      experienceMaxYears: 'Maximum experience must be greater than or equal to minimum experience.',
+      workingDays: 'Working days is too long.',
+      shiftStartTime: 'Shift start time must be in HH:mm format.',
+      shiftEndTime: 'Shift end time must be in HH:mm format.',
+      requiredSkills: 'Skill must not be empty.',
+      languages: 'A maximum of 20 languages is allowed.',
+      benefits: 'A maximum of 30 benefits is allowed.',
+    }
+    const wrapper = mountPostJobPage({ fieldErrors })
+
+    const messages = wrapper.findAll('.job-form__error-text').map((el) => el.text())
+    for (const message of Object.values(fieldErrors)) {
+      expect(messages).toContain(message)
+    }
+
+    // Each control the error refers to is flagged for assistive tech.
+    const invalidIds = ['job-title', 'job-description', 'job-workplace', 'job-pincode',
+      'job-state', 'job-city-area', 'job-employment-type', 'job-openings', 'job-salary-min', 'job-salary-max',
+      'job-salary-period', 'job-education', 'job-exp-min', 'job-exp-max', 'job-working-days',
+      'job-shift-start', 'job-shift-end', 'job-skills', 'job-languages', 'job-benefits']
+    for (const id of invalidIds) {
+      expect(wrapper.find(`#${id}`).attributes('aria-invalid')).toBe('true')
+    }
+  })
+
   it('hides the submit button and shows a configurable title in readonly mode', () => {
     const wrapper = mountPostJobPage({
       readonly: true,

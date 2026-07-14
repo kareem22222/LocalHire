@@ -108,6 +108,26 @@ describe('PostJobView', () => {
     )).toBe(true)
   })
 
+  it('shows a general error message when the request fails without field errors', async () => {
+    mockPincodeLookup()
+    const wrapper = mountView()
+    await flushPromises()
+
+    const form = wrapper.find('.job-form')
+    await form.find('input[placeholder="e.g. Store Associate"]').setValue('Cashier')
+    await form.find('textarea').setValue('Front desk')
+    await form.find('input[placeholder="e.g. FreshMart Store"]').setValue('Corner Shop')
+    await form.find('input[inputmode="numeric"]').setValue('400050')
+    await flushPromises()
+
+    api.post.mockRejectedValueOnce(new Error('Network down'))
+
+    await wrapper.find('.job-form > .dash-btn').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.job-form__error').text()).toBe('Network down')
+  })
+
   it('submits the job posting and navigates back to the dashboard', async () => {
     mockPincodeLookup()
     const wrapper = mountView()

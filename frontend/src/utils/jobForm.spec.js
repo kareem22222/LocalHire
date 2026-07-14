@@ -107,9 +107,15 @@ describe('validateJobFormFields', () => {
   it('flags negative and out-of-range numeric fields', () => {
     expect(validateJobFormFields({ ...base, salaryMin: '-5', salaryPeriod: 'Monthly' }).salaryMin)
       .toBe('Salary cannot be negative.')
+    expect(validateJobFormFields({ ...base, salaryMax: '-5', salaryPeriod: 'Monthly' }).salaryMax)
+      .toBe('Salary cannot be negative.')
     expect(validateJobFormFields({ ...base, experienceMinYears: '70' }).experienceMinYears)
       .toBe('Experience must be between 0 and 60 years.')
+    expect(validateJobFormFields({ ...base, experienceMaxYears: '70' }).experienceMaxYears)
+      .toBe('Experience must be between 0 and 60 years.')
     expect(validateJobFormFields({ ...base, openings: '0' }).openings)
+      .toBe('Openings must be between 1 and 10,000.')
+    expect(validateJobFormFields({ ...base, openings: '99999' }).openings)
       .toBe('Openings must be between 1 and 10,000.')
   })
 

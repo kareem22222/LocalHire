@@ -157,6 +157,57 @@ describe('JobDetailView', () => {
     expect(wrapper.find('.job-form').exists()).toBe(false)
   })
 
+  it('shows per-field validation errors and does not save when a required field is cleared', async () => {
+    const wrapper = mountView('edit')
+    await flushPromises()
+
+    await wrapper.find('#job-title').setValue('   ')
+    await wrapper.find('.job-form > .dash-btn').trigger('click')
+    await flushPromises()
+
+    expect(api.put).not.toHaveBeenCalled()
+    expect(wrapper.find('.job-form__error').text()).toContain('Please fix the highlighted fields below.')
+    expect(wrapper.find('#job-title').attributes('aria-invalid')).toBe('true')
+    expect(wrapper.findAll('.job-form__error-text').some((el) => el.text() === 'Title is required.')).toBe(true)
+  })
+
+  it('surfaces server-side field validation errors when saving fails', async () => {
+    api.put.mockRejectedValueOnce({
+      response: {
+        status: 400,
+        data: {
+          title: 'One or more validation errors occurred.',
+          errors: { SalaryMax: ['Maximum salary must be greater than or equal to minimum salary.'] },
+        },
+      },
+    })
+
+    const wrapper = mountView('edit')
+    await flushPromises()
+
+    await wrapper.find('#job-title').setValue('Senior Cashier')
+    await wrapper.find('.job-form > .dash-btn').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('#job-salary-max').attributes('aria-invalid')).toBe('true')
+    expect(wrapper.findAll('.job-form__error-text').some(
+      (el) => el.text() === 'Maximum salary must be greater than or equal to minimum salary.',
+    )).toBe(true)
+  })
+
+  it('shows a general error message when saving fails without field errors', async () => {
+    api.put.mockRejectedValueOnce(new Error('Network down'))
+
+    const wrapper = mountView('edit')
+    await flushPromises()
+
+    await wrapper.find('#job-title').setValue('Senior Cashier')
+    await wrapper.find('.job-form > .dash-btn').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.job-form__error').text()).toBe('Network down')
+  })
+
   it('navigates back to the dashboard from the back button', async () => {
     const wrapper = mountView('view')
     await flushPromises()
