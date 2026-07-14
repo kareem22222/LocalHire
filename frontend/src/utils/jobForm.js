@@ -28,9 +28,6 @@ export function emptyJobForm() {
   }
 }
 
-// Maps a JobPostResponse from the API into the flat, string-friendly shape the
-// form uses. List fields become comma-separated text; nullable values fall back
-// to empty strings so inputs stay controlled.
 export function jobResponseToForm(job) {
   return {
     title: job.title ?? '',
@@ -104,15 +101,10 @@ const SERVER_FIELD_TO_FORM = {
 }
 
 function serverKeyToField(key) {
-  // Strip any "[index]" or ".Count" suffix down to the base property name.
   const base = String(key).split(/[.[]/)[0]
   return SERVER_FIELD_TO_FORM[base] || null
 }
 
-// Validates the form on the client and returns a { fieldKey: message } object.
-// Empty object means the form passed all client-side checks. The rules mirror
-// the backend CreateJobPostRequestValidator so users get the same feedback
-// instantly, before a request is sent.
 export function validateJobFormFields(form) {
   const errors = {}
 
@@ -158,10 +150,18 @@ export function validateJobFormFields(form) {
   return errors
 }
 
-// Turns an API error response body (RFC 7807 ValidationProblemDetails) into
-// per-field messages plus a general fallback message. Field-specific entries go
-// into fieldErrors keyed by form field; anything that can't be mapped to a field
-// (or a plain error/message payload) becomes generalMessage.
+function errorText(value) {
+  return Array.isArray(value) ? value.join(' ') : String(value ?? '')
+}
+
+function appendMessage(existing, text) {
+  return existing ? `${existing} ${text}` : text
+}
+
+function fallbackMessage(data) {
+  return data?.message || data?.error || data?.title || ''
+}
+
 export function mapServerErrors(data) {
   const fieldErrors = {}
   let generalMessage = ''
@@ -170,11 +170,11 @@ export function mapServerErrors(data) {
   if (serverErrors && typeof serverErrors === 'object') {
     for (const [key, value] of Object.entries(serverErrors)) {
       const text = Array.isArray(value) ? value.join(' ') : String(value)
-      if (!text) continue
-      const field = serverKeyToField(key)
-      if (field) {
+    if (!text) continue
+    const field = serverKeyToField(key)
+    if (field) {
         fieldErrors[field] = fieldErrors[field] ? `${fieldErrors[field]} ${text}` : text
-      } else {
+    } else {
         generalMessage = generalMessage ? `${generalMessage} ${text}` : text
       }
     }
@@ -187,7 +187,6 @@ export function mapServerErrors(data) {
   return { fieldErrors, generalMessage }
 }
 
-// Builds the API payload (matches CreateJobPostRequest) from the form state.
 export function buildJobPayload(form) {
   const hasCoords = hasValidCoordinates(form.latitude, form.longitude)
   return {
