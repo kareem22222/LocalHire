@@ -40,6 +40,15 @@ public sealed class MockDataSeederTests
         Assert.Equal(1_000, await database.JobPosts.CountAsync());
         Assert.Equal(10_000, await database.JobApplications.CountAsync());
 
+        var demoUsers = await database.Users
+            .Where(user => user.Email == MockDataSeeder.DemoEmail)
+            .ToListAsync();
+        Assert.Equal(2, demoUsers.Count);
+        Assert.Contains(demoUsers, user => user.Role == UserRole.Hiring);
+        Assert.Contains(demoUsers, user => user.Role == UserRole.LookingForWork);
+        Assert.All(demoUsers, user =>
+            Assert.True(BCrypt.Net.BCrypt.Verify(MockDataSeeder.DemoPassword, user.PasswordHash)));
+
         var workerHash = await database.Users
             .Where(user => user.Email == "worker0001@localhire.test")
             .Select(user => user.PasswordHash)
