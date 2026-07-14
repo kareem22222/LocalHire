@@ -168,8 +168,8 @@ watch(
       <fieldset class="job-form__fields" :disabled="readonly">
       <div class="job-form__field">
         <label for="job-title">Title</label>
-        <input id="job-title" :value="props.jobForm.title" placeholder="e.g. Store Associate" :aria-invalid="!!props.fieldErrors.title" @input="updateJobFormField('title', $event)" />
-        <span v-if="props.fieldErrors.title" class="job-form__error-text">{{ props.fieldErrors.title }}</span>
+        <input id="job-title" :value="props.jobForm.title" placeholder="e.g. Store Associate" :aria-invalid="!!props.fieldErrors.title" :aria-describedby="props.fieldErrors.title ? 'job-title-error' : undefined" @input="updateJobFormField('title', $event)" />
+        <span v-if="props.fieldErrors.title" id="job-title-error" class="job-form__error-text">{{ props.fieldErrors.title }}</span>
       </div>
       <div class="job-form__field">
         <label for="job-description">Description</label>
