@@ -81,6 +81,13 @@ dotnet run
 The backend runs at http://localhost:5180 and uses the local database
 connection in `backend/appsettings.Development.json`.
 
+Local startup also adds 15 employers, 35 workers, 1,000 jobs, and 10,000
+applications once. Sign in with `demo@localhire.test` / `LocalHire1!` and
+select either account role. Generated accounts such as
+`employer001@localhire.test` and `worker0001@localhire.test` use the same
+password. The seed flag is enabled only by the local launch profile and local
+Docker Compose; it is not enabled by the RDS configuration.
+
 ## Production-style Local Build
 
 Build the frontend into `backend/wwwroot`, then let ASP.NET Core serve it. The
