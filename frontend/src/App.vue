@@ -54,8 +54,18 @@ function onAuthSuccess({ mode } = {}) {
 function handleCtaSubmit() {
   openModal(ctaEmail.value.trim())
 }
+function openPrivacy() {
+  showPrivacyPolicy.value = true
+  scrollToTop()
+}
+
 function closePrivacy() {
   showPrivacyPolicy.value = false
+  scrollToTop()
+}
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
 }
 
 onMounted(async () => {
@@ -273,7 +283,7 @@ onUnmounted(() => {
       <div class="footer-bottom">
         <p>&copy; {{ new Date().getFullYear() }} LocalHire. All rights reserved.</p>
         <div class="footer-links">
-          <a href="#" @click.prevent="showPrivacyPolicy = true">Privacy</a>
+          <a href="#" @click.prevent="openPrivacy">Privacy</a>
           <a href="#">Terms</a>
           <a href="#">Contact</a>
         </div>
