@@ -89,3 +89,45 @@ describe('App signup confetti', () => {
     wrapper.unmount()
   })
 })
+
+describe('App privacy policy', () => {
+  beforeEach(() => {
+    isAuthenticated.mockResolvedValue(false)
+    vi.stubGlobal('scrollTo', vi.fn())
+  })
+
+  it('opens the privacy page from the footer and scrolls to the top', async () => {
+    const wrapper = mountAppWithAuthMode('register')
+    await flushPromises()
+
+    // Landing shown, privacy hidden.
+    expect(wrapper.find('.app-shell').exists()).toBe(true)
+    expect(wrapper.find('.privacy-page').exists()).toBe(false)
+
+    const privacyLink = wrapper.findAll('.footer-links a')[0]
+    expect(privacyLink.text()).toBe('Privacy')
+    await privacyLink.trigger('click')
+
+    // Privacy page replaces the landing and the window is reset to the top.
+    expect(wrapper.find('.privacy-page').exists()).toBe(true)
+    expect(wrapper.find('.app-shell').exists()).toBe(false)
+    expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'auto' })
+    wrapper.unmount()
+  })
+
+  it('returns to the top of the home page when Back is pressed', async () => {
+    const wrapper = mountAppWithAuthMode('register')
+    await flushPromises()
+
+    await wrapper.findAll('.footer-links a')[0].trigger('click')
+    expect(wrapper.find('.privacy-page').exists()).toBe(true)
+
+    await wrapper.find('.back-btn').trigger('click')
+
+    // Back to the landing, privacy hidden, scrolled to the top on both actions.
+    expect(wrapper.find('.privacy-page').exists()).toBe(false)
+    expect(wrapper.find('.app-shell').exists()).toBe(true)
+    expect(window.scrollTo).toHaveBeenCalledTimes(2)
+    wrapper.unmount()
+  })
+})

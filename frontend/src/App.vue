@@ -7,7 +7,7 @@ import { isAuthenticated } from './api'
 import AuthModal from './components/AuthModal.vue'
 import BrandLogo from './components/BrandLogo.vue'
 import NetworkBackground from './components/NetworkBackground.vue'
-import PrivacyPolicy from './components/PrivacyPolicy.vue'
+import PrivacyPolicy from './components/privacypolicy.vue'
 gsap.registerPlugin(ScrollTrigger)
 
 const showModal = ref(false)

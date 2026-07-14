@@ -28,9 +28,6 @@ export function emptyJobForm() {
   }
 }
 
-// Maps a JobPostResponse from the API into the flat, string-friendly shape the
-// form uses. List fields become comma-separated text; nullable values fall back
-// to empty strings so inputs stay controlled.
 export function jobResponseToForm(job) {
   return {
     title: job.title ?? '',
@@ -78,22 +75,143 @@ function splitList(value) {
     .map((item) => item.trim())
     .filter(Boolean)
 }
-
-// Returns an error message string, or '' when the form passes client-side checks.
-export function validateJobForm(form) {
-  if (!form.title.trim() || !form.description.trim() || !form.workplaceName.trim() || !form.cityArea.trim()) {
-    return 'Please fill in all required fields.'
-  }
-  if (!/^\d{6}$/.test(String(form.pincode || '').trim())) {
-    return 'Please enter a valid 6-digit pincode.'
-  }
-  if (!form.state.trim()) {
-    return 'Please wait for the state to load from the pincode.'
-  }
-  return ''
+const SERVER_FIELD_TO_FORM = {
+  Title: 'title',
+  Description: 'description',
+  WorkplaceName: 'workplaceName',
+  CityArea: 'cityArea',
+  Pincode: 'pincode',
+  State: 'state',
+  Latitude: 'latitude',
+  Longitude: 'longitude',
+  EmploymentType: 'employmentType',
+  SalaryMin: 'salaryMin',
+  SalaryMax: 'salaryMax',
+  SalaryPeriod: 'salaryPeriod',
+  MinEducation: 'minEducation',
+  ExperienceMinYears: 'experienceMinYears',
+  ExperienceMaxYears: 'experienceMaxYears',
+  WorkingDays: 'workingDays',
+  ShiftStartTime: 'shiftStartTime',
+  ShiftEndTime: 'shiftEndTime',
+  Openings: 'openings',
+  RequiredSkills: 'requiredSkills',
+  Languages: 'languages',
+  Benefits: 'benefits',
 }
 
-// Builds the API payload (matches CreateJobPostRequest) from the form state.
+function serverKeyToField(key) {
+  const base = String(key).split(/[.[]/)[0]
+  return SERVER_FIELD_TO_FORM[base] || null
+}
+
+function validateRequiredText(form, errors) {
+  const required = {
+    title: 'Title is required.',
+    description: 'Description is required.',
+    workplaceName: 'Workplace name is required.',
+    cityArea: 'City / area is required.',
+  }
+  for (const [field, message] of Object.entries(required)) {
+    if (!String(form[field] ?? '').trim()) errors[field] = message
+  }
+}
+
+function validateLocation(form, errors) {
+  if (!/^\d{6}$/.test(String(form.pincode ?? '').trim())) {
+    errors.pincode = 'Enter a valid 6-digit pincode.'
+  } else if (!String(form.state ?? '').trim()) {
+    errors.state = 'Please wait for the state to load from the pincode.'
+  }
+}
+
+function validateSalary(form, errors) {
+  const min = numberOrNull(form.salaryMin)
+  const max = numberOrNull(form.salaryMax)
+  if (isNegative(min)) errors.salaryMin = 'Salary cannot be negative.'
+  if (isNegative(max)) errors.salaryMax = 'Salary cannot be negative.'
+  if (min != null && max != null && max < min) {
+    errors.salaryMax = 'Maximum salary must be greater than or equal to minimum salary.'
+  }
+  if ((min != null || max != null) && !String(form.salaryPeriod ?? '').trim()) {
+    errors.salaryPeriod = 'Select a pay period when you enter a salary.'
+  }
+}
+
+function validateExperience(form, errors) {
+  const min = numberOrNull(form.experienceMinYears)
+  const max = numberOrNull(form.experienceMaxYears)
+  const message = 'Experience must be between 0 and 60 years.'
+  if (isOutsideRange(min, 0, 60)) errors.experienceMinYears = message
+  if (isOutsideRange(max, 0, 60)) errors.experienceMaxYears = message
+  if (min != null && max != null && max < min) {
+    errors.experienceMaxYears = 'Maximum experience must be greater than or equal to minimum experience.'
+  }
+  }
+
+function validateOpenings(form, errors) {
+  const openings = numberOrNull(form.openings)
+  if (isOutsideRange(openings, 1, 10000)) {
+    errors.openings = 'Openings must be between 1 and 10,000.'
+  }
+}
+
+function isNegative(value) {
+  return value != null && value < 0
+}
+
+function isOutsideRange(value, min, max) {
+  return value != null && (value < min || value > max)
+}
+
+// Validates the form on the client and returns a { fieldKey: message } object.
+// Empty object means the form passed all client-side checks. The rules mirror
+// the backend CreateJobPostRequestValidator so users get the same feedback
+// instantly, before a request is sent.
+export function validateJobFormFields(form) {
+  const errors = {}
+  validateRequiredText(form, errors)
+  validateLocation(form, errors)
+  validateSalary(form, errors)
+  validateExperience(form, errors)
+  validateOpenings(form, errors)
+  return errors
+}
+
+function errorText(value) {
+  return Array.isArray(value) ? value.join(' ') : String(value ?? '')
+}
+
+function appendMessage(existing, text) {
+  return existing ? `${existing} ${text}` : text
+}
+
+function fallbackMessage(data) {
+  return data?.message || data?.error || data?.title || ''
+}
+
+export function mapServerErrors(data) {
+  const fieldErrors = {}
+  let generalMessage = ''
+
+  for (const [key, value] of Object.entries(data?.errors ?? {})) {
+    const text = errorText(value)
+    if (!text) continue
+    const field = serverKeyToField(key)
+    if (field) {
+      fieldErrors[field] = appendMessage(fieldErrors[field], text)
+    } else {
+      generalMessage = appendMessage(generalMessage, text)
+    }
+  }
+
+  if (!generalMessage && Object.keys(fieldErrors).length === 0) {
+    generalMessage = fallbackMessage(data)
+  }
+
+  return { fieldErrors, generalMessage }
+}
+
 export function buildJobPayload(form) {
   const hasCoords = hasValidCoordinates(form.latitude, form.longitude)
   return {

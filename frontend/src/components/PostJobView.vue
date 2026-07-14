@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useJobsStore } from '../stores/jobs'
 import { useProfileStore } from '../stores/profile'
-import { buildJobPayload, emptyJobForm, validateJobForm } from '../utils/jobForm'
+import { buildJobPayload, emptyJobForm, mapServerErrors, validateJobFormFields } from '../utils/jobForm'
 import { normalizeRole } from '../utils/role'
 import { logout } from '../utils/session'
 import BrandLogo from './BrandLogo.vue'
@@ -15,6 +15,7 @@ const jobsStore = useJobsStore()
 
 const jobForm = ref(emptyJobForm())
 const jobFormError = ref('')
+const fieldErrors = ref({})
 const creating = ref(false)
 
 // Only hiring accounts may post jobs. Send everyone else back to the dashboard.
@@ -33,8 +34,12 @@ function goDashboard() {
 }
 
 async function createJob() {
-  jobFormError.value = validateJobForm(jobForm.value)
-  if (jobFormError.value) return
+  fieldErrors.value = validateJobFormFields(jobForm.value)
+  if (Object.keys(fieldErrors.value).length > 0) {
+    jobFormError.value = 'Please fix the highlighted fields below.'
+    return
+  }
+  jobFormError.value = ''
 
   creating.value = true
   try {
@@ -42,7 +47,13 @@ async function createJob() {
     jobForm.value = emptyJobForm()
     router.push('/')
   } catch (err) {
-    jobFormError.value = err.response?.data?.message || err.message || 'Failed to create job post.'
+    const { fieldErrors: serverFields, generalMessage } = mapServerErrors(err.response?.data)
+    fieldErrors.value = serverFields
+    if (Object.keys(serverFields).length > 0) {
+      jobFormError.value = generalMessage || 'Please fix the highlighted fields below.'
+    } else {
+      jobFormError.value = generalMessage || err.message || 'Failed to create job post.'
+    }
   } finally {
     creating.value = false
   }
@@ -62,8 +73,9 @@ async function createJob() {
     <PostJobPage
       :job-form="jobForm"
       :job-form-error="jobFormError"
+      :field-errors="fieldErrors"
       :creating="creating"
-      @update:job-form="(value) => (jobForm = value)"
+      @update:job-form="(value) => { jobForm = value; fieldErrors = {}; jobFormError = '' }"
       @submit="createJob"
       @back="goDashboard"
     />
