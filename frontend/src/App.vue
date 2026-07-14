@@ -8,7 +8,7 @@ import AppDashboard from './components/AppDashboard.vue'
 import AuthModal from './components/AuthModal.vue'
 import BrandLogo from './components/BrandLogo.vue'
 import NetworkBackground from './components/NetworkBackground.vue'
-import Privacypolicy from './components/privacypolicy.vue'
+import PrivacyPolicy from './components/privacypolicy.vue'
 gsap.registerPlugin(ScrollTrigger)
 
 const showModal = ref(false)
