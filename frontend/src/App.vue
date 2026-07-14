@@ -16,7 +16,7 @@ const authEmail = ref('')
 const authRole = ref('LookingForWork')
 const authMode=ref('register')
 const ctaEmail = ref('')
-
+const footerRef = ref(null)
 const headerRef = ref(null)
 const heroRef = ref(null)
 const statsRef = ref(null)
@@ -24,6 +24,7 @@ const stepsRef = ref(null)
 const ctaRef = ref(null)
 const heroContentRef = ref(null)
 const footerRef = ref(null)
+const showPrivacyPolicy = ref(false)
 
 let ctx
 let onScroll
@@ -144,10 +145,26 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <AuthModal v-if="showModal" :initial-email="authEmail" :initial-role="authRole" :initial-mode="authMode" @close="showModal = false" @success="onAuthSuccess" />
-  <router-view v-if="isAuth === true" />
+ <AuthModal
+  v-if="showModal"
+  :initial-email="authEmail"
+  :initial-role="authRole"
+  :initial-mode="authMode"
+  @close="showModal = false"
+  @success="onAuthSuccess"
+/>
 
-  <div v-if="isAuth === false" class="app-shell">
+<router-view v-if="isAuth === true" />
+
+<Privacypolicy
+  v-if="isAuth === false && showPrivacyPolicy"
+  @back="showPrivacyPolicy = false"
+/>
+
+<div
+  v-if="isAuth === false && !showPrivacyPolicy"
+  class="app-shell"
+>
     <NetworkBackground />
 
     <!-- Header -->
@@ -245,6 +262,7 @@ onUnmounted(() => {
     </section>
 
     <!-- Footer -->
+     
     <footer ref="footerRef" class="site-footer">
       <div class="footer-main">
         <BrandLogo />
@@ -253,7 +271,7 @@ onUnmounted(() => {
       <div class="footer-bottom">
         <p>&copy; {{ new Date().getFullYear() }} LocalHire. All rights reserved.</p>
         <div class="footer-links">
-          <a href="#">Privacy</a>
+          <a href="#" @click.prevent="showPrivacyPolicy = true">Privacy</a>
           <a href="#">Terms</a>
           <a href="#">Contact</a>
         </div>
