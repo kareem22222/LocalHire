@@ -8,7 +8,7 @@ import AppDashboard from './components/AppDashboard.vue'
 import AuthModal from './components/AuthModal.vue'
 import BrandLogo from './components/BrandLogo.vue'
 import NetworkBackground from './components/NetworkBackground.vue'
-
+import Privacypolicy from './components/privacypolicy.vue'
 gsap.registerPlugin(ScrollTrigger)
 
 const showModal = ref(false)
@@ -25,6 +25,7 @@ const stepsRef = ref(null)
 const ctaRef = ref(null)
 const heroContentRef = ref(null)
 const footerRef = ref(null)
+const showPrivacyPolicy = ref(false)
 
 let ctx
 let onScroll
@@ -152,9 +153,12 @@ onUnmounted(() => {
 
 <template>
   <AuthModal v-if="showModal" :initial-email="authEmail" :initial-role="authRole" :initial-mode="authMode" @close="showModal = false" @success="onAuthSuccess" />
-  <AppDashboard v-if="isAuth === true" @logout="handleLogout" />
+  <AppDashboard v-if="isAuth === true" @logout="handleLogout" /><Privacypolicy
+  v-if="isAuth === false && showPrivacyPolicy"
+  @back="showPrivacyPolicy = false"
+/>
 
-  <div v-if="isAuth === false" class="app-shell">
+  <div v-if="isAuth === false && !showPrivacyPolicy" class="app-shell">
     <NetworkBackground />
 
     <!-- Header -->
@@ -260,7 +264,7 @@ onUnmounted(() => {
       <div class="footer-bottom">
         <p>&copy; {{ new Date().getFullYear() }} LocalHire. All rights reserved.</p>
         <div class="footer-links">
-          <a href="#">Privacy</a>
+          <a href="#" @click.prevent="showPrivacyPolicy = true">Privacy</a>
           <a href="#">Terms</a>
           <a href="#">Contact</a>
         </div>
