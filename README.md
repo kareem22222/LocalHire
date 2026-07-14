@@ -86,7 +86,8 @@ applications once. Sign in with `demo@localhire.test` / `LocalHire1!` and
 select either account role. Generated accounts such as
 `employer001@localhire.test` and `worker0001@localhire.test` use the same
 password. The seed flag is enabled only by the local launch profile and local
-Docker Compose; it is not enabled by the RDS configuration.
+Docker Compose, and by the `LocalHire-dev` Elastic Beanstalk deployment.
+Production explicitly disables it.
 
 ## Production-style Local Build
 

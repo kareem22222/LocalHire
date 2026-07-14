@@ -63,9 +63,13 @@ jobs:
           case "$TARGET_ENVIRONMENT" in
             dev)
               echo "environment_name=LocalHire-dev" >> "$GITHUB_OUTPUT"
+              echo "aspnetcore_environment=Development" >> "$GITHUB_OUTPUT"
+              echo "seed_mock_data=true" >> "$GITHUB_OUTPUT"
               ;;
             prod)
               echo "environment_name=LocalHire-prod" >> "$GITHUB_OUTPUT"
+              echo "aspnetcore_environment=Production" >> "$GITHUB_OUTPUT"
+              echo "seed_mock_data=false" >> "$GITHUB_OUTPUT"
               ;;
             *)
               echo "Unknown target environment: $TARGET_ENVIRONMENT" >&2
@@ -86,6 +90,8 @@ jobs:
           APPLICATION_NAME: ${{ inputs.application_name }}
           ENVIRONMENT_NAME: ${{ steps.target.outputs.environment_name }}
           VERSION_LABEL: ${{ steps.bundle.outputs.version_label }}
+          ASPNETCORE_ENVIRONMENT: ${{ steps.target.outputs.aspnetcore_environment }}
+          SEED_MOCK_DATA: ${{ steps.target.outputs.seed_mock_data }}
         run: |
           bucket="$(aws elasticbeanstalk create-storage-location --query S3Bucket --output text)"
           key="resources/${APPLICATION_NAME}/${VERSION_LABEL}/localhire-eb-docker-source.zip"
@@ -98,6 +104,15 @@ jobs:
             --version-label "$VERSION_LABEL" \
             --source-bundle S3Bucket="$bucket",S3Key="$key" \
             --process
+
+          aws elasticbeanstalk update-environment \
+            --environment-name "$ENVIRONMENT_NAME" \
+            --option-settings \
+              "Namespace=aws:elasticbeanstalk:application:environment,OptionName=ASPNETCORE_ENVIRONMENT,Value=${ASPNETCORE_ENVIRONMENT}" \
+              "Namespace=aws:elasticbeanstalk:application:environment,OptionName=MockData__SeedOnStartup,Value=${SEED_MOCK_DATA}"
+
+          aws elasticbeanstalk wait environment-updated \
+            --environment-name "$ENVIRONMENT_NAME"
 
           aws elasticbeanstalk update-environment \
             --environment-name "$ENVIRONMENT_NAME" \

@@ -11,7 +11,6 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
-using Npgsql;
 using Serilog;
 using Serilog.Formatting.Json;
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -152,10 +151,8 @@ if (!app.Environment.IsEnvironment("Test"))
     var database = scope.ServiceProvider.GetRequiredService<LocalHireDbContext>();
     await database.Database.MigrateAsync();
 
-    var databaseHost = new NpgsqlConnectionStringBuilder(connectionString).Host;
     if (app.Environment.IsDevelopment()
-        && app.Configuration.GetValue<bool>("MockData:SeedOnStartup")
-        && databaseHost is "localhost" or "127.0.0.1" or "::1" or "database")
+        && app.Configuration.GetValue<bool>("MockData:SeedOnStartup"))
     {
         await MockDataSeeder.SeedAsync(database);
     }
