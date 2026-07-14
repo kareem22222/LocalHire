@@ -23,7 +23,6 @@ const statsRef = ref(null)
 const stepsRef = ref(null)
 const ctaRef = ref(null)
 const heroContentRef = ref(null)
-const footerRef = ref(null)
 const showPrivacyPolicy = ref(false)
 
 let ctx
