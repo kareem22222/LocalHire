@@ -9,6 +9,10 @@ function nearbyKey(params = {}) {
   return `${Number(params.lat).toFixed(3)},${Number(params.lng).toFixed(3)}`
 }
 
+function isFresh(timestamp) {
+  return timestamp > 0 && Date.now() - timestamp < JOBS_TTL_MS
+}
+
 export const useJobsStore = defineStore('jobs', () => {
   const myJobs = ref([])
   const myJobsFetchedAt = ref(0)
@@ -20,10 +24,6 @@ export const useJobsStore = defineStore('jobs', () => {
   const myApplications = ref([])
   const myApplicationsFetchedAt = ref(0)
   const pending = new Map()
-
-  function isFresh(timestamp) {
-    return timestamp > 0 && Date.now() - timestamp < JOBS_TTL_MS
-  }
 
   function runOnce(key, request) {
     if (pending.has(key)) return pending.get(key)
