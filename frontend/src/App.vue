@@ -7,7 +7,7 @@ import { isAuthenticated } from './api'
 import AuthModal from './components/AuthModal.vue'
 import BrandLogo from './components/BrandLogo.vue'
 import NetworkBackground from './components/NetworkBackground.vue'
-
+import PrivacyPolicy from './components/PrivacyPolicy.vue'
 gsap.registerPlugin(ScrollTrigger)
 
 const showModal = ref(false)
@@ -16,14 +16,14 @@ const authEmail = ref('')
 const authRole = ref('LookingForWork')
 const authMode=ref('register')
 const ctaEmail = ref('')
-
+const footerRef = ref(null)
 const headerRef = ref(null)
 const heroRef = ref(null)
 const statsRef = ref(null)
 const stepsRef = ref(null)
 const ctaRef = ref(null)
 const heroContentRef = ref(null)
-const footerRef = ref(null)
+const showPrivacyPolicy = ref(false)
 
 let ctx
 let onScroll
@@ -53,6 +53,19 @@ function onAuthSuccess({ mode } = {}) {
 
 function handleCtaSubmit() {
   openModal(ctaEmail.value.trim())
+}
+function openPrivacy() {
+  showPrivacyPolicy.value = true
+  scrollToTop()
+}
+
+function closePrivacy() {
+  showPrivacyPolicy.value = false
+  scrollToTop()
+}
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
 }
 
 onMounted(async () => {
@@ -144,10 +157,26 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <AuthModal v-if="showModal" :initial-email="authEmail" :initial-role="authRole" :initial-mode="authMode" @close="showModal = false" @success="onAuthSuccess" />
-  <router-view v-if="isAuth === true" />
+ <AuthModal
+  v-if="showModal"
+  :initial-email="authEmail"
+  :initial-role="authRole"
+  :initial-mode="authMode"
+  @close="showModal = false"
+  @success="onAuthSuccess"
+/>
 
-  <div v-if="isAuth === false" class="app-shell">
+<router-view v-if="isAuth === true" />
+
+<PrivacyPolicy
+  v-if="showPrivacyPolicy"
+  @back="closePrivacy"
+/>
+
+<div
+  v-if="isAuth === false && !showPrivacyPolicy"
+  class="app-shell"
+>
     <NetworkBackground />
 
     <!-- Header -->
@@ -245,6 +274,7 @@ onUnmounted(() => {
     </section>
 
     <!-- Footer -->
+     
     <footer ref="footerRef" class="site-footer">
       <div class="footer-main">
         <BrandLogo />
@@ -253,7 +283,7 @@ onUnmounted(() => {
       <div class="footer-bottom">
         <p>&copy; {{ new Date().getFullYear() }} LocalHire. All rights reserved.</p>
         <div class="footer-links">
-          <a href="#">Privacy</a>
+          <a href="#" @click.prevent="openPrivacy">Privacy</a>
           <a href="#">Terms</a>
           <a href="#">Contact</a>
         </div>
