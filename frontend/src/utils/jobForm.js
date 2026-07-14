@@ -105,48 +105,76 @@ function serverKeyToField(key) {
   return SERVER_FIELD_TO_FORM[base] || null
 }
 
-export function validateJobFormFields(form) {
-  const errors = {}
+function validateRequiredText(form, errors) {
+  const required = {
+    title: 'Title is required.',
+    description: 'Description is required.',
+    workplaceName: 'Workplace name is required.',
+    cityArea: 'City / area is required.',
+  }
+  for (const [field, message] of Object.entries(required)) {
+    if (!String(form[field] ?? '').trim()) errors[field] = message
+  }
+}
 
-  if (!String(form.title ?? '').trim()) errors.title = 'Title is required.'
-  if (!String(form.description ?? '').trim()) errors.description = 'Description is required.'
-  if (!String(form.workplaceName ?? '').trim()) errors.workplaceName = 'Workplace name is required.'
-  if (!String(form.cityArea ?? '').trim()) errors.cityArea = 'City / area is required.'
-
+function validateLocation(form, errors) {
   if (!/^\d{6}$/.test(String(form.pincode ?? '').trim())) {
     errors.pincode = 'Enter a valid 6-digit pincode.'
   } else if (!String(form.state ?? '').trim()) {
     errors.state = 'Please wait for the state to load from the pincode.'
   }
+}
 
-  const salaryMin = numberOrNull(form.salaryMin)
-  const salaryMax = numberOrNull(form.salaryMax)
-  if (salaryMin != null && salaryMin < 0) errors.salaryMin = 'Salary cannot be negative.'
-  if (salaryMax != null && salaryMax < 0) errors.salaryMax = 'Salary cannot be negative.'
-  if (salaryMin != null && salaryMax != null && salaryMax < salaryMin) {
+function validateSalary(form, errors) {
+  const min = numberOrNull(form.salaryMin)
+  const max = numberOrNull(form.salaryMax)
+  if (isNegative(min)) errors.salaryMin = 'Salary cannot be negative.'
+  if (isNegative(max)) errors.salaryMax = 'Salary cannot be negative.'
+  if (min != null && max != null && max < min) {
     errors.salaryMax = 'Maximum salary must be greater than or equal to minimum salary.'
   }
-  if ((salaryMin != null || salaryMax != null) && !String(form.salaryPeriod ?? '').trim()) {
+  if ((min != null || max != null) && !String(form.salaryPeriod ?? '').trim()) {
     errors.salaryPeriod = 'Select a pay period when you enter a salary.'
   }
+}
 
-  const expMin = numberOrNull(form.experienceMinYears)
-  const expMax = numberOrNull(form.experienceMaxYears)
-  if (expMin != null && (expMin < 0 || expMin > 60)) {
-    errors.experienceMinYears = 'Experience must be between 0 and 60 years.'
-  }
-  if (expMax != null && (expMax < 0 || expMax > 60)) {
-    errors.experienceMaxYears = 'Experience must be between 0 and 60 years.'
-  }
-  if (expMin != null && expMax != null && expMax < expMin) {
+function validateExperience(form, errors) {
+  const min = numberOrNull(form.experienceMinYears)
+  const max = numberOrNull(form.experienceMaxYears)
+  const message = 'Experience must be between 0 and 60 years.'
+  if (isOutsideRange(min, 0, 60)) errors.experienceMinYears = message
+  if (isOutsideRange(max, 0, 60)) errors.experienceMaxYears = message
+  if (min != null && max != null && max < min) {
     errors.experienceMaxYears = 'Maximum experience must be greater than or equal to minimum experience.'
   }
-
-  const openings = numberOrNull(form.openings)
-  if (openings != null && (openings < 1 || openings > 10000)) {
-    errors.openings = 'Openings must be between 1 and 10,000.'
   }
 
+function validateOpenings(form, errors) {
+  const openings = numberOrNull(form.openings)
+  if (isOutsideRange(openings, 1, 10000)) {
+    errors.openings = 'Openings must be between 1 and 10,000.'
+  }
+}
+
+function isNegative(value) {
+  return value != null && value < 0
+}
+
+function isOutsideRange(value, min, max) {
+  return value != null && (value < min || value > max)
+}
+
+// Validates the form on the client and returns a { fieldKey: message } object.
+// Empty object means the form passed all client-side checks. The rules mirror
+// the backend CreateJobPostRequestValidator so users get the same feedback
+// instantly, before a request is sent.
+export function validateJobFormFields(form) {
+  const errors = {}
+  validateRequiredText(form, errors)
+  validateLocation(form, errors)
+  validateSalary(form, errors)
+  validateExperience(form, errors)
+  validateOpenings(form, errors)
   return errors
 }
 
@@ -166,22 +194,19 @@ export function mapServerErrors(data) {
   const fieldErrors = {}
   let generalMessage = ''
 
-  const serverErrors = data?.errors
-  if (serverErrors && typeof serverErrors === 'object') {
-    for (const [key, value] of Object.entries(serverErrors)) {
-      const text = Array.isArray(value) ? value.join(' ') : String(value)
+  for (const [key, value] of Object.entries(data?.errors ?? {})) {
+    const text = errorText(value)
     if (!text) continue
     const field = serverKeyToField(key)
     if (field) {
-        fieldErrors[field] = fieldErrors[field] ? `${fieldErrors[field]} ${text}` : text
+      fieldErrors[field] = appendMessage(fieldErrors[field], text)
     } else {
-        generalMessage = generalMessage ? `${generalMessage} ${text}` : text
-      }
+      generalMessage = appendMessage(generalMessage, text)
     }
   }
 
   if (!generalMessage && Object.keys(fieldErrors).length === 0) {
-    generalMessage = data?.message || data?.error || data?.title || ''
+    generalMessage = fallbackMessage(data)
   }
 
   return { fieldErrors, generalMessage }
