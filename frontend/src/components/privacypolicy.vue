@@ -1,7 +1,10 @@
 <script setup>
 const emit = defineEmits(['back'])
-</script>
 
+function goBack() {
+  emit('back')
+}
+</script>
 <template>
   <div class="privacy-page">
     <div class="privacy-card">
@@ -13,10 +16,6 @@ const emit = defineEmits(['back'])
       </p>
 
       <div class="privacy-content">
-        <h1>Privacy Policy</h1>
-
-<p><strong>Last updated:</strong> July 14, 2026</p>
-
 <p>
   This Privacy Policy describes Our policies and procedures on the collection,
   use and disclosure of Your information when You use the Service and tells You
@@ -644,25 +643,15 @@ const emit = defineEmits(['back'])
     <a href="mailto:info@localhire.co.in">info@localhire.co.in</a>
   </li>
 </ul>
-
-<hr />
-
-<div class="privacy-actions">
-  <button class="back-btn" @click="emit('back')">
-    ← Back to Home
-  </button>
-</div>
-        <!-- Paste all your Privacy Policy content here -->
-
       </div>
 
       <div class="button-container">
-        <button
-          class="back-btn"
-          @click="emit('back')"
-        >
-          ← Back to Home
-        </button>
+      <button
+  class="back-btn"
+  @click="goBack"
+>
+  ← Back to Home
+</button>
       </div>
 
     </div>

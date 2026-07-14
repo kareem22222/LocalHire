@@ -7,7 +7,7 @@ import { isAuthenticated } from './api'
 import AuthModal from './components/AuthModal.vue'
 import BrandLogo from './components/BrandLogo.vue'
 import NetworkBackground from './components/NetworkBackground.vue'
-
+import PrivacyPolicy from './components/PrivacyPolicy.vue'
 gsap.registerPlugin(ScrollTrigger)
 
 const showModal = ref(false)
@@ -53,6 +53,9 @@ function onAuthSuccess({ mode } = {}) {
 
 function handleCtaSubmit() {
   openModal(ctaEmail.value.trim())
+}
+function closePrivacy() {
+  showPrivacyPolicy.value = false
 }
 
 onMounted(async () => {
@@ -155,9 +158,9 @@ onUnmounted(() => {
 
 <router-view v-if="isAuth === true" />
 
-<Privacypolicy
-  v-if="isAuth === false && showPrivacyPolicy"
-  @back="showPrivacyPolicy = false"
+<PrivacyPolicy
+  v-if="showPrivacyPolicy"
+  @back="closePrivacy"
 />
 
 <div
