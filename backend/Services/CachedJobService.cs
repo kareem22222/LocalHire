@@ -1,3 +1,4 @@
+using System.Globalization;
 using LocalHire.Api.DTOs;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -58,7 +59,7 @@ public sealed class CachedJobService : IJobService
     {
         var location = lat is null || lng is null
             ? "all"
-            : $"{lat.Value:F3}:{lng.Value:F3}";
+            : $"{lat.Value.ToString("F3", CultureInfo.InvariantCulture)}:{lng.Value.ToString("F3", CultureInfo.InvariantCulture)}";
         return GetOrCreateAsync($"nearby:{location}",
             () => _inner.GetNearbyJobsAsync(lat, lng, ct));
     }

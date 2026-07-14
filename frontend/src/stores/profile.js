@@ -14,16 +14,21 @@ export const useProfileStore = defineStore('profile', () => {
     if (!force && isFresh) return profile.value
     if (pendingRequest) return pendingRequest
 
-    pendingRequest = profileApi.getMe()
+    const request = profileApi.getMe()
       .then(({ data }) => {
-        profile.value = data
-        fetchedAt.value = Date.now()
+        if (pendingRequest === request) {
+          profile.value = data
+          fetchedAt.value = Date.now()
+        }
         return data
       })
       .finally(() => {
-        pendingRequest = null
+        if (pendingRequest === request) {
+          pendingRequest = null
+        }
       })
 
+    pendingRequest = request
     return pendingRequest
   }
 

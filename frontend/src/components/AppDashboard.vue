@@ -1,6 +1,6 @@
 <script setup>
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useJobsStore } from '../stores/jobs'
 import { useProfileStore } from '../stores/profile'
@@ -32,6 +32,10 @@ const profileSaveError = ref('')
 // --- Shared ---
 const activeTab = ref(typeof localStorage !== 'undefined' ? (localStorage.getItem('dashboard_tab') || 'dashboard') : 'dashboard')
 
+watch(activeTab, (tab) => {
+  if (typeof localStorage !== 'undefined') localStorage.setItem('dashboard_tab', tab)
+})
+
 async function fetchProfile() {
   try {
     const data = await profileStore.fetchProfile()
@@ -56,12 +60,10 @@ function handleProfileClick() {
   profileSaveError.value = ''
   emit('profile', user.value)
   activeTab.value = 'profile'
-  if (typeof localStorage !== 'undefined') localStorage.setItem('dashboard_tab', 'profile')
 }
 
 function closeProfile() {
   activeTab.value = 'dashboard'
-  if (typeof localStorage !== 'undefined') localStorage.setItem('dashboard_tab', 'dashboard')
 }
 
 async function handleProfileSave(details) {
@@ -69,7 +71,6 @@ async function handleProfileSave(details) {
   try {
     await profileStore.updateProfile(details)
     activeTab.value = 'profile'
-    if (typeof localStorage !== 'undefined') localStorage.setItem('dashboard_tab', 'profile')
   } catch (err) {
     user.value = { ...user.value, ...details }
     const reason = err.response?.data?.message || err.message
@@ -117,7 +118,6 @@ function closeApplications() {
 function goToDashboard() {
   selectedJobApplications.value = null
   activeTab.value = 'dashboard'
-  if (typeof localStorage !== 'undefined') localStorage.setItem('dashboard_tab', 'dashboard')
 }
 
 // ============================================================
