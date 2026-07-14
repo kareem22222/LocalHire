@@ -75,7 +75,7 @@ async function createJob() {
       :job-form-error="jobFormError"
       :field-errors="fieldErrors"
       :creating="creating"
-      @update:job-form="(value) => (jobForm = value)"
+      @update:job-form="(value) => { jobForm = value; fieldErrors = {}; jobFormError = '' }"
       @submit="createJob"
       @back="goDashboard"
     />
