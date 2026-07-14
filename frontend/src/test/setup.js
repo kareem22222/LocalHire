@@ -15,9 +15,8 @@ afterEach(async () => {
   if (typeof localStorage.clear === 'function') {
     localStorage.clear()
   }
-import { clearAuth } from '../api'
-
-  }
+  const { clearAuth } = await vi.importActual('../api')
+  clearAuth()
   vi.restoreAllMocks()
   if (originalGeolocation) {
     Object.defineProperty(navigator, 'geolocation', originalGeolocation)
@@ -25,4 +24,4 @@ import { clearAuth } from '../api'
     delete navigator.geolocation
   }
   vi.unstubAllGlobals()
-})})
+})
