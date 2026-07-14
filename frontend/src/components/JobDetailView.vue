@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { getJob, updateJob } from '../api/jobs'
+import { useJobsStore } from '../stores/jobs'
 import { buildJobPayload, jobResponseToForm, validateJobForm } from '../utils/jobForm'
 import { logout } from '../utils/session'
 import BrandLogo from './BrandLogo.vue'
@@ -13,6 +13,7 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const jobsStore = useJobsStore()
 
 const jobForm = ref(null)
 // Snapshot of the last-saved values so "Cancel" can discard in-progress edits.
@@ -27,7 +28,7 @@ const editing = ref(false)
 // the user back to the dashboard (a 401 reloads via the API interceptor).
 onMounted(async () => {
   try {
-    const { data } = await getJob(props.id)
+    const data = await jobsStore.loadJob(props.id)
     jobForm.value = jobResponseToForm(data)
     originalForm.value = { ...jobForm.value }
     editing.value = props.mode === 'edit'
@@ -61,7 +62,7 @@ async function saveJob() {
 
   saving.value = true
   try {
-    const { data } = await updateJob(props.id, buildJobPayload(jobForm.value))
+    const data = await jobsStore.updateJob(props.id, buildJobPayload(jobForm.value))
     // Stay on this page: reflect the saved values in the read-only view.
     jobForm.value = jobResponseToForm(data)
     originalForm.value = { ...jobForm.value }

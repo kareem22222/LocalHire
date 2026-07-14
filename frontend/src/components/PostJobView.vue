@@ -1,8 +1,8 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { getMe } from '../api/profile'
-import { createJob as submitJobPost } from '../api/jobs'
+import { useJobsStore } from '../stores/jobs'
+import { useProfileStore } from '../stores/profile'
 import { buildJobPayload, emptyJobForm, validateJobForm } from '../utils/jobForm'
 import { normalizeRole } from '../utils/role'
 import { logout } from '../utils/session'
@@ -10,6 +10,8 @@ import BrandLogo from './BrandLogo.vue'
 import PostJobPage from './PostJobPage.vue'
 
 const router = useRouter()
+const profileStore = useProfileStore()
+const jobsStore = useJobsStore()
 
 const jobForm = ref(emptyJobForm())
 const jobFormError = ref('')
@@ -18,10 +20,8 @@ const creating = ref(false)
 // Only hiring accounts may post jobs. Send everyone else back to the dashboard.
 onMounted(async () => {
   try {
-    const { data } = await getMe()
-    if (normalizeRole(data.role) !== 'hiring') {
-      router.replace('/')
-    }
+    const profile = await profileStore.fetchProfile()
+    if (normalizeRole(profile.role) !== 'hiring') router.replace('/')
   } catch {
     // A 401 triggers a reload via the API interceptor; other errors return home.
     router.replace('/')
@@ -38,7 +38,7 @@ async function createJob() {
 
   creating.value = true
   try {
-    await submitJobPost(buildJobPayload(jobForm.value))
+    await jobsStore.createJob(buildJobPayload(jobForm.value))
     jobForm.value = emptyJobForm()
     router.push('/')
   } catch (err) {
