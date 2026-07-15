@@ -9,11 +9,11 @@ internal static class EndpointHelpers
 {
     private const string CoordinatesErrorKey = "coordinates";
 
-    private static readonly string[] CoordinatesRequiredTogether =
-        { "Latitude and longitude are required together." };
+    private const string CoordinatesRequiredTogether =
+        "Latitude and longitude are required together.";
 
-    private static readonly string[] CoordinatesOutOfRange =
-        { "Latitude must be between -90 and 90, and longitude must be between -180 and 180." };
+    private const string CoordinatesOutOfRange =
+        "Latitude must be between -90 and 90, and longitude must be between -180 and 180.";
 
     public static Dictionary<string, string[]> ToValidationErrors(this ValidationResult validation) =>
         validation.Errors
@@ -39,7 +39,7 @@ internal static class EndpointHelpers
         {
             return Results.ValidationProblem(new Dictionary<string, string[]>
             {
-                [CoordinatesErrorKey] = CoordinatesRequiredTogether
+                [CoordinatesErrorKey] = [CoordinatesRequiredTogether]
             });
         }
 
@@ -48,7 +48,7 @@ internal static class EndpointHelpers
         {
             return Results.ValidationProblem(new Dictionary<string, string[]>
             {
-                [CoordinatesErrorKey] = CoordinatesOutOfRange
+                [CoordinatesErrorKey] = [CoordinatesOutOfRange]
             });
         }
 

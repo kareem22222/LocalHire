@@ -60,6 +60,19 @@ describe('AllRolesPage', () => {
     expect(wrapper.text()).toContain('No open roles yet')
   })
 
+  it('logs failures when roles cannot be loaded', async () => {
+    const error = new Error('network error')
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    api.get.mockRejectedValue(error)
+
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(log).toHaveBeenCalledWith('Failed to load roles.', error)
+    expect(wrapper.text()).not.toContain('Loading roles...')
+    log.mockRestore()
+  })
+
   it('navigates back to the dashboard', async () => {
     const wrapper = mountPage()
     await flushPromises()

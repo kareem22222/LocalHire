@@ -25,6 +25,12 @@ describe('HiringDashboard', () => {
     expect(wrapper.text()).toContain('No talent found')
   })
 
+  it('renders a candidate with no name without throwing', () => {
+    const wrapper = mountHiringDashboard({ candidates: [{ id: 1, name: null, matchScore: 70 }] })
+
+    expect(wrapper.find('.candidate-card__avatar').text()).toBe('')
+  })
+
   it('filters candidates provided through props', async () => {
     const wrapper = mountHiringDashboard({
       candidates: [

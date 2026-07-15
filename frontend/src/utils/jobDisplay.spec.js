@@ -106,5 +106,7 @@ describe('formatRoleStatus', () => {
   it('reports a brand new role with no applicants', () => {
     expect(formatRoleStatus({ isActive: true, applicationCount: 0 })).toBe('New role')
     expect(formatRoleStatus({})).toBe('New role')
+    expect(formatRoleStatus()).toBe('New role')
+    expect(formatRoleStatus(null)).toBe('New role')
   })
 })

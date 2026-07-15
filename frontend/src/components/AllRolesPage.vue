@@ -19,7 +19,8 @@ onMounted(async () => {
   loading.value = true
   try {
     await jobsStore.loadMyJobs()
-  } catch {
+  } catch (error) {
+    console.error('Failed to load roles.', error)
   } finally {
     loading.value = false
   }

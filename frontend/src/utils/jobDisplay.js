@@ -50,7 +50,7 @@ export function formatShift(job) {
 // Short pipeline status shown on hiring role cards. Kept as a plain function so
 // the branching stays readable (no nested ternaries) and is unit-testable.
 export function formatRoleStatus(job) {
-  if (job.isActive === false) return 'Inactive'
-  if ((job.applicationCount ?? 0) > 0) return 'Review applicants'
+  if (job?.isActive === false) return 'Inactive'
+  if ((job?.applicationCount ?? 0) > 0) return 'Review applicants'
   return 'New role'
 }

@@ -12,7 +12,7 @@ function candidateLocation(candidate) {
 
 <template>
   <article class="candidate-card">
-    <div class="candidate-card__avatar">{{ candidate.name.slice(0, 1) }}</div>
+    <div class="candidate-card__avatar">{{ candidate.name?.slice(0, 1) }}</div>
     <div class="candidate-card__body">
       <div class="candidate-card__top">
         <div>
