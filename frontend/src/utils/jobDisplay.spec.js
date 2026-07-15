@@ -4,6 +4,7 @@ import {
   formatEmploymentType,
   formatExperience,
   formatJobLocation,
+  formatRoleStatus,
   formatSalary,
   formatShift,
 } from './jobDisplay'
@@ -90,5 +91,20 @@ describe('formatShift', () => {
 
   it('returns an empty string when nothing is set', () => {
     expect(formatShift({})).toBe('')
+  })
+})
+
+describe('formatRoleStatus', () => {
+  it('reports an inactive role', () => {
+    expect(formatRoleStatus({ isActive: false, applicationCount: 5 })).toBe('Inactive')
+  })
+
+  it('reports a role that needs applicant review', () => {
+    expect(formatRoleStatus({ isActive: true, applicationCount: 3 })).toBe('Review applicants')
+  })
+
+  it('reports a brand new role with no applicants', () => {
+    expect(formatRoleStatus({ isActive: true, applicationCount: 0 })).toBe('New role')
+    expect(formatRoleStatus({})).toBe('New role')
   })
 })

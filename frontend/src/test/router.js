@@ -9,6 +9,8 @@ export function createTestRouter() {
     routes: [
       { path: '/', name: 'dashboard', component: { template: '<div />' } },
       { path: '/PostNewJob', name: 'post-new-job', component: { template: '<div />' } },
+      { path: '/hiring/roles', name: 'all-roles', component: { template: '<div />' } },
+      { path: '/hiring/candidates', name: 'all-candidates', component: { template: '<div />' } },
       { path: '/jobs/:id', name: 'job-view', component: { template: '<div />' } },
       { path: '/jobs/:id/edit', name: 'job-edit', component: { template: '<div />' } },
     ],

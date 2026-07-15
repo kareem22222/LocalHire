@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import '../hiring-dashboard.css'
+import { formatRoleStatus } from '../utils/jobDisplay'
 
 const props = defineProps({
   myJobs: { type: Array, default: () => [] },
@@ -98,7 +99,7 @@ const openRoles = computed(() => {
       workplaceName: job.workplaceName,
       applicants,
       shortlisted: Math.min(Math.round(applicants * 0.35), applicants),
-      status: job.isActive === false ? 'Inactive' : applicants > 0 ? 'Review applicants' : 'New role',
+      status: formatRoleStatus(job),
       isBackendJob: true,
     }
   })

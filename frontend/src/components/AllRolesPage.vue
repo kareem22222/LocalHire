@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useJobsStore } from '../stores/jobs'
+import { formatRoleStatus } from '../utils/jobDisplay'
 import BrandLogo from './BrandLogo.vue'
 import '../hiring-dashboard.css'
 
@@ -22,7 +23,7 @@ const openRoles = computed(() =>
       workplaceName: job.workplaceName,
       applicants,
       shortlisted: Math.min(Math.round(applicants * 0.35), applicants),
-      status: job.isActive === false ? 'Inactive' : applicants > 0 ? 'Review applicants' : 'New role',
+      status: formatRoleStatus(job),
     }
   }),
 )
