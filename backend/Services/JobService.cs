@@ -133,6 +133,145 @@ public sealed class JobService : IJobService
             .ToList();
     }
 
+    public async Task<IReadOnlyList<CandidateResponse>> GetNearbyCandidatesAsync(
+        double? lat, double? lng, string? search, string? role, Guid employerId, CancellationToken ct)
+    {
+        var query = _db.Users.Where(u => u.Role == UserRole.LookingForWork);
+
+        var term = search?.Trim();
+        var hasSearch = !string.IsNullOrEmpty(term);
+        if (hasSearch)
+        {
+            var pattern = $"%{term}%";
+            query = query.Where(u =>
+                EF.Functions.ILike(u.Name, pattern) ||
+                (u.JobTitle != null && EF.Functions.ILike(u.JobTitle, pattern)) ||
+                (u.CityArea != null && EF.Functions.ILike(u.CityArea, pattern)) ||
+                (u.State != null && EF.Functions.ILike(u.State, pattern)) ||
+                (u.Pincode != null && EF.Functions.ILike(u.Pincode, pattern)));
+        }
+
+        var roleFilter = role?.Trim();
+        if (!string.IsNullOrEmpty(roleFilter))
+        {
+            query = query.Where(u => u.JobTitle != null && u.JobTitle == roleFilter);
+        }
+
+        // With coordinates and NO typed search term this is the "talent near your
+        // business" default, so results are restricted to the local radius. A typed
+        // search term is an explicit, location-independent request (e.g. a pincode
+        // or city in another state), so it must NOT be constrained by the radius —
+        // matches anywhere should surface (ordered by proximity further below).
+        if (lat is not null && lng is not null && !hasSearch)
+        {
+            var box = GeoCalculator.GetBoundingBox(lat.Value, lng.Value, NearbyRadiusKm);
+
+            var nearbyQuery = query
+                .Where(u => u.Latitude != null && u.Longitude != null)
+                .Where(u => u.Latitude >= box.MinLat && u.Latitude <= box.MaxLat);
+
+            if (!box.CoversAllLongitudes)
+            {
+                if (box.MinLng < -180)
+                    nearbyQuery = nearbyQuery.Where(u => u.Longitude >= box.MinLng + 360 || u.Longitude <= box.MaxLng);
+                else if (box.MaxLng > 180)
+                    nearbyQuery = nearbyQuery.Where(u => u.Longitude >= box.MinLng || u.Longitude <= box.MaxLng - 360);
+                else
+                    nearbyQuery = nearbyQuery.Where(u => u.Longitude >= box.MinLng && u.Longitude <= box.MaxLng);
+            }
+
+            var workers = await nearbyQuery.ToListAsync(ct);
+
+            return workers
+                .Select(u => new
+                {
+                    User = u,
+                    Distance = GeoCalculator.HaversineDistance(lat.Value, lng.Value, u.Latitude, u.Longitude)
+                })
+                .Where(x => x.Distance <= NearbyRadiusKm)
+                .OrderBy(x => x.Distance)
+                .Select(x => ToCandidateResponse(x.User, x.Distance))
+                .ToList();
+        }
+
+        // No typed search term and no coordinates: default the list to workers in
+        // the employer's own state so the results stay locally relevant.
+        if (!hasSearch)
+        {
+            var employerState = await _db.Users
+                .Where(u => u.Id == employerId)
+                .Select(u => u.State)
+                .FirstOrDefaultAsync(ct);
+
+            if (!string.IsNullOrWhiteSpace(employerState))
+            {
+                query = query.Where(u => u.State != null && u.State == employerState);
+            }
+        }
+
+        // Reaches here for a global search (typed term, with or without
+        // coordinates) or the state-default fallback. Cap the fetch, then order by
+        // proximity when we have an origin so the nearest matches come first while
+        // still surfacing matches that lie outside the local radius.
+        var matchedWorkers = await query
+            .OrderByDescending(u => u.CreatedAt)
+            .Take(200)
+            .ToListAsync(ct);
+
+        if (lat is not null && lng is not null)
+        {
+            return matchedWorkers
+                .Select(u => new
+                {
+                    User = u,
+                    Distance = GeoCalculator.HaversineDistance(lat.Value, lng.Value, u.Latitude, u.Longitude)
+                })
+                .OrderBy(x => x.Distance)
+                .Take(60)
+                .Select(x => ToCandidateResponse(
+                    x.User, x.Distance >= double.MaxValue ? null : x.Distance))
+                .ToList();
+        }
+
+        return matchedWorkers
+            .Take(60)
+            .Select(u => ToCandidateResponse(u, null))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Maps a worker to a candidate DTO. When a distance is known the match score
+    /// rewards proximity (100 at the door, easing down across the search radius);
+    /// otherwise a neutral baseline is used so location-less results still rank.
+    /// </summary>
+    private static CandidateResponse ToCandidateResponse(Models.User worker, double? distanceKm)
+    {
+        int matchScore;
+        if (distanceKm is not null && distanceKm.Value < double.MaxValue)
+        {
+            var proximity = 1 - Math.Min(distanceKm.Value, NearbyRadiusKm) / NearbyRadiusKm;
+            matchScore = (int)Math.Round(60 + proximity * 39); // 60..99
+        }
+        else
+        {
+            matchScore = 70;
+        }
+
+        return new CandidateResponse(
+            worker.Id,
+            worker.Name,
+            worker.JobTitle,
+            worker.CityArea,
+            worker.State,
+            worker.Pincode,
+            worker.Latitude,
+            worker.Longitude,
+            distanceKm is null || distanceKm.Value >= double.MaxValue
+                ? null
+                : Math.Round(distanceKm.Value, 1),
+            matchScore);
+    }
+
     public async Task<JobApplicationResponse> ApplyAsync(Guid jobId, Guid workerId, CancellationToken ct)
     {
         var jobPost = await _db.JobPosts.FirstOrDefaultAsync(j => j.Id == jobId && j.IsActive, ct)

@@ -20,7 +20,7 @@ describe('HiringDashboard', () => {
   it('does not render demo candidates when no real candidate data exists', async () => {
     const wrapper = mountHiringDashboard()
 
-    await wrapper.find('input[aria-label="Search candidates"]').setValue('routes')
+    await wrapper.find('input[aria-label="Search candidates by address or role"]').setValue('routes')
     expect(wrapper.findAll('.candidate-card')).toHaveLength(0)
     expect(wrapper.text()).toContain('No talent found')
   })
@@ -33,32 +33,46 @@ describe('HiringDashboard', () => {
           name: 'Ananya Rao',
           role: 'Store Associate',
           area: 'Indiranagar',
-          city: 'Bengaluru',
-          availability: 'Immediate',
-          experience: '2 yrs',
-          match: 96,
-          rate: 'Rs 22k/mo',
-          skills: ['Billing'],
+          state: 'Karnataka',
+          pincode: '560038',
+          distanceKm: 2.1,
+          matchScore: 96,
         },
         {
           id: 2,
           name: 'Rahul Mehta',
           role: 'Delivery Partner',
           area: 'Madhapur',
-          city: 'Hyderabad',
-          availability: 'This week',
-          experience: '3 yrs',
-          match: 91,
-          rate: 'Rs 28k/mo',
-          skills: ['Routes'],
+          state: 'Telangana',
+          pincode: '500081',
+          distanceKm: 5.4,
+          matchScore: 91,
         },
       ],
     })
 
-    await wrapper.find('input[aria-label="Search candidates"]').setValue('routes')
+    await wrapper.find('input[aria-label="Search candidates by address or role"]').setValue('madhapur')
 
     expect(wrapper.findAll('.candidate-card h3').map((item) => item.text())).toEqual(['Rahul Mehta'])
-    expect(wrapper.findAll('.hiring-search-panel select')[0].text()).toContain('Delivery Partner')
+    expect(wrapper.find('.talent-search__role select').text()).toContain('Delivery Partner')
+  })
+
+  it('emits use-my-location when the location button is clicked', async () => {
+    const wrapper = mountHiringDashboard()
+
+    await wrapper.find('.talent-search__location').trigger('click')
+
+    expect(wrapper.emitted('use-my-location')).toHaveLength(1)
+  })
+
+  it('emits search-candidates with the selected role', async () => {
+    const wrapper = mountHiringDashboard()
+
+    await wrapper.find('.talent-search__role select').setValue('Driver')
+
+    const events = wrapper.emitted('search-candidates')
+    expect(events).toBeTruthy()
+    expect(events[events.length - 1][0]).toEqual({ search: '', role: 'Driver' })
   })
 
   it('shows an empty state instead of fallback demo roles', () => {
@@ -157,6 +171,6 @@ describe('HiringDashboard', () => {
     wrapper.vm.shortlist(candidate)
 
     expect(wrapper.emitted('shortlist')).toEqual([[candidate]])
-    expect(wrapper.find('input[aria-label="Search candidates"]').element.value).toBe('')
+    expect(wrapper.find('input[aria-label="Search candidates by address or role"]').element.value).toBe('')
   })
 })

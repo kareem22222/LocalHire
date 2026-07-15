@@ -64,6 +64,20 @@ public sealed class CachedJobService : IJobService
             () => _inner.GetNearbyJobsAsync(lat, lng, ct));
     }
 
+    public Task<IReadOnlyList<CandidateResponse>> GetNearbyCandidatesAsync(
+        double? lat, double? lng, string? search, string? role, Guid employerId, CancellationToken ct)
+    {
+        var location = lat is null || lng is null
+            ? "all"
+            : $"{lat.Value.ToString("F3", CultureInfo.InvariantCulture)}:{lng.Value.ToString("F3", CultureInfo.InvariantCulture)}";
+        var term = string.IsNullOrWhiteSpace(search) ? string.Empty : search.Trim().ToLowerInvariant();
+        var roleKey = string.IsNullOrWhiteSpace(role) ? string.Empty : role.Trim().ToLowerInvariant();
+        // Include the employer in the key: with no coordinates and no search term
+        // results depend on the employer's own state, so they are per-employer.
+        return GetOrCreateAsync($"candidates:{employerId}:{location}:{term}:{roleKey}",
+            () => _inner.GetNearbyCandidatesAsync(lat, lng, search, role, employerId, ct));
+    }
+
     public async Task<JobApplicationResponse> ApplyAsync(
         Guid jobId, Guid workerId, CancellationToken ct)
     {
