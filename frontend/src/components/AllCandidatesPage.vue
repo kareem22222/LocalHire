@@ -4,7 +4,9 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useJobsStore } from '../stores/jobs'
 import { useProfileStore } from '../stores/profile'
+import { MAX_VISIBLE_CANDIDATES } from '../utils/jobDisplay'
 import BrandLogo from './BrandLogo.vue'
+import CandidateCard from './CandidateCard.vue'
 import '../hiring-dashboard.css'
 
 const route = useRoute()
@@ -17,6 +19,7 @@ const loading = ref(false)
 
 const searchTerm = computed(() => (route.query.search ?? '').toString())
 const roleTerm = computed(() => (route.query.role ?? '').toString())
+const visibleCandidates = computed(() => candidates.value.slice(0, MAX_VISIBLE_CANDIDATES))
 
 const heading = computed(() => {
   const parts = []
@@ -27,7 +30,7 @@ const heading = computed(() => {
 
 // Mirror the dashboard's request: reuse the employer's saved coordinates (set
 // when they last used "Use my location") plus the search/role from the query so
-// this page shows the same result set, just uncapped.
+// this page shows the same filtered result set.
 function buildParams() {
   const params = {}
   if (profile.value?.latitude != null && profile.value?.longitude != null) {
@@ -52,10 +55,6 @@ async function load() {
 
 onMounted(load)
 watch(() => route.fullPath, load)
-
-function candidateLocation(candidate) {
-  return [candidate.area, candidate.state].filter(Boolean).join(', ') || 'Location not shared'
-}
 
 function goBack() {
   router.push('/')
@@ -87,28 +86,11 @@ function goBack() {
         </div>
 
         <template v-else>
-          <article v-for="candidate in candidates" :key="candidate.id" class="candidate-card">
-            <div class="candidate-card__avatar">{{ candidate.name.slice(0, 1) }}</div>
-            <div class="candidate-card__body">
-              <div class="candidate-card__top">
-                <div>
-                  <h3>{{ candidate.name }}</h3>
-                  <p>{{ candidate.role ? `${candidate.role} - ` : '' }}{{ candidateLocation(candidate) }}</p>
-                </div>
-                <span>{{ candidate.matchScore }}% match</span>
-              </div>
-
-              <div class="candidate-card__meta">
-                <span v-if="candidate.distanceKm != null">{{ candidate.distanceKm }} km away</span>
-                <span v-if="candidate.pincode">PIN {{ candidate.pincode }}</span>
-                <span v-if="candidate.role">{{ candidate.role }}</span>
-              </div>
-            </div>
-            <div class="candidate-actions">
-              <button type="button">Shortlist</button>
-              <button type="button" class="candidate-actions__ghost">Interview</button>
-            </div>
-          </article>
+          <CandidateCard
+            v-for="candidate in visibleCandidates"
+            :key="candidate.id"
+            :candidate="candidate"
+          />
 
           <div v-if="!candidates.length" class="candidate-empty">
             <strong>No talent found</strong>

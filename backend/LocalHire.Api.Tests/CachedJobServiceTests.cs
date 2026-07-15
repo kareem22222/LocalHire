@@ -64,6 +64,50 @@ public sealed class CachedJobServiceTests : IDisposable
         Assert.Contains(refreshed, job => job.Title == "Stock Clerk");
     }
 
+    [Fact]
+    public async Task Explicit_location_candidate_searches_share_cache_across_employers()
+    {
+        var firstEmployer = Employer("first", "Karnataka");
+        var secondEmployer = Employer("second", "Telangana");
+        var worker = Worker("worker", "Karnataka", 12.97, 77.64);
+        _db.Users.AddRange(firstEmployer, secondEmployer, worker);
+        await _db.SaveChangesAsync();
+
+        var first = await _service.GetNearbyCandidatesAsync(
+            12.97, 77.64, null, null, firstEmployer.Id, CancellationToken.None);
+        _db.Users.Remove(worker);
+        await _db.SaveChangesAsync();
+        var second = await _service.GetNearbyCandidatesAsync(
+            12.97, 77.64, null, null, secondEmployer.Id, CancellationToken.None);
+
+        Assert.Single(first);
+        Assert.Single(second);
+        Assert.Equal(first[0].Id, second[0].Id);
+    }
+
+    [Fact]
+    public async Task Default_candidate_searches_remain_scoped_to_the_employer_state()
+    {
+        var firstEmployer = Employer("first", "Karnataka");
+        var secondEmployer = Employer("second", "Telangana");
+        _db.Users.AddRange(
+            firstEmployer,
+            secondEmployer,
+            Worker("karnataka-worker", "Karnataka"),
+            Worker("telangana-worker", "Telangana"));
+        await _db.SaveChangesAsync();
+
+        var first = await _service.GetNearbyCandidatesAsync(
+            null, null, null, null, firstEmployer.Id, CancellationToken.None);
+        var second = await _service.GetNearbyCandidatesAsync(
+            null, null, null, null, secondEmployer.Id, CancellationToken.None);
+
+        Assert.Single(first);
+        Assert.Equal("Karnataka", first[0].State);
+        Assert.Single(second);
+        Assert.Equal("Telangana", second[0].State);
+    }
+
     private async Task<(Guid EmployerId, Guid JobId)> SeedEmployerAndJobAsync()
     {
         var employer = new User
@@ -90,6 +134,30 @@ public sealed class CachedJobServiceTests : IDisposable
         await _db.SaveChangesAsync();
         return (employer.Id, job.Id);
     }
+
+    private static User Employer(string name, string state) => new()
+    {
+        Id = Guid.NewGuid(),
+        Name = name,
+        Email = $"{name}-{Guid.NewGuid():N}@example.com",
+        PasswordHash = "hash",
+        Role = UserRole.Hiring,
+        State = state,
+        CreatedAt = DateTimeOffset.UtcNow,
+    };
+
+    private static User Worker(string name, string state, double? lat = null, double? lng = null) => new()
+    {
+        Id = Guid.NewGuid(),
+        Name = name,
+        Email = $"{name}-{Guid.NewGuid():N}@example.com",
+        PasswordHash = "hash",
+        Role = UserRole.LookingForWork,
+        State = state,
+        Latitude = lat,
+        Longitude = lng,
+        CreatedAt = DateTimeOffset.UtcNow,
+    };
 
     public void Dispose()
     {

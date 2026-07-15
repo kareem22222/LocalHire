@@ -71,6 +71,24 @@ describe('AllCandidatesPage', () => {
     expect(wrapper.text()).toContain('No talent found')
   })
 
+  it('shows the full result count while rendering at most ten candidates', async () => {
+    const candidates = Array.from({ length: 12 }, (_, index) => ({
+      id: index,
+      name: `Worker ${index}`,
+      role: 'Cashier',
+      matchScore: 90,
+    }))
+    api.get.mockImplementation((url) => Promise.resolve({
+      data: url === '/auth/me' ? {} : candidates,
+    }))
+
+    const wrapper = await mountPage()
+    await flushPromises()
+
+    expect(wrapper.findAll('.candidate-card')).toHaveLength(10)
+    expect(wrapper.text()).toContain('12 results')
+  })
+
   it('navigates back to the dashboard', async () => {
     const wrapper = await mountPage()
     await flushPromises()

@@ -185,12 +185,14 @@ public sealed class JobService : IJobService
         if (!string.IsNullOrEmpty(term))
         {
             var needle = term.ToLower();
+#pragma warning disable CA1862 // EF Core cannot translate StringComparison overloads to SQL.
             query = query.Where(u =>
                 u.Name.ToLower().Contains(needle) ||
                 (u.JobTitle != null && u.JobTitle.ToLower().Contains(needle)) ||
                 (u.CityArea != null && u.CityArea.ToLower().Contains(needle)) ||
                 (u.State != null && u.State.ToLower().Contains(needle)) ||
                 (u.Pincode != null && u.Pincode.ToLower().Contains(needle)));
+#pragma warning restore CA1862
         }
 
         var roleFilter = role?.Trim();
@@ -207,7 +209,7 @@ public sealed class JobService : IJobService
     /// <see cref="NearbyRadiusKm"/> of the origin, ordered nearest first. A cheap
     /// bounding-box pre-filter runs in SQL before the exact great-circle check.
     /// </summary>
-    private async Task<IReadOnlyList<CandidateResponse>> GetCandidatesWithinRadiusAsync(
+    private static async Task<IReadOnlyList<CandidateResponse>> GetCandidatesWithinRadiusAsync(
         IQueryable<Models.User> query, double lat, double lng, CancellationToken ct)
     {
         var workers = await ApplyBoundingBox(query, lat, lng).ToListAsync(ct);
@@ -220,6 +222,7 @@ public sealed class JobService : IJobService
             })
             .Where(x => x.Distance <= NearbyRadiusKm)
             .OrderBy(x => x.Distance)
+            .Take(60)
             .Select(x => ToCandidateResponse(x.User, x.Distance))
             .ToList();
     }
@@ -270,7 +273,7 @@ public sealed class JobService : IJobService
     /// is ordered by proximity (nearest first); workers without coordinates keep a
     /// null distance and sort last.
     /// </summary>
-    private static IReadOnlyList<CandidateResponse> RankCandidates(
+    private static List<CandidateResponse> RankCandidates(
         IReadOnlyList<Models.User> workers, double? lat, double? lng)
     {
         if (lat is null || lng is null)

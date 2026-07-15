@@ -72,9 +72,8 @@ public sealed class CachedJobService : IJobService
             : $"{lat.Value.ToString("F3", CultureInfo.InvariantCulture)}:{lng.Value.ToString("F3", CultureInfo.InvariantCulture)}";
         var term = string.IsNullOrWhiteSpace(search) ? string.Empty : search.Trim().ToLowerInvariant();
         var roleKey = string.IsNullOrWhiteSpace(role) ? string.Empty : role.Trim().ToLowerInvariant();
-        // Include the employer in the key: with no coordinates and no search term
-        // results depend on the employer's own state, so they are per-employer.
-        return GetOrCreateAsync($"candidates:{employerId}:{location}:{term}:{roleKey}",
+        var scope = location == "all" && term.Length == 0 ? employerId.ToString() : "global";
+        return GetOrCreateAsync($"candidates:{scope}:{location}:{term}:{roleKey}",
             () => _inner.GetNearbyCandidatesAsync(lat, lng, search, role, employerId, ct));
     }
 

@@ -1,6 +1,8 @@
 // Pure, presentation-only formatters for job data. Kept out of components so the
 // same display logic can be reused and unit-tested in isolation (SRP).
 
+export const MAX_VISIBLE_CANDIDATES = 10
+
 // Builds "City, State - Pincode" from the parts that are present.
 export function formatJobLocation(job) {
   const base = [job.cityArea, job.state].filter(Boolean).join(', ')

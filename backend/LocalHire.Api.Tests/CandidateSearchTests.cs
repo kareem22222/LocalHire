@@ -78,6 +78,24 @@ public sealed class CandidateSearchTests
     }
 
     [Fact]
+    public async Task Nearby_candidate_search_returns_only_the_60_nearest_workers()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+
+        await RegisterAndAuthenticateEmployer(client);
+        SeedNearbyWorkers(factory, 65);
+
+        var candidates = await GetCandidates(client, "/api/hiring/candidates/nearby?lat=12.97&lng=77.64");
+
+        Assert.Equal(60, candidates.Count);
+        Assert.Equal("Nearby Worker 0", candidates[0].Name);
+        Assert.DoesNotContain(candidates, candidate => candidate.Name == "Nearby Worker 64");
+        Assert.All(candidates, candidate => Assert.NotNull(candidate.DistanceKm));
+        Assert.True(candidates.Zip(candidates.Skip(1), (a, b) => a.DistanceKm <= b.DistanceKm).All(x => x));
+    }
+
+    [Fact]
     public async Task Candidate_search_validates_coordinates_and_requires_hiring_role()
     {
         using var factory = new ApiFactory();
@@ -131,6 +149,19 @@ public sealed class CandidateSearchTests
             Worker("w2@ex.com", "Hyderabad Driver", "Driver", "Hitech City", "Telangana", "500081", 17.4435, 78.3772, now),
             Worker("w3@ex.com", "Bengaluru Driver", "Driver", "Koramangala", "Karnataka", "560034", 12.9352, 77.6245, now),
             Worker("w4@ex.com", "No Coords Worker", "Cashier", "Whitefield", "Karnataka", "nocoords", null, null, now));
+
+        db.SaveChanges();
+    }
+
+    private static void SeedNearbyWorkers(ApiFactory factory, int count)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<LocalHireDbContext>();
+        var now = DateTimeOffset.UtcNow;
+
+        db.Users.AddRange(Enumerable.Range(0, count).Select(i =>
+            Worker($"nearby-{i}@ex.com", $"Nearby Worker {i}", "Cashier", "Indiranagar",
+                "Karnataka", $"560{i:D3}", 12.97 + i * 0.001, 77.64, now)));
 
         db.SaveChanges();
     }

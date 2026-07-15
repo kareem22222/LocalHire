@@ -1,7 +1,10 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import '../hiring-dashboard.css'
-import { formatRoleStatus } from '../utils/jobDisplay'
+import { useOpenRoles } from '../composables/useOpenRoles'
+import { MAX_VISIBLE_CANDIDATES } from '../utils/jobDisplay'
+import CandidateCard from './CandidateCard.vue'
+import RoleCard from './RoleCard.vue'
 
 const props = defineProps({
   myJobs: { type: Array, default: () => [] },
@@ -28,7 +31,6 @@ const role = ref('All')
 // How many items to show on the dashboard before offering a dedicated "show all"
 // page. Kept small so the dashboard stays scannable.
 const MAX_VISIBLE_ROLES = 6
-const MAX_VISIBLE_CANDIDATES = 10
 
 // Curated roles employers commonly hire for. Kept in sync with the roles used to
 // seed worker profiles so selecting one returns real matches.
@@ -89,21 +91,7 @@ onBeforeUnmount(() => {
   if (searchTimer) clearTimeout(searchTimer)
 })
 
-const openRoles = computed(() => {
-  return props.myJobs.map((job) => {
-    const applicants = job.applicationCount ?? 0
-    return {
-      id: job.id,
-      title: job.title,
-      area: [job.cityArea, job.state].filter(Boolean).join(', '),
-      workplaceName: job.workplaceName,
-      applicants,
-      shortlisted: Math.min(Math.round(applicants * 0.35), applicants),
-      status: formatRoleStatus(job),
-      isBackendJob: true,
-    }
-  })
-})
+const openRoles = useOpenRoles(() => props.myJobs)
 
 // Instant client-side refinement over whatever the backend last returned, so the
 // list narrows as the employer types even before the debounced request lands.
@@ -121,10 +109,6 @@ const filteredCandidates = computed(() => {
     return matchesText && matchesRole
   })
 })
-
-function candidateLocation(candidate) {
-  return [candidate.area, candidate.state].filter(Boolean).join(', ') || 'Location not shared'
-}
 
 // Only the first slice is shown on the dashboard; the rest live on a dedicated
 // page reachable through the "Show more" buttons below.
@@ -195,31 +179,14 @@ function shortlist(candidate) {
       </div>
 
       <div class="hiring-role-grid">
-        <article v-for="item in visibleRoles" :key="item.id || item.title" class="hiring-role-card">
-          <div v-if="item.isBackendJob" class="hiring-role-card__actions">
-            <button
-              type="button"
-              class="hiring-role-card__icon"
-              :aria-label="`View details for ${item.title}`"
-              title="View details"
-              @click="emit('view-job', item.id)"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
-          </div>
-          <span>{{ item.status }}</span>
-          <h3>{{ item.title }}</h3>
-          <p>{{ item.workplaceName ? `${item.workplaceName} - ${item.area}` : item.area }}</p>
-          <div>
-            <strong>{{ item.applicants }}</strong>
-            <small>applicants</small>
-            <strong>{{ item.shortlisted }}</strong>
-            <small>shortlisted</small>
-          </div>
-          <button v-if="item.isBackendJob" type="button" class="hiring-role-card__link" @click="emit('view-applications', item.id)">
-            View applications
-          </button>
-        </article>
+        <RoleCard
+          v-for="item in visibleRoles"
+          :key="item.id || item.title"
+          :item="item"
+          action-label="View applications"
+          @view="emit('view-job', $event)"
+          @action="emit('view-applications', $event)"
+        />
       </div>
       <div v-if="hasMoreRoles" class="hiring-show-more">
         <button type="button" class="hiring-show-more__btn" @click="showAllRoles">
@@ -286,28 +253,12 @@ function shortlist(candidate) {
       </div>
 
       <template v-else>
-        <article v-for="candidate in visibleCandidates" :key="candidate.id" class="candidate-card">
-          <div class="candidate-card__avatar">{{ candidate.name.slice(0, 1) }}</div>
-          <div class="candidate-card__body">
-            <div class="candidate-card__top">
-              <div>
-                <h3>{{ candidate.name }}</h3>
-                <p>{{ candidate.role ? `${candidate.role} - ` : '' }}{{ candidateLocation(candidate) }}</p>
-              </div>
-              <span>{{ candidate.matchScore }}% match</span>
-            </div>
-
-            <div class="candidate-card__meta">
-              <span v-if="candidate.distanceKm != null">{{ candidate.distanceKm }} km away</span>
-              <span v-if="candidate.pincode">PIN {{ candidate.pincode }}</span>
-              <span v-if="candidate.role">{{ candidate.role }}</span>
-            </div>
-          </div>
-          <div class="candidate-actions">
-            <button type="button" @click="shortlist(candidate)">Shortlist</button>
-            <button type="button" class="candidate-actions__ghost">Interview</button>
-          </div>
-        </article>
+        <CandidateCard
+          v-for="candidate in visibleCandidates"
+          :key="candidate.id"
+          :candidate="candidate"
+          @shortlist="shortlist"
+        />
 
         <div v-if="hasMoreCandidates" class="hiring-show-more">
           <button type="button" class="hiring-show-more__btn" @click="showAllCandidates">
@@ -481,47 +432,4 @@ function shortlist(candidate) {
   }
 }
 
-.hiring-role-card {
-  position: relative;
-}
-
-.hiring-role-card__actions {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  display: flex;
-  gap: 8px;
-  margin: 0;
-  grid-template-columns: none;
-}
-
-.hiring-role-card__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border: 1px solid rgba(7, 85, 154, 0.18);
-  border-radius: 10px;
-  background: #fff;
-  color: #07559a;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-}
-
-.hiring-role-card__icon:hover {
-  background: rgba(7, 85, 154, 0.08);
-  border-color: rgba(7, 85, 154, 0.35);
-}
-
-.hiring-role-card__icon svg {
-  width: 17px;
-  height: 17px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
 </style>
