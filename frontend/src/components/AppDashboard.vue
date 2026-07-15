@@ -22,7 +22,7 @@ const router = useRouter()
 const profileStore = useProfileStore()
 const jobsStore = useJobsStore()
 const { profile: user } = storeToRefs(profileStore)
-const { myJobs, myApplications } = storeToRefs(jobsStore)
+const { myJobs, myApplications, candidates } = storeToRefs(jobsStore)
 
 const userRole = computed(() => normalizeRole(user.value?.role))
 const isHiringUser = computed(() => userRole.value === 'hiring')
@@ -42,6 +42,7 @@ async function fetchProfile() {
     const role = normalizeRole(data.role)
     if (role === 'hiring') {
       await loadMyJobs()
+      await loadCandidates()
     } else if (role === 'worker') {
       await loadMyApplications()
       await loadNearbyJobs()
@@ -95,11 +96,101 @@ function goViewJob(id) {
   router.push(`/jobs/${id}`)
 }
 
+// Dedicated "show all" pages for when the dashboard's trimmed lists overflow.
+function goAllRoles() {
+  router.push('/hiring/roles')
+}
+
+function goAllCandidates(payload = {}) {
+  const query = {}
+  if (payload.search) query.search = payload.search
+  if (payload.role) query.role = payload.role
+  router.push({ path: '/hiring/candidates', query })
+}
+
 async function loadMyJobs() {
   try {
     await jobsStore.loadMyJobs()
   } catch {
   }
+}
+
+// --- Talent search (candidates near the business) ---
+const candidatesLoading = ref(false)
+const candidateSearch = ref('')
+const candidateRole = ref('')
+const employerLocationStatus = ref('idle') // idle | prompt | denied | done
+const employerCoords = ref(null)
+
+const candidateLocationLabel = computed(() => {
+  if (employerLocationStatus.value === 'done' && employerCoords.value) return 'Using your current location'
+  if (employerLocationStatus.value === 'prompt') return 'Getting your location...'
+  if (employerLocationStatus.value === 'denied') return 'Location unavailable - showing latest talent'
+  const profileArea = [user.value?.cityArea, user.value?.state].filter(Boolean).join(', ')
+  if (user.value?.latitude != null && user.value?.longitude != null && profileArea) {
+    return `Near your business - ${profileArea}`
+  }
+  return 'Showing latest talent'
+})
+
+function candidateParams() {
+  const params = {}
+  const coords = employerCoords.value
+    ?? (user.value?.latitude != null && user.value?.longitude != null
+      ? { lat: user.value.latitude, lng: user.value.longitude }
+      : null)
+  if (coords) {
+    params.lat = coords.lat
+    params.lng = coords.lng
+  }
+  const term = candidateSearch.value.trim()
+  if (term) params.search = term
+  const role = candidateRole.value.trim()
+  if (role) params.role = role
+  return params
+}
+
+async function loadCandidates(options = {}) {
+  candidatesLoading.value = true
+  try {
+    await jobsStore.loadNearbyCandidates(candidateParams(), options)
+  } catch {
+  } finally {
+    candidatesLoading.value = false
+  }
+}
+
+async function searchCandidates(payload = {}) {
+  candidateSearch.value = payload.search ?? ''
+  candidateRole.value = payload.role ?? ''
+  await loadCandidates({ force: true })
+}
+
+function useEmployerLocation() {
+  if (!navigator.geolocation) {
+    employerLocationStatus.value = 'denied'
+    loadCandidates({ force: true })
+    return
+  }
+  employerLocationStatus.value = 'prompt'
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const lat = Math.round(pos.coords.latitude * 1000) / 1000
+      const lng = Math.round(pos.coords.longitude * 1000) / 1000
+      employerCoords.value = { lat, lng }
+      employerLocationStatus.value = 'done'
+      try {
+        await profileStore.updateLocation({ latitude: lat, longitude: lng })
+      } catch {
+      }
+      await loadCandidates({ force: true })
+    },
+    () => {
+      employerLocationStatus.value = 'denied'
+      loadCandidates({ force: true })
+    },
+    { enableHighAccuracy: false, timeout: 10000 },
+  )
 }
 
 async function viewApplications(jobId) {
@@ -206,9 +297,17 @@ function hasApplied(jobId) {
     <HiringDashboard
       v-if="isHiringUser && activeTab !== 'profile'"
       :my-jobs="myJobs"
+      :candidates="candidates"
+      :candidates-loading="candidatesLoading"
+      :location-label="candidateLocationLabel"
+      :locating="employerLocationStatus === 'prompt'"
       @open-create-job="goCreateJob"
       @view-applications="viewApplications"
       @view-job="goViewJob"
+      @search-candidates="searchCandidates"
+      @use-my-location="useEmployerLocation"
+      @view-all-roles="goAllRoles"
+      @view-all-candidates="goAllCandidates"
       @shortlist="() => {}"
     />
 

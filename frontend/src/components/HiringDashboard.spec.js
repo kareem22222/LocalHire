@@ -20,9 +20,15 @@ describe('HiringDashboard', () => {
   it('does not render demo candidates when no real candidate data exists', async () => {
     const wrapper = mountHiringDashboard()
 
-    await wrapper.find('input[aria-label="Search candidates"]').setValue('routes')
+    await wrapper.find('input[aria-label="Search candidates by address or role"]').setValue('routes')
     expect(wrapper.findAll('.candidate-card')).toHaveLength(0)
     expect(wrapper.text()).toContain('No talent found')
+  })
+
+  it('renders a candidate with no name without throwing', () => {
+    const wrapper = mountHiringDashboard({ candidates: [{ id: 1, name: null, matchScore: 70 }] })
+
+    expect(wrapper.find('.candidate-card__avatar').text()).toBe('')
   })
 
   it('filters candidates provided through props', async () => {
@@ -33,32 +39,46 @@ describe('HiringDashboard', () => {
           name: 'Ananya Rao',
           role: 'Store Associate',
           area: 'Indiranagar',
-          city: 'Bengaluru',
-          availability: 'Immediate',
-          experience: '2 yrs',
-          match: 96,
-          rate: 'Rs 22k/mo',
-          skills: ['Billing'],
+          state: 'Karnataka',
+          pincode: '560038',
+          distanceKm: 2.1,
+          matchScore: 96,
         },
         {
           id: 2,
           name: 'Rahul Mehta',
           role: 'Delivery Partner',
           area: 'Madhapur',
-          city: 'Hyderabad',
-          availability: 'This week',
-          experience: '3 yrs',
-          match: 91,
-          rate: 'Rs 28k/mo',
-          skills: ['Routes'],
+          state: 'Telangana',
+          pincode: '500081',
+          distanceKm: 5.4,
+          matchScore: 91,
         },
       ],
     })
 
-    await wrapper.find('input[aria-label="Search candidates"]').setValue('routes')
+    await wrapper.find('input[aria-label="Search candidates by address or role"]').setValue('madhapur')
 
     expect(wrapper.findAll('.candidate-card h3').map((item) => item.text())).toEqual(['Rahul Mehta'])
-    expect(wrapper.findAll('.hiring-search-panel select')[0].text()).toContain('Delivery Partner')
+    expect(wrapper.find('.talent-search__role select').text()).toContain('Delivery Partner')
+  })
+
+  it('emits use-my-location when the location button is clicked', async () => {
+    const wrapper = mountHiringDashboard()
+
+    await wrapper.find('.talent-search__location').trigger('click')
+
+    expect(wrapper.emitted('use-my-location')).toHaveLength(1)
+  })
+
+  it('emits search-candidates with the selected role', async () => {
+    const wrapper = mountHiringDashboard()
+
+    await wrapper.find('.talent-search__role select').setValue('Driver')
+
+    const events = wrapper.emitted('search-candidates')
+    expect(events).toBeTruthy()
+    expect(events[events.length - 1][0]).toEqual({ search: '', role: 'Driver' })
   })
 
   it('shows an empty state instead of fallback demo roles', () => {
@@ -157,6 +177,69 @@ describe('HiringDashboard', () => {
     wrapper.vm.shortlist(candidate)
 
     expect(wrapper.emitted('shortlist')).toEqual([[candidate]])
-    expect(wrapper.find('input[aria-label="Search candidates"]').element.value).toBe('')
+    expect(wrapper.find('input[aria-label="Search candidates by address or role"]').element.value).toBe('')
+  })
+
+  it('shows only six roles and a show-more button when there are more', async () => {
+    const myJobs = Array.from({ length: 8 }, (_, index) => ({
+      id: `job-${index}`,
+      title: `Role ${index}`,
+      workplaceName: 'Shop',
+      cityArea: 'Bandra',
+      applicationCount: 0,
+      isActive: true,
+    }))
+    const wrapper = mountHiringDashboard({ myJobs })
+
+    expect(wrapper.findAll('.hiring-role-card')).toHaveLength(6)
+
+    const showMore = wrapper.find('.hiring-show-more__btn')
+    expect(showMore.exists()).toBe(true)
+    expect(showMore.text()).toContain('8 total')
+
+    await showMore.trigger('click')
+    expect(wrapper.emitted('view-all-roles')).toHaveLength(1)
+  })
+
+  it('does not show the roles show-more button at six roles or fewer', () => {
+    const myJobs = Array.from({ length: 6 }, (_, index) => ({
+      id: `job-${index}`,
+      title: `Role ${index}`,
+      workplaceName: 'Shop',
+      cityArea: 'Bandra',
+      applicationCount: 0,
+      isActive: true,
+    }))
+    const wrapper = mountHiringDashboard({ myJobs })
+
+    expect(wrapper.findAll('.hiring-role-card')).toHaveLength(6)
+    expect(wrapper.find('.hiring-show-more__btn').exists()).toBe(false)
+  })
+
+  it('shows only ten candidates and a show-more button that carries the search filters', async () => {
+    const candidates = Array.from({ length: 12 }, (_, index) => ({
+      id: index,
+      name: `Worker ${index}`,
+      role: 'Cashier',
+      area: 'Indiranagar',
+      state: 'Karnataka',
+      pincode: '560038',
+      matchScore: 90,
+    }))
+    const wrapper = mountHiringDashboard({ candidates })
+
+    expect(wrapper.findAll('.candidate-card')).toHaveLength(10)
+
+    await wrapper.find('.talent-search__role select').setValue('Cashier')
+
+    const showMore = wrapper.find('.candidate-list .hiring-show-more__btn')
+    expect(showMore.exists()).toBe(true)
+    expect(showMore.text()).toContain('12 total')
+
+    await showMore.trigger('click')
+
+    const events = wrapper.emitted('view-all-candidates')
+    expect(events).toBeTruthy()
+    expect(events[events.length - 1][0]).toEqual({ search: '', role: 'Cashier' })
   })
 })

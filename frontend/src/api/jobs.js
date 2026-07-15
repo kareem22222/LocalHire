@@ -23,6 +23,10 @@ export function getJobApplications(jobId) {
   return api.get(`/hiring/jobs/${jobId}/applications`)
 }
 
+export function getNearbyCandidates(params = {}) {
+  return api.get('/hiring/candidates/nearby', { params })
+}
+
 // --- Worker ---
 export function getNearbyJobs(params = {}) {
   return api.get('/work/jobs/nearby', { params })

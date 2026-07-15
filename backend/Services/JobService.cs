@@ -133,6 +133,203 @@ public sealed class JobService : IJobService
             .ToList();
     }
 
+    public async Task<IReadOnlyList<CandidateResponse>> GetNearbyCandidatesAsync(
+        double? lat, double? lng, string? search, string? role, Guid employerId, CancellationToken ct)
+    {
+        var term = search?.Trim();
+        var hasSearch = !string.IsNullOrEmpty(term);
+
+        var query = ApplyCandidateFilters(
+            _db.Users.Where(u => u.Role == UserRole.LookingForWork), term, role);
+
+        // With coordinates and NO typed search term this is the "talent near your
+        // business" default, so results are restricted to the local radius. A typed
+        // search term is an explicit, location-independent request (e.g. a pincode
+        // or city in another state), so it must NOT be constrained by the radius —
+        // matches anywhere should surface (ordered by proximity further below).
+        if (lat is not null && lng is not null && !hasSearch)
+        {
+            return await GetCandidatesWithinRadiusAsync(query, lat.Value, lng.Value, ct);
+        }
+
+        // No typed search term and no coordinates: default the list to workers in
+        // the employer's own state so the results stay locally relevant.
+        if (!hasSearch)
+        {
+            query = await ApplyEmployerStateDefaultAsync(query, employerId, ct);
+        }
+
+        // Reaches here for a global search (typed term, with or without
+        // coordinates) or the state-default fallback. Cap the fetch, then rank by
+        // proximity when we have an origin so the nearest matches come first while
+        // still surfacing matches that lie outside the local radius. Ordering by
+        // CreatedAt is done in memory because SQLite cannot ORDER BY a
+        // DateTimeOffset (Postgres handles it either way).
+        var matchedWorkers = await query
+            .Take(200)
+            .ToListAsync(ct);
+
+        return RankCandidates(
+            matchedWorkers.OrderByDescending(u => u.CreatedAt).ToList(), lat, lng);
+    }
+
+    /// <summary>
+    /// Applies the optional case-insensitive text search (name, role, area, state,
+    /// or pincode) and the optional exact role filter. Uses <c>LOWER(..) LIKE</c>
+    /// (via <see cref="string.Contains(string)"/>) rather than a Postgres-only
+    /// operator so the same query runs on every provider.
+    /// </summary>
+    private static IQueryable<Models.User> ApplyCandidateFilters(
+        IQueryable<Models.User> query, string? term, string? role)
+    {
+        if (!string.IsNullOrEmpty(term))
+        {
+            var needle = term.ToLower();
+#pragma warning disable CA1862 // EF Core cannot translate StringComparison overloads to SQL.
+            query = query.Where(u =>
+                u.Name.ToLower().Contains(needle) ||
+                (u.JobTitle != null && u.JobTitle.ToLower().Contains(needle)) ||
+                (u.CityArea != null && u.CityArea.ToLower().Contains(needle)) ||
+                (u.State != null && u.State.ToLower().Contains(needle)) ||
+                (u.Pincode != null && u.Pincode.ToLower().Contains(needle)));
+#pragma warning restore CA1862
+        }
+
+        var roleFilter = role?.Trim();
+        if (!string.IsNullOrEmpty(roleFilter))
+        {
+            query = query.Where(u => u.JobTitle != null && u.JobTitle == roleFilter);
+        }
+
+        return query;
+    }
+
+    /// <summary>
+    /// Restricts <paramref name="query"/> to workers within
+    /// <see cref="NearbyRadiusKm"/> of the origin, ordered nearest first. A cheap
+    /// bounding-box pre-filter runs in SQL before the exact great-circle check.
+    /// </summary>
+    private static async Task<IReadOnlyList<CandidateResponse>> GetCandidatesWithinRadiusAsync(
+        IQueryable<Models.User> query, double lat, double lng, CancellationToken ct)
+    {
+        var workers = await ApplyBoundingBox(query, lat, lng).ToListAsync(ct);
+
+        return workers
+            .Select(u => new
+            {
+                User = u,
+                Distance = GeoCalculator.HaversineDistance(lat, lng, u.Latitude, u.Longitude)
+            })
+            .Where(x => x.Distance <= NearbyRadiusKm)
+            .OrderBy(x => x.Distance)
+            .Take(60)
+            .Select(x => ToCandidateResponse(x.User, x.Distance))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Narrows <paramref name="query"/> with the axis-aligned longitude/latitude
+    /// window for the search radius, handling the antimeridian wrap and the pole
+    /// case where every longitude is covered.
+    /// </summary>
+    private static IQueryable<Models.User> ApplyBoundingBox(
+        IQueryable<Models.User> query, double lat, double lng)
+    {
+        var box = GeoCalculator.GetBoundingBox(lat, lng, NearbyRadiusKm);
+
+        var nearbyQuery = query
+            .Where(u => u.Latitude != null && u.Longitude != null)
+            .Where(u => u.Latitude >= box.MinLat && u.Latitude <= box.MaxLat);
+
+        if (box.CoversAllLongitudes)
+            return nearbyQuery;
+
+        if (box.MinLng < -180)
+            return nearbyQuery.Where(u => u.Longitude >= box.MinLng + 360 || u.Longitude <= box.MaxLng);
+        if (box.MaxLng > 180)
+            return nearbyQuery.Where(u => u.Longitude >= box.MinLng || u.Longitude <= box.MaxLng - 360);
+        return nearbyQuery.Where(u => u.Longitude >= box.MinLng && u.Longitude <= box.MaxLng);
+    }
+
+    /// <summary>
+    /// When the employer has a state on file, restricts <paramref name="query"/>
+    /// to workers in that same state; otherwise returns it unchanged.
+    /// </summary>
+    private async Task<IQueryable<Models.User>> ApplyEmployerStateDefaultAsync(
+        IQueryable<Models.User> query, Guid employerId, CancellationToken ct)
+    {
+        var employerState = await _db.Users
+            .Where(u => u.Id == employerId)
+            .Select(u => u.State)
+            .FirstOrDefaultAsync(ct);
+
+        return string.IsNullOrWhiteSpace(employerState)
+            ? query
+            : query.Where(u => u.State != null && u.State == employerState);
+    }
+
+    /// <summary>
+    /// Maps already-materialized workers to candidate DTOs. With an origin the list
+    /// is ordered by proximity (nearest first); workers without coordinates keep a
+    /// null distance and sort last.
+    /// </summary>
+    private static List<CandidateResponse> RankCandidates(
+        IReadOnlyList<Models.User> workers, double? lat, double? lng)
+    {
+        if (lat is null || lng is null)
+        {
+            return workers
+                .Take(60)
+                .Select(u => ToCandidateResponse(u, null))
+                .ToList();
+        }
+
+        return workers
+            .Select(u => new
+            {
+                User = u,
+                Distance = GeoCalculator.HaversineDistance(lat.Value, lng.Value, u.Latitude, u.Longitude)
+            })
+            .OrderBy(x => x.Distance)
+            .Take(60)
+            .Select(x => ToCandidateResponse(
+                x.User, x.Distance >= double.MaxValue ? null : x.Distance))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Maps a worker to a candidate DTO. When a distance is known the match score
+    /// rewards proximity (100 at the door, easing down across the search radius);
+    /// otherwise a neutral baseline is used so location-less results still rank.
+    /// </summary>
+    private static CandidateResponse ToCandidateResponse(Models.User worker, double? distanceKm)
+    {
+        int matchScore;
+        if (distanceKm is not null && distanceKm.Value < double.MaxValue)
+        {
+            var proximity = 1 - Math.Min(distanceKm.Value, NearbyRadiusKm) / NearbyRadiusKm;
+            matchScore = (int)Math.Round(60 + proximity * 39); // 60..99
+        }
+        else
+        {
+            matchScore = 70;
+        }
+
+        return new CandidateResponse(
+            worker.Id,
+            worker.Name,
+            worker.JobTitle,
+            worker.CityArea,
+            worker.State,
+            worker.Pincode,
+            worker.Latitude,
+            worker.Longitude,
+            distanceKm is null || distanceKm.Value >= double.MaxValue
+                ? null
+                : Math.Round(distanceKm.Value, 1),
+            matchScore);
+    }
+
     public async Task<JobApplicationResponse> ApplyAsync(Guid jobId, Guid workerId, CancellationToken ct)
     {
         var jobPost = await _db.JobPosts.FirstOrDefaultAsync(j => j.Id == jobId && j.IsActive, ct)

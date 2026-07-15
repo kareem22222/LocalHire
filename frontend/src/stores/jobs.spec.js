@@ -10,6 +10,7 @@ vi.mock('../api/jobs.js', () => ({
   updateJob: vi.fn(),
   getJobApplications: vi.fn(),
   getNearbyJobs: vi.fn(),
+  getNearbyCandidates: vi.fn(),
   applyToJob: vi.fn(),
   getMyApplications: vi.fn(),
 }))
@@ -46,6 +47,24 @@ describe('jobs store cache', () => {
     await expect(first).resolves.toEqual([{ id: 'job-1' }])
     await expect(second).resolves.toEqual([{ id: 'job-1' }])
     expect(jobsApi.getNearbyJobs).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the latest candidate search visible when responses arrive out of order', async () => {
+    const requests = {}
+    jobsApi.getNearbyCandidates.mockImplementation(({ search }) =>
+      new Promise((resolve) => { requests[search] = resolve }))
+    const store = useJobsStore()
+
+    const first = store.loadNearbyCandidates({ search: 'first' }, { force: true })
+    const second = store.loadNearbyCandidates({ search: 'second' }, { force: true })
+    requests.second({ data: [{ id: 'second' }] })
+    await expect(second).resolves.toEqual([{ id: 'second' }])
+    requests.first({ data: [{ id: 'first' }] })
+    await expect(first).resolves.toEqual([{ id: 'first' }])
+
+    expect(store.candidates).toEqual([{ id: 'second' }])
+    await expect(store.loadNearbyCandidates({ search: 'first' })).resolves.toEqual([{ id: 'first' }])
+    expect(jobsApi.getNearbyCandidates).toHaveBeenCalledTimes(2)
   })
 
   it('updates cached employer data and invalidates nearby searches after an edit', async () => {

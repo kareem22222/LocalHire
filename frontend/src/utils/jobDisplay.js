@@ -1,6 +1,8 @@
 // Pure, presentation-only formatters for job data. Kept out of components so the
 // same display logic can be reused and unit-tested in isolation (SRP).
 
+export const MAX_VISIBLE_CANDIDATES = 10
+
 // Builds "City, State - Pincode" from the parts that are present.
 export function formatJobLocation(job) {
   const base = [job.cityArea, job.state].filter(Boolean).join(', ')
@@ -43,4 +45,12 @@ export function formatShift(job) {
     ? `${job.shiftStartTime}–${job.shiftEndTime}`
     : (job.shiftStartTime || '')
   return [job.workingDays, time].filter(Boolean).join(', ')
+}
+
+// Short pipeline status shown on hiring role cards. Kept as a plain function so
+// the branching stays readable (no nested ternaries) and is unit-testable.
+export function formatRoleStatus(job) {
+  if (job?.isActive === false) return 'Inactive'
+  if ((job?.applicationCount ?? 0) > 0) return 'Review applicants'
+  return 'New role'
 }

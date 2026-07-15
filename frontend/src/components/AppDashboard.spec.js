@@ -159,6 +159,61 @@ describe('AppDashboard', () => {
     expect(wrapper.find('.auth-modal__close').attributes('aria-label')).toBe('Close applicants dialog')
   })
 
+  it('navigates to the all-roles page from the roles show-more button', async () => {
+    const jobs = Array.from({ length: 7 }, (_, index) => ({
+      id: `job-${index}`,
+      title: `Role ${index}`,
+      workplaceName: 'Shop',
+      cityArea: 'Bandra',
+      applicationCount: 0,
+      isActive: true,
+    }))
+    api.get.mockImplementation((url) => Promise.resolve({
+      data: url === '/auth/me'
+        ? { name: 'Pat', role: 'Hiring' }
+        : url === '/hiring/jobs'
+          ? jobs
+          : [],
+    }))
+
+    const wrapper = mountDashboard()
+    await flushPromises()
+    const push = vi.spyOn(router, 'push')
+
+    await wrapper.find('.hiring-roles .hiring-show-more__btn').trigger('click')
+
+    expect(push).toHaveBeenCalledWith('/hiring/roles')
+  })
+
+  it('navigates to the all-candidates page with the search filters as query params', async () => {
+    const candidates = Array.from({ length: 11 }, (_, index) => ({
+      id: index,
+      name: `Worker ${index}`,
+      role: 'Cashier',
+      area: 'Indiranagar',
+      state: 'Karnataka',
+      pincode: '560038',
+      matchScore: 90,
+    }))
+    api.get.mockImplementation((url) => Promise.resolve({
+      data: url === '/auth/me'
+        ? { name: 'Pat', role: 'Hiring' }
+        : url === '/hiring/candidates/nearby'
+          ? candidates
+          : [],
+    }))
+
+    const wrapper = mountDashboard()
+    await flushPromises()
+    const push = vi.spyOn(router, 'push')
+
+    await wrapper.find('.talent-search__role select').setValue('Cashier')
+    await flushPromises()
+    await wrapper.find('.candidate-list .hiring-show-more__btn').trigger('click')
+
+    expect(push).toHaveBeenCalledWith({ path: '/hiring/candidates', query: { role: 'Cashier' } })
+  })
+
   describe('profile navigation', () => {
     it('emits "profile" with the current user and shows the profile page when the name is clicked', async () => {
       api.get.mockImplementation((url) => Promise.resolve({

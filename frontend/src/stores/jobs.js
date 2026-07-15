@@ -9,6 +9,15 @@ function nearbyKey(params = {}) {
   return `${Number(params.lat).toFixed(3)},${Number(params.lng).toFixed(3)}`
 }
 
+function candidatesKey(params = {}) {
+  const location = params.lat == null || params.lng == null
+    ? 'all'
+    : `${Number(params.lat).toFixed(3)},${Number(params.lng).toFixed(3)}`
+  const term = (params.search || '').trim().toLowerCase()
+  const role = (params.role || '').trim().toLowerCase()
+  return `${location}|${term}|${role}`
+}
+
 function isFresh(timestamp) {
   return timestamp > 0 && Date.now() - timestamp < JOBS_TTL_MS
 }
@@ -21,9 +30,12 @@ export const useJobsStore = defineStore('jobs', () => {
   const applicationsByJob = ref({})
   const applicationsFetchedAt = ref({})
   const nearbyJobsByLocation = ref({})
+  const candidates = ref([])
+  const candidatesByKey = ref({})
   const myApplications = ref([])
   const myApplicationsFetchedAt = ref(0)
   const pending = new Map()
+  let latestCandidatesRequest = 0
 
   function runOnce(key, request) {
     if (pending.has(key)) return pending.get(key)
@@ -81,6 +93,23 @@ export const useJobsStore = defineStore('jobs', () => {
     })
   }
 
+  async function loadNearbyCandidates(params = {}, { force = false } = {}) {
+    const requestToken = ++latestCandidatesRequest
+    const key = candidatesKey(params)
+    const cached = candidatesByKey.value[key]
+    if (!force && cached && isFresh(cached.fetchedAt)) {
+      candidates.value = cached.data
+      return cached.data
+    }
+    const data = await runOnce(`candidates:${key}`, async () => {
+      const { data } = await jobsApi.getNearbyCandidates(params)
+      candidatesByKey.value[key] = { data, fetchedAt: Date.now() }
+      return data
+    })
+    if (requestToken === latestCandidatesRequest) candidates.value = data
+    return data
+  }
+
   async function loadMyApplications({ force = false } = {}) {
     if (!force && isFresh(myApplicationsFetchedAt.value)) return myApplications.value
     return runOnce('my-applications', async () => {
@@ -131,6 +160,9 @@ export const useJobsStore = defineStore('jobs', () => {
     applicationsByJob.value = {}
     applicationsFetchedAt.value = {}
     nearbyJobsByLocation.value = {}
+    candidates.value = []
+    candidatesByKey.value = {}
+    latestCandidatesRequest++
     myApplications.value = []
     myApplicationsFetchedAt.value = 0
     pending.clear()
@@ -141,11 +173,13 @@ export const useJobsStore = defineStore('jobs', () => {
     jobsById,
     applicationsByJob,
     nearbyJobsByLocation,
+    candidates,
     myApplications,
     loadMyJobs,
     loadJob,
     loadJobApplications,
     loadNearbyJobs,
+    loadNearbyCandidates,
     loadMyApplications,
     createJob,
     updateJob,

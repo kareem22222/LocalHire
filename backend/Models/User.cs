@@ -12,6 +12,13 @@ public sealed class User
     public string? Phone { get; set; }
     public DateOnly? DateOfBirth { get; set; }
     public string? Gender { get; set; }
+
+    /// <summary>
+    /// The kind of work a worker does (e.g. "Delivery Partner"). Used to power the
+    /// employer's talent search by role. Not meaningful for hiring accounts.
+    /// </summary>
+    public string? JobTitle { get; set; }
+
     public string? AddressLine { get; set; }
     public string? CityArea { get; set; }
     public string? State { get; set; }

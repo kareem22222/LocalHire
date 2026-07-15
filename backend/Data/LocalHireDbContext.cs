@@ -30,6 +30,7 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
             entity.Property(u => u.Phone).HasMaxLength(30).IsRequired(false);
             entity.Property(u => u.DateOfBirth).IsRequired(false);
             entity.Property(u => u.Gender).HasMaxLength(50).IsRequired(false);
+            entity.Property(u => u.JobTitle).HasMaxLength(100).IsRequired(false);
             entity.Property(u => u.AddressLine).HasMaxLength(300).IsRequired(false);
             entity.Property(u => u.CityArea).HasMaxLength(200).IsRequired(false);
             entity.Property(u => u.State).HasMaxLength(100).IsRequired(false);

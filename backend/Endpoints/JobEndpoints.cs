@@ -2,7 +2,6 @@ using System.Security.Claims;
 using FluentValidation;
 using LocalHire.Api.DTOs;
 using LocalHire.Api.Services;
-using LocalHire.Api.Utilities;
 
 namespace LocalHire.Api.Endpoints;
 
@@ -107,6 +106,27 @@ public static class JobEndpoints
         })
         .WithName("GetJobApplications");
 
+        hiringGroup.MapGet("/candidates/nearby", async (
+            double? lat,
+            double? lng,
+            string? search,
+            string? role,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            var coordinateError = EndpointHelpers.ValidateCoordinatePair(lat, lng);
+            if (coordinateError is not null)
+                return coordinateError;
+
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            var candidates = await jobService.GetNearbyCandidatesAsync(lat, lng, search, role, userId, ct);
+            return Results.Ok(candidates);
+        })
+        .WithName("GetNearbyCandidates");
+
         // --- Worker endpoints ---
 
         workGroup.MapGet("/jobs/nearby", async (
@@ -115,23 +135,9 @@ public static class JobEndpoints
             IJobService jobService,
             CancellationToken ct) =>
         {
-            if (lat.HasValue != lng.HasValue)
-            {
-                return Results.ValidationProblem(new Dictionary<string, string[]>
-                {
-                    ["coordinates"] = new[] { "Latitude and longitude are required together." }
-                });
-            }
-
-            // lat/lng are supplied together (validated above), so checking lat
-            // is enough to know both are present.
-            if (lat is not null && !GeoCalculator.IsValidCoordinates(lat.Value, lng!.Value))
-            {
-                return Results.ValidationProblem(new Dictionary<string, string[]>
-                {
-                    ["coordinates"] = new[] { "Latitude must be between -90 and 90, and longitude must be between -180 and 180." }
-                });
-            }
+            var coordinateError = EndpointHelpers.ValidateCoordinatePair(lat, lng);
+            if (coordinateError is not null)
+                return coordinateError;
 
             var jobs = await jobService.GetNearbyJobsAsync(lat, lng, ct);
             return Results.Ok(jobs);

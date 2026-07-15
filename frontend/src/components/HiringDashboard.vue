@@ -1,54 +1,130 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import '../hiring-dashboard.css'
+import { useOpenRoles } from '../composables/useOpenRoles'
+import { MAX_VISIBLE_CANDIDATES } from '../utils/jobDisplay'
+import CandidateCard from './CandidateCard.vue'
+import RoleCard from './RoleCard.vue'
 
 const props = defineProps({
   myJobs: { type: Array, default: () => [] },
   candidates: { type: Array, default: () => [] },
+  candidatesLoading: { type: Boolean, default: false },
+  locationLabel: { type: String, default: '' },
+  locating: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['open-create-job', 'view-applications', 'shortlist', 'view-job'])
+const emit = defineEmits([
+  'open-create-job',
+  'view-applications',
+  'shortlist',
+  'view-job',
+  'search-candidates',
+  'use-my-location',
+  'view-all-roles',
+  'view-all-candidates',
+])
 
 const search = ref('')
 const role = ref('All')
-const availability = ref('All')
 
-const candidates = computed(() => props.candidates)
+// How many items to show on the dashboard before offering a dedicated "show all"
+// page. Kept small so the dashboard stays scannable.
+const MAX_VISIBLE_ROLES = 6
 
-const roles = computed(() => ['All', ...new Set(candidates.value.map((candidate) => candidate.role))])
-const availabilityOptions = ['All', 'Immediate', 'This week', 'Next week']
+// Curated roles employers commonly hire for. Kept in sync with the roles used to
+// seed worker profiles so selecting one returns real matches.
+const roles = [
+  'All',
+  'Store Associate',
+  'Delivery Partner',
+  'Cashier',
+  'Warehouse Picker',
+  'Security Guard',
+  'Office Assistant',
+  'Customer Support Executive',
+  'Housekeeping Staff',
+  'Kitchen Helper',
+  'Cafe Server',
+  'Driver',
+  'Electrician',
+  'Plumber',
+  'Sales Associate',
+  'Data Entry Operator',
+  'Receptionist',
+  'Tailor',
+  'Machine Operator',
+  'Pharmacy Assistant',
+  'Field Technician',
+]
 
-const openRoles = computed(() => {
-  return props.myJobs.map((job) => {
-    const applicants = job.applicationCount ?? 0
-    return {
-      id: job.id,
-      title: job.title,
-      area: [job.cityArea, job.state].filter(Boolean).join(', '),
-      workplaceName: job.workplaceName,
-      applicants,
-      shortlisted: Math.min(Math.round(applicants * 0.35), applicants),
-      status: job.isActive === false ? 'Inactive' : applicants > 0 ? 'Review applicants' : 'New role',
-      isBackendJob: true,
-    }
-  })
+let searchTimer = null
+
+// The search/role pair the backend expects. Reused by the live search and by the
+// "show all" navigation so the dedicated page mirrors the dashboard's filters.
+function currentSearchPayload() {
+  return {
+    search: search.value.trim(),
+    role: role.value === 'All' ? '' : role.value,
+  }
+}
+
+function runServerSearch() {
+  emit('search-candidates', currentSearchPayload())
+}
+
+// Debounce keystrokes so the address search hits the backend once the employer
+// pauses typing, while the client-side filter below keeps the list responsive.
+function onSearchInput() {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(runServerSearch, 400)
+}
+
+function submitSearch() {
+  if (searchTimer) clearTimeout(searchTimer)
+  runServerSearch()
+}
+
+watch(role, runServerSearch)
+
+onBeforeUnmount(() => {
+  if (searchTimer) clearTimeout(searchTimer)
 })
 
+const openRoles = useOpenRoles(() => props.myJobs)
+
+// Instant client-side refinement over whatever the backend last returned, so the
+// list narrows as the employer types even before the debounced request lands.
 const filteredCandidates = computed(() => {
   const text = search.value.trim().toLowerCase()
-  return candidates.value.filter((candidate) => {
+  return props.candidates.filter((candidate) => {
     const matchesText = !text || [
       candidate.name,
       candidate.role,
       candidate.area,
-      candidate.city,
-      ...candidate.skills,
-    ].join(' ').toLowerCase().includes(text)
+      candidate.state,
+      candidate.pincode,
+    ].filter(Boolean).join(' ').toLowerCase().includes(text)
     const matchesRole = role.value === 'All' || candidate.role === role.value
-    const matchesAvailability = availability.value === 'All' || candidate.availability === availability.value
-    return matchesText && matchesRole && matchesAvailability
+    return matchesText && matchesRole
   })
 })
+
+// Only the first slice is shown on the dashboard; the rest live on a dedicated
+// page reachable through the "Show more" buttons below.
+const visibleRoles = computed(() => openRoles.value.slice(0, MAX_VISIBLE_ROLES))
+const hasMoreRoles = computed(() => openRoles.value.length > MAX_VISIBLE_ROLES)
+
+const visibleCandidates = computed(() => filteredCandidates.value.slice(0, MAX_VISIBLE_CANDIDATES))
+const hasMoreCandidates = computed(() => filteredCandidates.value.length > MAX_VISIBLE_CANDIDATES)
+
+function showAllRoles() {
+  emit('view-all-roles')
+}
+
+function showAllCandidates() {
+  emit('view-all-candidates', currentSearchPayload())
+}
 
 function shortlist(candidate) {
   emit('shortlist', candidate)
@@ -57,27 +133,6 @@ function shortlist(candidate) {
 
 <template>
   <main class="hiring-dashboard">
-    <section class="hiring-search-panel">
-        <div class="hiring-search">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-          <input v-model="search" type="search" placeholder="Search candidate, role, area, or skill" aria-label="Search candidates" />
-        </div>
-
-        <label>
-          <span>Role</span>
-          <select v-model="role">
-            <option v-for="item in roles" :key="item" :value="item">{{ item }}</option>
-          </select>
-        </label>
-
-        <label>
-          <span>Availability</span>
-          <select v-model="availability">
-            <option v-for="item in availabilityOptions" :key="item" :value="item">{{ item }}</option>
-          </select>
-        </label>
-      </section>
-
       <section class="hiring-metrics">
         <div>
           <strong>{{ filteredCandidates.length }}</strong>
@@ -124,31 +179,19 @@ function shortlist(candidate) {
       </div>
 
       <div class="hiring-role-grid">
-        <article v-for="item in openRoles" :key="item.id || item.title" class="hiring-role-card">
-          <div v-if="item.isBackendJob" class="hiring-role-card__actions">
-            <button
-              type="button"
-              class="hiring-role-card__icon"
-              :aria-label="`View details for ${item.title}`"
-              title="View details"
-              @click="emit('view-job', item.id)"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
-          </div>
-          <span>{{ item.status }}</span>
-          <h3>{{ item.title }}</h3>
-          <p>{{ item.workplaceName ? `${item.workplaceName} - ${item.area}` : item.area }}</p>
-          <div>
-            <strong>{{ item.applicants }}</strong>
-            <small>applicants</small>
-            <strong>{{ item.shortlisted }}</strong>
-            <small>shortlisted</small>
-          </div>
-          <button v-if="item.isBackendJob" type="button" class="hiring-role-card__link" @click="emit('view-applications', item.id)">
-            View applications
-          </button>
-        </article>
+        <RoleCard
+          v-for="item in visibleRoles"
+          :key="item.id || item.title"
+          :item="item"
+          action-label="View applications"
+          @view="emit('view-job', $event)"
+          @action="emit('view-applications', $event)"
+        />
+      </div>
+      <div v-if="hasMoreRoles" class="hiring-show-more">
+        <button type="button" class="hiring-show-more__btn" @click="showAllRoles">
+          Show more roles ({{ openRoles.length }} total)
+        </button>
       </div>
       <div v-if="!openRoles.length" class="candidate-empty">
         <strong>No open roles yet</strong>
@@ -165,83 +208,228 @@ function shortlist(candidate) {
         <span>{{ filteredCandidates.length }} results</span>
       </div>
 
-      <article v-for="candidate in filteredCandidates" :key="candidate.id" class="candidate-card">
-        <div class="candidate-card__avatar">{{ candidate.name.slice(0, 1) }}</div>
-        <div class="candidate-card__body">
-          <div class="candidate-card__top">
-            <div>
-              <h3>{{ candidate.name }}</h3>
-              <p>{{ candidate.role }} - {{ candidate.area }}, {{ candidate.city }}</p>
+      <div class="talent-search">
+        <form class="talent-search__form" @submit.prevent="submitSearch">
+          <div class="talent-search__bar">
+            <div class="hiring-search">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input
+                v-model="search"
+                type="search"
+                placeholder="Search by area, city, pincode, name, or role"
+                aria-label="Search candidates by address or role"
+                @input="onSearchInput"
+              />
             </div>
-            <span>{{ candidate.match }}% match</span>
+            <button type="submit" class="dash-btn dash-btn--primary talent-search__go">Search</button>
           </div>
 
-          <div class="candidate-card__meta">
-            <span>{{ candidate.experience }}</span>
-            <span>{{ candidate.availability }}</span>
-            <span>{{ candidate.rate }}</span>
-          </div>
+          <div class="talent-search__filters">
+            <label class="talent-search__role">
+              <span>Filter by role</span>
+              <select v-model="role">
+                <option v-for="item in roles" :key="item" :value="item">{{ item }}</option>
+              </select>
+            </label>
 
-          <div class="candidate-card__skills">
-            <span v-for="skill in candidate.skills" :key="skill">{{ skill }}</span>
-          </div>
-        </div>
-        <div class="candidate-actions">
-          <button type="button" @click="shortlist(candidate)">Shortlist</button>
-          <button type="button" class="candidate-actions__ghost">Interview</button>
-        </div>
-      </article>
+            <button
+              type="button"
+              class="talent-search__location"
+              :disabled="locating"
+              @click="emit('use-my-location')"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.4-7-11a7 7 0 0 1 14 0c0 4.6-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+              {{ locating ? 'Locating...' : 'Use my location' }}
+            </button>
 
-      <div v-if="!filteredCandidates.length" class="candidate-empty">
-        <strong>No talent found</strong>
-        <p>Try a wider role, availability, or area search.</p>
+            <span v-if="locationLabel" class="talent-search__label">{{ locationLabel }}</span>
+          </div>
+        </form>
       </div>
+
+      <div v-if="candidatesLoading" class="candidate-empty">
+        <strong>Searching talent...</strong>
+        <p>Finding workers that match your search.</p>
+      </div>
+
+      <template v-else>
+        <CandidateCard
+          v-for="candidate in visibleCandidates"
+          :key="candidate.id"
+          :candidate="candidate"
+          @shortlist="shortlist"
+        />
+
+        <div v-if="hasMoreCandidates" class="hiring-show-more">
+          <button type="button" class="hiring-show-more__btn" @click="showAllCandidates">
+            Show more candidates ({{ filteredCandidates.length }} total)
+          </button>
+        </div>
+
+        <div v-if="!filteredCandidates.length" class="candidate-empty">
+          <strong>No talent found</strong>
+          <p>Try a wider area search, a different role, or use your location.</p>
+        </div>
+      </template>
     </section>
   </main>
 </template>
 
 <style scoped>
-.hiring-role-card {
-  position: relative;
+.talent-search {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(18, 50, 74, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 12px 40px rgba(7, 85, 154, 0.07);
 }
 
-.hiring-role-card__actions {
-  position: absolute;
-  top: 16px;
-  right: 16px;
+.talent-search__form {
+  display: grid;
+  gap: 14px;
+}
+
+/* Row 1: the search field owns the full width with the action button beside it,
+   so the role filter is no longer crammed into the search line. */
+.talent-search__bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.talent-search__go {
+  height: 100%;
+  min-height: 52px;
+  padding: 0 26px;
+  white-space: nowrap;
+}
+
+/* Row 2: filters sit on their own line, clearly separated from the search box. */
+.talent-search__filters {
   display: flex;
-  gap: 8px;
-  margin: 0;
-  grid-template-columns: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(18, 50, 74, 0.08);
 }
 
-.hiring-role-card__icon {
+.talent-search__role {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border: 1px solid rgba(7, 85, 154, 0.18);
-  border-radius: 10px;
-  background: #fff;
+  gap: 10px;
+}
+
+.talent-search__role span {
+  color: #5d7482;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.talent-search__role select {
+  height: 42px;
+  min-width: 190px;
+  padding: 0 13px;
+  color: #12324a;
+  border: 1.5px solid rgba(18, 50, 74, 0.1);
+  border-radius: 13px;
+  background: #ffffff;
+  outline: none;
+}
+
+.talent-search__role select:focus {
+  border-color: rgba(7, 85, 154, 0.55);
+  box-shadow: 0 0 0 4px rgba(7, 85, 154, 0.1);
+}
+
+.talent-search__location {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
   color: #07559a;
+  border: 1.5px solid rgba(7, 85, 154, 0.25);
+  border-radius: 12px;
+  background: #ffffff;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.hiring-role-card__icon:hover {
+.talent-search__location:hover:not(:disabled) {
   background: rgba(7, 85, 154, 0.08);
-  border-color: rgba(7, 85, 154, 0.35);
+  border-color: rgba(7, 85, 154, 0.45);
 }
 
-.hiring-role-card__icon svg {
-  width: 17px;
-  height: 17px;
+.talent-search__location:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.talent-search__location svg {
+  width: 18px;
+  height: 18px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+.talent-search__label {
+  margin-left: auto;
+  color: #6f8794;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Shared "Show more" affordance under the roles grid and candidate list. */
+.hiring-show-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.hiring-show-more__btn {
+  padding: 12px 24px;
+  color: #07559a;
+  border: 1.5px solid rgba(7, 85, 154, 0.28);
+  border-radius: 999px;
+  background: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.hiring-show-more__btn:hover {
+  background: rgba(7, 85, 154, 0.08);
+  border-color: rgba(7, 85, 154, 0.5);
+}
+
+@media (max-width: 640px) {
+  .talent-search__bar {
+    grid-template-columns: 1fr;
+  }
+
+  .talent-search__role {
+    width: 100%;
+  }
+
+  .talent-search__role select {
+    flex: 1;
+  }
+
+  .talent-search__label {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
 </style>
