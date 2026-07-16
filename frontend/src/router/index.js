@@ -4,12 +4,33 @@ import PostJobView from '../components/PostJobView.vue'
 import JobDetailView from '../components/JobDetailView.vue'
 import AllRolesPage from '../components/AllRolesPage.vue'
 import AllCandidatesPage from '../components/AllCandidatesPage.vue'
+import JobApplicantsPage from '../components/JobApplicantsPage.vue'
+import CandidateDetailPage from '../components/CandidateDetailPage.vue'
+import ShortlistsPage from '../components/ShortlistsPage.vue'
 
 const routes = [
   { path: '/', name: 'dashboard', component: AppDashboard },
   { path: '/PostNewJob', name: 'post-new-job', component: PostJobView },
   { path: '/hiring/roles', name: 'all-roles', component: AllRolesPage },
   { path: '/hiring/candidates', name: 'all-candidates', component: AllCandidatesPage },
+  { path: '/hiring/shortlists', name: 'review-shortlists', component: ShortlistsPage },
+  {
+    path: '/hiring/candidates/:id',
+    name: 'candidate-detail',
+    component: CandidateDetailPage,
+  },
+  {
+    path: '/hiring/jobs/:id/applicants',
+    name: 'job-applicants',
+    component: JobApplicantsPage,
+    props: { filter: 'all' },
+  },
+  {
+    path: '/hiring/jobs/:id/shortlisted',
+    name: 'job-shortlisted',
+    component: JobApplicantsPage,
+    props: { filter: 'shortlisted' },
+  },
   {
     path: '/jobs/:id',
     name: 'job-view',

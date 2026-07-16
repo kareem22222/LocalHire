@@ -96,6 +96,30 @@ function goViewJob(id) {
   router.push(`/jobs/${id}`)
 }
 
+// Dedicated summary pages reachable from a role card's applicant/shortlisted
+// counts, plus the candidate detail page.
+function goJobApplicants(id) {
+  router.push({ name: 'job-applicants', params: { id } })
+}
+
+function goJobShortlisted(id) {
+  router.push({ name: 'job-shortlisted', params: { id } })
+}
+
+function goCandidateDetail(candidate) {
+  const id = candidate?.id ?? candidate
+  router.push({ name: 'candidate-detail', params: { id } })
+}
+
+function goCandidateContact(candidate) {
+  const id = candidate?.id ?? candidate
+  router.push({ name: 'candidate-detail', params: { id }, query: { contact: '1' } })
+}
+
+function goReviewShortlists() {
+  router.push({ name: 'review-shortlists' })
+}
+
 // Dedicated "show all" pages for when the dashboard's trimmed lists overflow.
 function goAllRoles() {
   router.push('/hiring/roles')
@@ -303,6 +327,11 @@ function hasApplied(jobId) {
       :locating="employerLocationStatus === 'prompt'"
       @open-create-job="goCreateJob"
       @view-applications="viewApplications"
+      @view-applicants="goJobApplicants"
+      @view-shortlisted="goJobShortlisted"
+      @open-candidate="goCandidateDetail"
+      @contact="goCandidateContact"
+      @review-shortlists="goReviewShortlists"
       @view-job="goViewJob"
       @search-candidates="searchCandidates"
       @use-my-location="useEmployerLocation"

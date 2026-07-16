@@ -29,6 +29,8 @@ export const useJobsStore = defineStore('jobs', () => {
   const jobFetchedAt = ref({})
   const applicationsByJob = ref({})
   const applicationsFetchedAt = ref({})
+  const candidatesById = ref({})
+  const candidateFetchedAt = ref({})
   const nearbyJobsByLocation = ref({})
   const candidates = ref([])
   const candidatesByKey = ref({})
@@ -78,6 +80,27 @@ export const useJobsStore = defineStore('jobs', () => {
       const { data } = await jobsApi.getJobApplications(jobId)
       applicationsByJob.value[jobId] = data
       applicationsFetchedAt.value[jobId] = Date.now()
+      return data
+    })
+  }
+
+  // Persistently move an applicant into the shortlisted state. Invalidates the
+  // affected job's application cache and the employer's role list so the
+  // shortlisted counts/pages reflect the change on the next read.
+  async function shortlistApplicant(jobId, applicationId) {
+    const { data } = await jobsApi.shortlistApplicant(jobId, applicationId)
+    applicationsFetchedAt.value[jobId] = 0
+    myJobsFetchedAt.value = 0
+    return data
+  }
+
+  async function loadCandidate(id, { force = false } = {}) {
+    const cached = candidatesById.value[id]
+    if (!force && cached && isFresh(candidateFetchedAt.value[id])) return cached
+    return runOnce(`candidate:${id}`, async () => {
+      const { data } = await jobsApi.getCandidate(id)
+      candidatesById.value[id] = data
+      candidateFetchedAt.value[id] = Date.now()
       return data
     })
   }
@@ -159,6 +182,8 @@ export const useJobsStore = defineStore('jobs', () => {
     jobFetchedAt.value = {}
     applicationsByJob.value = {}
     applicationsFetchedAt.value = {}
+    candidatesById.value = {}
+    candidateFetchedAt.value = {}
     nearbyJobsByLocation.value = {}
     candidates.value = []
     candidatesByKey.value = {}
@@ -178,6 +203,8 @@ export const useJobsStore = defineStore('jobs', () => {
     loadMyJobs,
     loadJob,
     loadJobApplications,
+    shortlistApplicant,
+    loadCandidate,
     loadNearbyJobs,
     loadNearbyCandidates,
     loadMyApplications,

@@ -51,6 +51,31 @@ describe('AppDashboard', () => {
     expect(api.get).toHaveBeenCalledWith('/hiring/jobs')
   })
 
+  it('routes the new hiring summary actions', async () => {
+    api.get.mockImplementation((url) => Promise.resolve({
+      data: url === '/auth/me' ? { name: 'Pat', role: 'Hiring' } : [],
+    }))
+    const wrapper = mountDashboard()
+    await flushPromises()
+    const push = vi.spyOn(router, 'push').mockResolvedValue()
+
+    wrapper.vm.goJobApplicants('job-1')
+    wrapper.vm.goJobShortlisted('job-1')
+    wrapper.vm.goCandidateDetail({ id: 'candidate-1' })
+    wrapper.vm.goCandidateContact('candidate-2')
+    wrapper.vm.goReviewShortlists()
+
+    expect(push).toHaveBeenCalledWith({ name: 'job-applicants', params: { id: 'job-1' } })
+    expect(push).toHaveBeenCalledWith({ name: 'job-shortlisted', params: { id: 'job-1' } })
+    expect(push).toHaveBeenCalledWith({ name: 'candidate-detail', params: { id: 'candidate-1' } })
+    expect(push).toHaveBeenCalledWith({
+      name: 'candidate-detail',
+      params: { id: 'candidate-2' },
+      query: { contact: '1' },
+    })
+    expect(push).toHaveBeenCalledWith({ name: 'review-shortlists' })
+  })
+
   it('loads hiring jobs when profile role is the numeric backend enum', async () => {
     api.get.mockImplementation((url) => Promise.resolve({
       data: url === '/auth/me' ? { name: 'Pat', role: 1 } : [],

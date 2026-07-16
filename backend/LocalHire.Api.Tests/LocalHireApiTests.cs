@@ -430,6 +430,27 @@ public sealed class LocalHireApiTests
         Assert.Single(applicants!);
         Assert.Equal("Applied", applicants![0].Status);
         Assert.Equal("Person", applicants[0].WorkerName);
+
+        var candidate = await client.GetFromJsonAsync<CandidateDetailResponse>(
+            $"/api/hiring/candidates/{applicants[0].WorkerId}");
+        Assert.Equal("person@example.com", candidate!.Email);
+        Assert.Equal(applicants[0].WorkerId, candidate.Id);
+
+        var shortlist = await client.PostAsync(
+            $"/api/hiring/jobs/{job.Id}/applications/{applicants[0].Id}/shortlist", null);
+        Assert.Equal(HttpStatusCode.OK, shortlist.StatusCode);
+        Assert.Equal("Shortlisted", (await shortlist.Content.ReadFromJsonAsync<ApplicantResponse>())!.Status);
+
+        var refreshedApplicants = await client.GetFromJsonAsync<List<ApplicantResponse>>(
+            $"/api/hiring/jobs/{job.Id}/applications");
+        Assert.Equal("Shortlisted", Assert.Single(refreshedApplicants!).Status);
+        Assert.Equal(1, Assert.Single(await client.GetFromJsonAsync<List<JobPostResponse>>(
+            "/api/hiring/jobs") ?? []).ShortlistedCount);
+
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await client.GetAsync($"/api/hiring/candidates/{Guid.NewGuid()}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await client.PostAsync($"/api/hiring/jobs/{job.Id}/applications/{Guid.NewGuid()}/shortlist", null)).StatusCode);
     }
 
     [Fact]

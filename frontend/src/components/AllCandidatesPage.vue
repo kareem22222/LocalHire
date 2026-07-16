@@ -4,6 +4,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useJobsStore } from '../stores/jobs'
 import { useProfileStore } from '../stores/profile'
+import { useSavedCandidates } from '../composables/useSavedCandidates'
 import { MAX_VISIBLE_CANDIDATES } from '../utils/jobDisplay'
 import BrandLogo from './BrandLogo.vue'
 import CandidateCard from './CandidateCard.vue'
@@ -15,6 +16,7 @@ const jobsStore = useJobsStore()
 const profileStore = useProfileStore()
 const { candidates } = storeToRefs(jobsStore)
 const { profile } = storeToRefs(profileStore)
+const { isSaved, add: saveCandidate } = useSavedCandidates()
 const loading = ref(false)
 
 const searchTerm = computed(() => (route.query.search ?? '').toString())
@@ -59,6 +61,18 @@ watch(() => route.fullPath, load)
 function goBack() {
   router.push('/')
 }
+
+function openCandidate(candidate) {
+  router.push({ name: 'candidate-detail', params: { id: candidate.id } })
+}
+
+function contact(candidate) {
+  router.push({ name: 'candidate-detail', params: { id: candidate.id }, query: { contact: '1' } })
+}
+
+function shortlist(candidate) {
+  saveCandidate(candidate.id)
+}
 </script>
 
 <template>
@@ -90,6 +104,10 @@ function goBack() {
             v-for="candidate in visibleCandidates"
             :key="candidate.id"
             :candidate="candidate"
+            :shortlisted="isSaved(candidate.id)"
+            @select="openCandidate"
+            @shortlist="shortlist"
+            @contact="contact"
           />
 
           <div v-if="!candidates.length" class="candidate-empty">

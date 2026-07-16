@@ -20,6 +20,21 @@ public interface IJobService
     Task<IReadOnlyList<ApplicantResponse>> GetApplicationsAsync(Guid jobId, Guid employerId, CancellationToken ct);
 
     /// <summary>
+    /// Moves a single application into the <c>Shortlisted</c> state on behalf of
+    /// the employer who owns the job. Returns the updated applicant. Throws when
+    /// the job is not owned by <paramref name="employerId"/> or the application
+    /// does not belong to that job.
+    /// </summary>
+    Task<ApplicantResponse> ShortlistApplicantAsync(Guid jobId, Guid applicationId, Guid employerId, CancellationToken ct);
+
+    /// <summary>
+    /// Returns the full profile detail for a single worker so an employer can
+    /// review them on the candidate detail page. The phone number is never
+    /// included. Throws when the id does not resolve to a worker account.
+    /// </summary>
+    Task<CandidateDetailResponse> GetCandidateDetailAsync(Guid workerId, CancellationToken ct);
+
+    /// <summary>
     /// Returns active jobs. When <paramref name="lat"/> and <paramref name="lng"/>
     /// are supplied they are assumed already validated; results are filtered to a
     /// fixed radius and ordered by distance. Otherwise all active jobs are returned
