@@ -50,7 +50,7 @@ describe('JobApplicantsPage', () => {
 
     expect(wrapper.text()).toContain('Cashier - Corner Shop')
     expect(wrapper.text()).toContain('Ravi Kumar')
-    await wrapper.find('.candidate-card').trigger('click')
+    await wrapper.find('.candidate-card__select').trigger('click')
     await wrapper.find('.candidate-actions__ghost').trigger('click')
     await wrapper.find('.candidate-actions button').trigger('click')
     await wrapper.find('.dash-header button').trigger('click')
@@ -85,5 +85,47 @@ describe('JobApplicantsPage', () => {
     await router.push('/hiring/jobs/job-2/shortlisted')
     await flushPromises()
     expect(wrapper.get('[role="alert"]').text()).toContain('could not load')
+  })
+
+  it('ignores an obsolete applicant response after the route changes', async () => {
+    const applicationRequests = {}
+    api.get.mockImplementation((url) => {
+      if (url.endsWith('/applications')) {
+        const id = url.split('/')[3]
+        return new Promise((resolve) => { applicationRequests[id] = resolve })
+      }
+      const id = url.split('/')[3]
+      return Promise.resolve({ data: { id, title: `Role ${id}` } })
+    })
+    const wrapper = await mountPage()
+    await flushPromises()
+
+    await router.push('/hiring/jobs/job-2/applicants')
+    await flushPromises()
+    expect(wrapper.findAll('.candidate-card')).toHaveLength(0)
+
+    applicationRequests['job-2']({ data: [{ ...pendingApplicant, id: 'application-2', workerName: 'Latest Worker' }] })
+    await flushPromises()
+    expect(wrapper.text()).toContain('Latest Worker')
+
+    applicationRequests['job-1']({ data: [pendingApplicant] })
+    await flushPromises()
+    expect(wrapper.text()).toContain('Latest Worker')
+    expect(wrapper.text()).not.toContain('Ravi Kumar')
+  })
+
+  it('blocks duplicate shortlist requests while one is pending', async () => {
+    let resolveShortlist
+    api.post.mockReturnValue(new Promise((resolve) => { resolveShortlist = resolve }))
+    const wrapper = await mountPage()
+    await flushPromises()
+    const candidate = { ...pendingApplicant, applicationId: pendingApplicant.id }
+
+    const first = wrapper.vm.shortlist(candidate)
+    await wrapper.vm.shortlist(candidate)
+    expect(api.post).toHaveBeenCalledTimes(1)
+
+    resolveShortlist({ data: { ...candidate, status: 'Shortlisted' } })
+    await first
   })
 })

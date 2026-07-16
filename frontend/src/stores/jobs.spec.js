@@ -91,18 +91,22 @@ describe('jobs store cache', () => {
     const applications = [{ id: 'application-1', status: 'Pending' }]
     const candidate = { id: 'candidate-1', name: 'Ravi' }
     jobsApi.getJobApplications.mockResolvedValue({ data: applications })
+    jobsApi.getJob.mockResolvedValue({ data: { id: 'job-1', title: 'Cashier' } })
     jobsApi.getCandidate.mockResolvedValue({ data: candidate })
     jobsApi.shortlistApplicant.mockResolvedValue({ data: { ...applications[0], status: 'Shortlisted' } })
     const store = useJobsStore()
 
+    await store.loadJob('job-1')
     await expect(store.loadJobApplications('job-1')).resolves.toEqual(applications)
     await expect(store.loadJobApplications('job-1')).resolves.toEqual(applications)
     await expect(store.loadCandidate('candidate-1')).resolves.toEqual(candidate)
     await expect(store.loadCandidate('candidate-1')).resolves.toEqual(candidate)
     await store.shortlistApplicant('job-1', 'application-1')
     await store.loadJobApplications('job-1')
+    await store.loadJob('job-1')
 
     expect(jobsApi.getJobApplications).toHaveBeenCalledTimes(2)
+    expect(jobsApi.getJob).toHaveBeenCalledTimes(2)
     expect(jobsApi.getCandidate).toHaveBeenCalledTimes(1)
     expect(jobsApi.shortlistApplicant).toHaveBeenCalledWith('job-1', 'application-1')
   })

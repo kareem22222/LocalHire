@@ -108,7 +108,7 @@ describe('AllCandidatesPage', () => {
     await flushPromises()
     const push = vi.spyOn(router, 'push').mockResolvedValue()
 
-    await wrapper.find('.candidate-card').trigger('click')
+    await wrapper.find('.candidate-card__select').trigger('click')
     await wrapper.find('.candidate-actions__ghost').trigger('click')
     await wrapper.find('.candidate-actions button').trigger('click')
 

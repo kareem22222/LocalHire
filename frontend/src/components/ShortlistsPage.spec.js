@@ -1,6 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import api from '../api'
+import { useJobsStore } from '../stores/jobs'
 import { createTestRouter } from '../test/router'
 import ShortlistsPage from './ShortlistsPage.vue'
 
@@ -54,5 +55,15 @@ describe('ShortlistsPage', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('No shortlists yet')
+  })
+
+  it('shows a load error without stale or empty-state content', async () => {
+    vi.spyOn(useJobsStore(), 'loadMyJobs').mockRejectedValue(new Error('offline'))
+    const wrapper = await mountPage()
+    await flushPromises()
+
+    expect(wrapper.get('[role="alert"]').text()).toContain('could not load')
+    expect(wrapper.findAll('.hiring-role-card')).toHaveLength(0)
+    expect(wrapper.text()).not.toContain('No shortlists yet')
   })
 })

@@ -62,20 +62,28 @@ const emptyText = computed(() =>
     : 'No one has applied to this role yet.',
 )
 
+let loadGeneration = 0
+
 async function load() {
+  const generation = ++loadGeneration
+  const id = jobId.value
   loading.value = true
   error.value = ''
+  job.value = null
+  applicants.value = []
   try {
     const [jobData, applicantData] = await Promise.all([
-      jobsStore.loadJob(jobId.value).catch(() => null),
-      jobsStore.loadJobApplications(jobId.value, { force: true }),
+      jobsStore.loadJob(id).catch(() => null),
+      jobsStore.loadJobApplications(id, { force: true }),
     ])
-    job.value = jobData
-    applicants.value = applicantData || []
+    if (generation === loadGeneration) {
+      job.value = jobData
+      applicants.value = applicantData || []
+    }
   } catch {
-    error.value = 'We could not load the candidates for this role.'
+    if (generation === loadGeneration) error.value = 'We could not load the candidates for this role.'
   } finally {
-    loading.value = false
+    if (generation === loadGeneration) loading.value = false
   }
 }
 
@@ -95,7 +103,7 @@ function contact(candidate) {
 }
 
 async function shortlist(candidate) {
-  if (candidate.status === 'Shortlisted') return
+  if (candidate.status === 'Shortlisted' || shortlisting.value === candidate.applicationId) return
   shortlisting.value = candidate.applicationId
   try {
     await jobsStore.shortlistApplicant(jobId.value, candidate.applicationId)

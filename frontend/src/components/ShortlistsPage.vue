@@ -12,6 +12,7 @@ const router = useRouter()
 const jobsStore = useJobsStore()
 const { myJobs } = storeToRefs(jobsStore)
 const loading = ref(false)
+const error = ref('')
 
 const openRoles = useOpenRoles(() => myJobs.value)
 
@@ -23,10 +24,11 @@ const totalShortlisted = computed(() =>
 
 onMounted(async () => {
   loading.value = true
+  error.value = ''
   try {
     await jobsStore.loadMyJobs({ force: true })
-  } catch (err) {
-    console.error('Failed to load roles.', err)
+  } catch {
+    error.value = 'We could not load your shortlists.'
   } finally {
     loading.value = false
   }
@@ -72,6 +74,8 @@ function goApplicants(id) {
           <strong>Loading shortlists...</strong>
           <p>Gathering the candidates you have shortlisted.</p>
         </div>
+
+        <p v-else-if="error" class="job-form__error" role="alert">{{ error }}</p>
 
         <template v-else>
           <div class="hiring-role-grid">

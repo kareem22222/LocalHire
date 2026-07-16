@@ -19,13 +19,13 @@ function select(candidate) {
 <template>
   <article
     class="candidate-card candidate-card--clickable"
-    role="button"
-    tabindex="0"
-    :aria-label="`View details for ${candidate.name}`"
-    @click="select(candidate)"
-    @keydown.enter.prevent="select(candidate)"
-    @keydown.space.prevent="select(candidate)"
   >
+    <button
+      type="button"
+      class="candidate-card__select"
+      :aria-label="`View details for ${candidate.name}`"
+      @click="select(candidate)"
+    />
     <div class="candidate-card__avatar">{{ candidate.name?.slice(0, 1) }}</div>
     <div class="candidate-card__body">
       <div class="candidate-card__top">
@@ -57,8 +57,19 @@ function select(candidate) {
 
 <style scoped>
 .candidate-card--clickable {
+  position: relative;
   cursor: pointer;
   transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.candidate-card__select {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
 }
 
 .candidate-card--clickable:hover {
@@ -67,9 +78,14 @@ function select(candidate) {
   transform: translateY(-1px);
 }
 
-.candidate-card--clickable:focus-visible {
+.candidate-card__select:focus-visible {
   outline: 3px solid rgba(7, 85, 154, 0.3);
   outline-offset: 2px;
+}
+
+.candidate-actions {
+  position: relative;
+  z-index: 2;
 }
 
 .candidate-actions button:disabled {

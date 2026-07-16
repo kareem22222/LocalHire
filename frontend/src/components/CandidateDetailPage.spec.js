@@ -45,7 +45,11 @@ describe('CandidateDetailPage', () => {
 
     expect(wrapper.find('.candidate-detail__avatar').text()).toBe('AR')
     expect(wrapper.text()).toContain('Bandra, Maharashtra - 400050')
-    expect(wrapper.text()).toContain('1990')
+    expect(wrapper.text()).toContain(new Date(1990, 0, 2).toLocaleDateString(undefined, {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }))
     expect(wrapper.text()).not.toContain('ananya@example.com')
 
     const buttons = wrapper.findAll('.candidate-detail__actions button')
@@ -66,13 +70,40 @@ describe('CandidateDetailPage', () => {
 
     await router.push('/hiring/candidates/candidate-2?contact=1')
     await flushPromises()
-    await wrapper.findAll('.candidate-detail__actions button')[1].trigger('click')
     expect(wrapper.text()).toContain('worker@example.com')
     expect(wrapper.text()).toContain('unknown')
+
+    await router.push('/hiring/candidates/candidate-2')
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('worker@example.com')
 
     vi.spyOn(window.history, 'length', 'get').mockReturnValue(2)
     const back = vi.spyOn(router, 'back').mockImplementation(() => {})
     await wrapper.find('.dash-header button').trigger('click')
     expect(back).toHaveBeenCalled()
+  })
+
+  it('ignores an obsolete request after the route changes', async () => {
+    const requests = {}
+    api.get.mockImplementation((url) => new Promise((resolve, reject) => {
+      requests[url] = { resolve, reject }
+    }))
+    const wrapper = await mountPage()
+    await flushPromises()
+
+    await router.push('/hiring/candidates/candidate-2')
+    await flushPromises()
+    expect(wrapper.find('.candidate-detail__hero').exists()).toBe(false)
+
+    requests['/hiring/candidates/candidate-2'].resolve({
+      data: { id: 'candidate-2', name: 'Latest Candidate', email: 'latest@example.com' },
+    })
+    await flushPromises()
+    expect(wrapper.text()).toContain('Latest Candidate')
+
+    requests['/hiring/candidates/candidate-1'].reject(new Error('stale failure'))
+    await flushPromises()
+    expect(wrapper.text()).toContain('Latest Candidate')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
   })
 })

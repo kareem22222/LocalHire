@@ -11,6 +11,7 @@ namespace LocalHire.Api.Services;
 public sealed class JobService : IJobService
 {
     private const double NearbyRadiusKm = 50;
+    private const string JobPostNotFoundMessage = "Job post not found.";
 
     private readonly LocalHireDbContext _db;
 
@@ -60,7 +61,7 @@ public sealed class JobService : IJobService
             .FirstOrDefaultAsync(ct);
 
         if (result is null)
-            throw new NotFoundException("Job post not found.");
+            throw new NotFoundException(JobPostNotFoundMessage);
 
         return JobMapper.ToResponse(result.Job, result.Count, result.Shortlisted);
     }
@@ -69,7 +70,7 @@ public sealed class JobService : IJobService
     {
         var jobPost = await _db.JobPosts.FirstOrDefaultAsync(j => j.Id == id && j.EmployerId == employerId, ct);
         if (jobPost is null)
-            throw new NotFoundException("Job post not found.");
+            throw new NotFoundException(JobPostNotFoundMessage);
 
         JobMapper.ApplyRequest(jobPost, request);
 
@@ -85,7 +86,7 @@ public sealed class JobService : IJobService
     {
         var jobPost = await _db.JobPosts.FirstOrDefaultAsync(j => j.Id == jobId && j.EmployerId == employerId, ct);
         if (jobPost is null)
-            throw new NotFoundException("Job post not found.");
+            throw new NotFoundException(JobPostNotFoundMessage);
 
         var applications = await _db.JobApplications
             .Where(a => a.JobPostId == jobId)
@@ -108,7 +109,7 @@ public sealed class JobService : IJobService
     {
         var jobPost = await _db.JobPosts.FirstOrDefaultAsync(j => j.Id == jobId && j.EmployerId == employerId, ct);
         if (jobPost is null)
-            throw new NotFoundException("Job post not found.");
+            throw new NotFoundException(JobPostNotFoundMessage);
 
         var application = await _db.JobApplications
             .FirstOrDefaultAsync(a => a.Id == applicationId && a.JobPostId == jobId, ct);

@@ -260,7 +260,7 @@ describe('HiringDashboard', () => {
     const stats = wrapper.findAll('.hiring-role-card__stat')
     await stats[0].trigger('click')
     await stats[1].trigger('click')
-    await wrapper.find('.candidate-card').trigger('click')
+    await wrapper.find('.candidate-card__select').trigger('click')
     await wrapper.find('.candidate-actions__ghost').trigger('click')
     await wrapper.find('.candidate-actions button').trigger('click')
     await wrapper.findAll('.hiring-quick__link')[0].trigger('click')

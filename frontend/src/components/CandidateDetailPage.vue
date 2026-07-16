@@ -33,7 +33,8 @@ const locationSummary = computed(() => {
 const dateOfBirth = computed(() => {
   const dob = candidate.value?.dateOfBirth
   if (!dob) return ''
-  const date = new Date(dob)
+  const [year, month, day] = dob.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
   return Number.isNaN(date.getTime()) ? dob : date.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
 })
 
@@ -44,20 +45,27 @@ const memberSince = computed(() => {
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
 })
 
+let loadGeneration = 0
+
 async function load() {
+  const generation = ++loadGeneration
+  const id = candidateId.value
   loading.value = true
   error.value = ''
+  candidate.value = null
   try {
-    candidate.value = await jobsStore.loadCandidate(candidateId.value, { force: true })
+    const data = await jobsStore.loadCandidate(id, { force: true })
+    if (generation === loadGeneration) candidate.value = data
   } catch {
-    error.value = 'We could not load this candidate.'
+    if (generation === loadGeneration) error.value = 'We could not load this candidate.'
   } finally {
-    loading.value = false
+    if (generation === loadGeneration) loading.value = false
   }
 }
 
 onMounted(load)
 watch(() => route.params.id, load)
+watch(() => route.query.contact, (value) => { showContact.value = value === '1' })
 
 function goBack() {
   if (window.history.length > 1) router.back()
@@ -225,7 +233,7 @@ function contact() {
   color: #12324a;
   padding: 5px 12px;
   border-radius: 999px;
-  background: rgba(18, 50, 74, 0.06);
+  background: #f1f3f4;
 }
 
 .profile-badge--role {
@@ -234,8 +242,8 @@ function contact() {
 }
 
 .profile-badge--muted {
-  color: #5d7482;
-  background: rgba(18, 50, 74, 0.04);
+  color: #526977;
+  background: #f6f7f8;
 }
 
 .candidate-detail__actions {

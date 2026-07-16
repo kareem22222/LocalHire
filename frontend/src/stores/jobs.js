@@ -90,6 +90,7 @@ export const useJobsStore = defineStore('jobs', () => {
   async function shortlistApplicant(jobId, applicationId) {
     const { data } = await jobsApi.shortlistApplicant(jobId, applicationId)
     applicationsFetchedAt.value[jobId] = 0
+    jobFetchedAt.value[jobId] = 0
     myJobsFetchedAt.value = 0
     return data
   }

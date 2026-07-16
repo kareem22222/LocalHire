@@ -28,6 +28,15 @@ function persist() {
   }
 }
 
+export function clearSavedCandidates() {
+  saved.value = new Set()
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // Storage unavailable; the in-memory shortlist is already cleared.
+  }
+}
+
 export function useSavedCandidates() {
   function isSaved(id) {
     return id != null && saved.value.has(id)

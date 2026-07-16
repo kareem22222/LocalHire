@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { useSavedCandidates } from './useSavedCandidates.js'
+import { clearSavedCandidates, useSavedCandidates } from './useSavedCandidates.js'
 
 describe('useSavedCandidates', () => {
   it('adds, persists, and removes unique candidate ids', () => {
@@ -23,5 +23,15 @@ describe('useSavedCandidates', () => {
     add('memory-only')
     expect(isSaved('memory-only')).toBe(true)
     remove('memory-only')
+  })
+
+  it('clears saved candidates for logout', () => {
+    const { saved, add } = useSavedCandidates()
+    add('candidate-1')
+
+    clearSavedCandidates()
+
+    expect(saved.value.size).toBe(0)
+    expect(localStorage.getItem('localhire.savedCandidates')).toBeNull()
   })
 })

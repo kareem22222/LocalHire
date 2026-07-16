@@ -17,12 +17,13 @@ describe('CandidateCard', () => {
     const wrapper = mount(CandidateCard, { props: { candidate } })
 
     expect(wrapper.text()).toContain('Bandra, Maharashtra')
-    await wrapper.find('article').trigger('keydown.enter')
-    await wrapper.find('article').trigger('keydown.space')
+    expect(wrapper.find('article').attributes('role')).toBeUndefined()
+    expect(wrapper.find('.candidate-card__select').element.tagName).toBe('BUTTON')
+    await wrapper.find('.candidate-card__select').trigger('click')
     await wrapper.find('.candidate-actions button').trigger('click')
     await wrapper.find('.candidate-actions__ghost').trigger('click')
 
-    expect(wrapper.emitted('select')).toEqual([[candidate], [candidate]])
+    expect(wrapper.emitted('select')).toEqual([[candidate]])
     expect(wrapper.emitted('shortlist')).toEqual([[candidate]])
     expect(wrapper.emitted('contact')).toEqual([[candidate]])
 
