@@ -65,7 +65,7 @@ public static class JobMapper
         job.Benefits = NormalizeList(request.Benefits);
     }
 
-    public static JobPostResponse ToResponse(JobPost j, int applicationCount) =>
+    public static JobPostResponse ToResponse(JobPost j, int applicationCount, int shortlistedCount = 0) =>
         new(j.Id, j.Title, j.Description, j.WorkplaceName,
             j.CityArea, j.State, j.Pincode, j.Latitude, j.Longitude,
             j.EmploymentType?.ToString(), j.SalaryMin, j.SalaryMax, j.SalaryPeriod?.ToString(),
@@ -74,7 +74,7 @@ public static class JobMapper
             j.ShiftStartTime?.ToString("HH\\:mm", CultureInfo.InvariantCulture),
             j.ShiftEndTime?.ToString("HH\\:mm", CultureInfo.InvariantCulture),
             j.Openings, j.RequiredSkills, j.Languages, j.Benefits,
-            j.IsActive, j.CreatedAt, applicationCount);
+            j.IsActive, j.CreatedAt, applicationCount, shortlistedCount);
 
     public static string? NormalizeText(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

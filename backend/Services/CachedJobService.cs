@@ -54,6 +54,18 @@ public sealed class CachedJobService : IJobService
         GetOrCreateAsync($"employer:{employerId}:job:{jobId}:applications",
             () => _inner.GetApplicationsAsync(jobId, employerId, ct));
 
+    public async Task<ApplicantResponse> ShortlistApplicantAsync(
+        Guid jobId, Guid applicationId, Guid employerId, CancellationToken ct)
+    {
+        var result = await _inner.ShortlistApplicantAsync(jobId, applicationId, employerId, ct);
+        _version.Invalidate();
+        return result;
+    }
+
+    public Task<CandidateDetailResponse> GetCandidateDetailAsync(Guid workerId, CancellationToken ct) =>
+        GetOrCreateAsync($"candidate-detail:{workerId}",
+            () => _inner.GetCandidateDetailAsync(workerId, ct));
+
     public Task<IReadOnlyList<JobPostResponse>> GetNearbyJobsAsync(
         double? lat, double? lng, CancellationToken ct)
     {

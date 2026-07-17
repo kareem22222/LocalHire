@@ -23,6 +23,14 @@ export function getJobApplications(jobId) {
   return api.get(`/hiring/jobs/${jobId}/applications`)
 }
 
+export function shortlistApplicant(jobId, applicationId) {
+  return api.post(`/hiring/jobs/${jobId}/applications/${applicationId}/shortlist`)
+}
+
+export function getCandidate(id) {
+  return api.get(`/hiring/candidates/${id}`)
+}
+
 export function getNearbyCandidates(params = {}) {
   return api.get('/hiring/candidates/nearby', { params })
 }

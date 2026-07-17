@@ -11,6 +11,7 @@ namespace LocalHire.Api.Services;
 public sealed class JobService : IJobService
 {
     private const double NearbyRadiusKm = 50;
+    private const string JobPostNotFoundMessage = "Job post not found.";
 
     private readonly LocalHireDbContext _db;
 
@@ -33,12 +34,17 @@ public sealed class JobService : IJobService
     {
         var jobs = await _db.JobPosts
             .Where(j => j.EmployerId == employerId)
-            .Select(j => new { Job = j, Count = j.Applications.Count })
+            .Select(j => new
+            {
+                Job = j,
+                Count = j.Applications.Count,
+                Shortlisted = j.Applications.Count(a => a.Status == ApplicationStatus.Shortlisted)
+            })
             .ToListAsync(ct);
 
         return jobs
             .OrderByDescending(x => x.Job.CreatedAt)
-            .Select(x => JobMapper.ToResponse(x.Job, x.Count))
+            .Select(x => JobMapper.ToResponse(x.Job, x.Count, x.Shortlisted))
             .ToList();
     }
 
@@ -46,42 +52,111 @@ public sealed class JobService : IJobService
     {
         var result = await _db.JobPosts
             .Where(j => j.Id == id && j.EmployerId == employerId)
-            .Select(j => new { Job = j, Count = j.Applications.Count })
+            .Select(j => new
+            {
+                Job = j,
+                Count = j.Applications.Count,
+                Shortlisted = j.Applications.Count(a => a.Status == ApplicationStatus.Shortlisted)
+            })
             .FirstOrDefaultAsync(ct);
 
         if (result is null)
-            throw new NotFoundException("Job post not found.");
+            throw new NotFoundException(JobPostNotFoundMessage);
 
-        return JobMapper.ToResponse(result.Job, result.Count);
+        return JobMapper.ToResponse(result.Job, result.Count, result.Shortlisted);
     }
 
     public async Task<JobPostResponse> UpdateJobAsync(Guid id, CreateJobPostRequest request, Guid employerId, CancellationToken ct)
     {
         var jobPost = await _db.JobPosts.FirstOrDefaultAsync(j => j.Id == id && j.EmployerId == employerId, ct);
         if (jobPost is null)
-            throw new NotFoundException("Job post not found.");
+            throw new NotFoundException(JobPostNotFoundMessage);
 
         JobMapper.ApplyRequest(jobPost, request);
 
         await _db.SaveChangesAsync(ct);
 
         var count = await _db.JobApplications.CountAsync(a => a.JobPostId == id, ct);
-        return JobMapper.ToResponse(jobPost, count);
+        var shortlisted = await _db.JobApplications
+            .CountAsync(a => a.JobPostId == id && a.Status == ApplicationStatus.Shortlisted, ct);
+        return JobMapper.ToResponse(jobPost, count, shortlisted);
     }
 
     public async Task<IReadOnlyList<ApplicantResponse>> GetApplicationsAsync(Guid jobId, Guid employerId, CancellationToken ct)
     {
         var jobPost = await _db.JobPosts.FirstOrDefaultAsync(j => j.Id == jobId && j.EmployerId == employerId, ct);
         if (jobPost is null)
-            throw new NotFoundException("Job post not found.");
+            throw new NotFoundException(JobPostNotFoundMessage);
 
         var applications = await _db.JobApplications
             .Where(a => a.JobPostId == jobId)
             .Select(a => new ApplicantResponse(
-                a.Id, a.Worker.Name, a.Status.ToString(), a.CreatedAt))
+                a.Id,
+                a.WorkerId,
+                a.Worker.Name,
+                a.Worker.JobTitle,
+                a.Worker.CityArea,
+                a.Worker.State,
+                a.Worker.Pincode,
+                a.Status.ToString(),
+                a.CreatedAt))
             .ToListAsync(ct);
 
         return applications.OrderByDescending(a => a.AppliedAt).ToList();
+    }
+
+    public async Task<ApplicantResponse> ShortlistApplicantAsync(Guid jobId, Guid applicationId, Guid employerId, CancellationToken ct)
+    {
+        var jobPost = await _db.JobPosts.FirstOrDefaultAsync(j => j.Id == jobId && j.EmployerId == employerId, ct);
+        if (jobPost is null)
+            throw new NotFoundException(JobPostNotFoundMessage);
+
+        var application = await _db.JobApplications
+            .FirstOrDefaultAsync(a => a.Id == applicationId && a.JobPostId == jobId, ct);
+        if (application is null)
+            throw new NotFoundException("Application not found.");
+
+        if (application.Status != ApplicationStatus.Shortlisted)
+        {
+            application.Status = ApplicationStatus.Shortlisted;
+            await _db.SaveChangesAsync(ct);
+        }
+
+        var worker = await _db.Users.FirstAsync(u => u.Id == application.WorkerId, ct);
+
+        return new ApplicantResponse(
+            application.Id,
+            worker.Id,
+            worker.Name,
+            worker.JobTitle,
+            worker.CityArea,
+            worker.State,
+            worker.Pincode,
+            application.Status.ToString(),
+            application.CreatedAt);
+    }
+
+    public async Task<CandidateDetailResponse> GetCandidateDetailAsync(Guid workerId, CancellationToken ct)
+    {
+        var worker = await _db.Users
+            .FirstOrDefaultAsync(u => u.Id == workerId && u.Role == UserRole.LookingForWork, ct);
+        if (worker is null)
+            throw new NotFoundException("Candidate not found.");
+
+        return new CandidateDetailResponse(
+            worker.Id,
+            worker.Name,
+            worker.Email,
+            worker.JobTitle,
+            worker.Gender,
+            worker.DateOfBirth,
+            worker.AddressLine,
+            worker.CityArea,
+            worker.State,
+            worker.Pincode,
+            worker.Latitude,
+            worker.Longitude,
+            worker.CreatedAt);
     }
 
     public async Task<IReadOnlyList<JobPostResponse>> GetNearbyJobsAsync(double? lat, double? lng, CancellationToken ct)

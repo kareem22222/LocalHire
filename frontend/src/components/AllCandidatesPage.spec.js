@@ -98,4 +98,26 @@ describe('AllCandidatesPage', () => {
 
     expect(push).toHaveBeenCalledWith('/')
   })
+
+  it('opens, contacts, and saves a candidate', async () => {
+    const candidate = { id: 'candidate-1', name: 'Ravi', role: 'Cashier' }
+    api.get.mockImplementation((url) => Promise.resolve({
+      data: url === '/auth/me' ? {} : [candidate],
+    }))
+    const wrapper = await mountPage()
+    await flushPromises()
+    const push = vi.spyOn(router, 'push').mockResolvedValue()
+
+    await wrapper.find('.candidate-card__select').trigger('click')
+    await wrapper.find('.candidate-actions__ghost').trigger('click')
+    await wrapper.find('.candidate-actions button').trigger('click')
+
+    expect(push).toHaveBeenCalledWith({ name: 'candidate-detail', params: { id: candidate.id } })
+    expect(push).toHaveBeenCalledWith({
+      name: 'candidate-detail',
+      params: { id: candidate.id },
+      query: { contact: '1' },
+    })
+    expect(wrapper.find('.candidate-actions button').attributes('disabled')).toBeDefined()
+  })
 })

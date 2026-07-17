@@ -18,11 +18,16 @@ describe('api auth persistence', () => {
     expect(localStorage.getItem(TOKEN_STORAGE_KEY)).toBe('token-123')
   })
 
-  it('removes the token from localStorage on clearAuth', async () => {
+  it('clears account-scoped browser state on clearAuth', async () => {
+    const { useSavedCandidates } = await import('../composables/useSavedCandidates.js')
     const { setAuth, clearAuth } = await import('./index.js')
+    const { add, isSaved } = useSavedCandidates()
     setAuth('token-123')
+    add('candidate-1')
     clearAuth()
     expect(localStorage.getItem(TOKEN_STORAGE_KEY)).toBeNull()
+    expect(isSaved('candidate-1')).toBe(false)
+    expect(localStorage.getItem('localhire.savedCandidates')).toBeNull()
   })
 
   it('rehydrates the token from localStorage on module load (simulates refresh)', async () => {

@@ -26,5 +26,6 @@ public sealed record JobPostResponse(
     IReadOnlyList<string> Benefits,
     bool IsActive,
     DateTimeOffset CreatedAt,
-    int ApplicationCount
+    int ApplicationCount,
+    int ShortlistedCount = 0
 );

@@ -106,6 +106,35 @@ public static class JobEndpoints
         })
         .WithName("GetJobApplications");
 
+        hiringGroup.MapPost("/jobs/{jobId:guid}/applications/{applicationId:guid}/shortlist", async (
+            Guid jobId,
+            Guid applicationId,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            var applicant = await jobService.ShortlistApplicantAsync(jobId, applicationId, userId, ct);
+            return Results.Ok(applicant);
+        })
+        .WithName("ShortlistApplicant");
+
+        hiringGroup.MapGet("/candidates/{id:guid}", async (
+            Guid id,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out _))
+                return Results.Unauthorized();
+
+            var candidate = await jobService.GetCandidateDetailAsync(id, ct);
+            return Results.Ok(candidate);
+        })
+        .WithName("GetCandidateDetail");
+
         hiringGroup.MapGet("/candidates/nearby", async (
             double? lat,
             double? lng,

@@ -9,6 +9,8 @@ vi.mock('../api/jobs.js', () => ({
   createJob: vi.fn(),
   updateJob: vi.fn(),
   getJobApplications: vi.fn(),
+  shortlistApplicant: vi.fn(),
+  getCandidate: vi.fn(),
   getNearbyJobs: vi.fn(),
   getNearbyCandidates: vi.fn(),
   applyToJob: vi.fn(),
@@ -83,5 +85,29 @@ describe('jobs store cache', () => {
     expect(store.myJobs[0].title).toBe('Senior Cashier')
     expect(store.jobsById['job-1'].title).toBe('Senior Cashier')
     expect(jobsApi.getNearbyJobs).toHaveBeenCalledTimes(2)
+  })
+
+  it('caches applications and candidates and invalidates applications after shortlisting', async () => {
+    const applications = [{ id: 'application-1', status: 'Pending' }]
+    const candidate = { id: 'candidate-1', name: 'Ravi' }
+    jobsApi.getJobApplications.mockResolvedValue({ data: applications })
+    jobsApi.getJob.mockResolvedValue({ data: { id: 'job-1', title: 'Cashier' } })
+    jobsApi.getCandidate.mockResolvedValue({ data: candidate })
+    jobsApi.shortlistApplicant.mockResolvedValue({ data: { ...applications[0], status: 'Shortlisted' } })
+    const store = useJobsStore()
+
+    await store.loadJob('job-1')
+    await expect(store.loadJobApplications('job-1')).resolves.toEqual(applications)
+    await expect(store.loadJobApplications('job-1')).resolves.toEqual(applications)
+    await expect(store.loadCandidate('candidate-1')).resolves.toEqual(candidate)
+    await expect(store.loadCandidate('candidate-1')).resolves.toEqual(candidate)
+    await store.shortlistApplicant('job-1', 'application-1')
+    await store.loadJobApplications('job-1')
+    await store.loadJob('job-1')
+
+    expect(jobsApi.getJobApplications).toHaveBeenCalledTimes(2)
+    expect(jobsApi.getJob).toHaveBeenCalledTimes(2)
+    expect(jobsApi.getCandidate).toHaveBeenCalledTimes(1)
+    expect(jobsApi.shortlistApplicant).toHaveBeenCalledWith('job-1', 'application-1')
   })
 })

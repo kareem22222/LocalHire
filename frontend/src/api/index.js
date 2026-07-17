@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { clearSavedCandidates } from '../composables/useSavedCandidates'
 
 const api = axios.create({
   baseURL: '/api',
@@ -57,6 +58,7 @@ export function clearAuth() {
   } catch {
     // Ignore storage errors.
   }
+  clearSavedCandidates()
 }
 
 export async function isAuthenticated() {

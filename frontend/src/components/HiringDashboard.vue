@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import '../hiring-dashboard.css'
 import { useOpenRoles } from '../composables/useOpenRoles'
+import { useSavedCandidates } from '../composables/useSavedCandidates'
 import { MAX_VISIBLE_CANDIDATES } from '../utils/jobDisplay'
 import CandidateCard from './CandidateCard.vue'
 import RoleCard from './RoleCard.vue'
@@ -17,7 +18,12 @@ const props = defineProps({
 const emit = defineEmits([
   'open-create-job',
   'view-applications',
+  'view-applicants',
+  'view-shortlisted',
+  'open-candidate',
   'shortlist',
+  'contact',
+  'review-shortlists',
   'view-job',
   'search-candidates',
   'use-my-location',
@@ -92,6 +98,7 @@ onBeforeUnmount(() => {
 })
 
 const openRoles = useOpenRoles(() => props.myJobs)
+const { isSaved, add: saveCandidate } = useSavedCandidates()
 
 // Instant client-side refinement over whatever the backend last returned, so the
 // list narrows as the employer types even before the debounced request lands.
@@ -127,7 +134,16 @@ function showAllCandidates() {
 }
 
 function shortlist(candidate) {
+  saveCandidate(candidate.id)
   emit('shortlist', candidate)
+}
+
+function contact(candidate) {
+  emit('contact', candidate)
+}
+
+function openCandidate(candidate) {
+  emit('open-candidate', candidate)
 }
 </script>
 
@@ -164,7 +180,7 @@ function shortlist(candidate) {
           <p>Jump straight into the work that keeps candidates moving.</p>
           <div class="hiring-quick__actions">
             <button type="button" class="dash-btn dash-btn--primary" @click="emit('open-create-job')">Post new role</button>
-            <button type="button" class="hiring-quick__link">Review shortlists</button>
+            <button type="button" class="hiring-quick__link" @click="emit('review-shortlists')">Review shortlists</button>
             <button type="button" class="hiring-quick__link">Schedule interviews</button>
           </div>
         </aside>
@@ -183,9 +199,12 @@ function shortlist(candidate) {
           v-for="item in visibleRoles"
           :key="item.id || item.title"
           :item="item"
-          action-label="View applications"
+          action-label="View Summary"
+          counts-clickable
           @view="emit('view-job', $event)"
           @action="emit('view-applications', $event)"
+          @view-applicants="emit('view-applicants', $event)"
+          @view-shortlisted="emit('view-shortlisted', $event)"
         />
       </div>
       <div v-if="hasMoreRoles" class="hiring-show-more">
@@ -257,7 +276,10 @@ function shortlist(candidate) {
           v-for="candidate in visibleCandidates"
           :key="candidate.id"
           :candidate="candidate"
+          :shortlisted="isSaved(candidate.id)"
           @shortlist="shortlist"
+          @contact="contact"
+          @select="openCandidate"
         />
 
         <div v-if="hasMoreCandidates" class="hiring-show-more">

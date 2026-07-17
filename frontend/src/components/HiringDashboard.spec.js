@@ -242,4 +242,35 @@ describe('HiringDashboard', () => {
     expect(events).toBeTruthy()
     expect(events[events.length - 1][0]).toEqual({ search: '', role: 'Cashier' })
   })
+
+  it('forwards role, candidate, and shortlist actions', async () => {
+    const candidate = { id: 'candidate-1', name: 'Ravi', role: 'Cashier' }
+    const wrapper = mountHiringDashboard({
+      myJobs: [{
+        id: 'job-1',
+        title: 'Cashier',
+        workplaceName: 'Corner Shop',
+        applicationCount: 3,
+        shortlistedCount: 2,
+        isActive: true,
+      }],
+      candidates: [candidate],
+    })
+
+    const stats = wrapper.findAll('.hiring-role-card__stat')
+    await stats[0].trigger('click')
+    await stats[1].trigger('click')
+    await wrapper.find('.candidate-card__select').trigger('click')
+    await wrapper.find('.candidate-actions__ghost').trigger('click')
+    await wrapper.find('.candidate-actions button').trigger('click')
+    await wrapper.findAll('.hiring-quick__link')[0].trigger('click')
+
+    expect(wrapper.emitted('view-applicants')).toEqual([['job-1']])
+    expect(wrapper.emitted('view-shortlisted')).toEqual([['job-1']])
+    expect(wrapper.emitted('open-candidate')).toEqual([[candidate]])
+    expect(wrapper.emitted('contact')).toEqual([[candidate]])
+    expect(wrapper.emitted('shortlist')).toEqual([[candidate]])
+    expect(wrapper.emitted('review-shortlists')).toHaveLength(1)
+    expect(wrapper.find('.candidate-actions button').attributes('disabled')).toBeDefined()
+  })
 })
