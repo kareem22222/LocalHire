@@ -1,0 +1,143 @@
+name: AWS Cost Startup (Start RDS + EB)
+
+# One-click resume: starts the selected RDS instance(s) and scales the selected
+# Elastic Beanstalk environment back up so the dev app is reachable again.
+#
+# RDS takes a few minutes to become "available" after starting. The workflow
+# waits for RDS to be ready BEFORE scaling EB back up, so the app boots against
+# a live database.
+
+on:
+  workflow_dispatch:
+    inputs:
+      rds_instances:
+        description: 'Comma-separated RDS DB instance identifiers to START'
+        required: true
+        default: localhire-development
+      eb_environment_name:
+        description: 'Elastic Beanstalk environment to scale back up'
+        required: true
+        default: LocalHire-dev
+      eb_min_instances:
+        description: 'EB Auto Scaling minimum instances'
+        required: true
+        default: '1'
+      eb_max_instances:
+        description: 'EB Auto Scaling maximum instances'
+        required: true
+        default: '2'
+      aws_region:
+        description: 'AWS region'
+        required: true
+        default: ap-south-2
+  # Daily auto-start at 09:00 IST (03:30 UTC). GitHub cron runs in UTC.
+  # Scheduled runs pass empty inputs, so the env block below supplies defaults.
+  schedule:
+    - cron: '30 3 * * *'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: aws-power-${{ github.event.inputs.eb_environment_name || 'LocalHire-dev' }}
+  cancel-in-progress: false
+
+jobs:
+  startup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RDS_INSTANCES: ${{ github.event.inputs.rds_instances || 'localhire-development' }}
+      EB_ENVIRONMENT: ${{ github.event.inputs.eb_environment_name || 'LocalHire-dev' }}
+      EB_MIN: ${{ github.event.inputs.eb_min_instances || '1' }}
+      EB_MAX: ${{ github.event.inputs.eb_max_instances || '2' }}
+      AWS_REGION: ${{ github.event.inputs.aws_region || 'ap-south-2' }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.1.0
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Start RDS instance(s)
+        run: |
+          set -euo pipefail
+          IFS=',' read -ra IDS <<< "$RDS_INSTANCES"
+          for raw in "${IDS[@]}"; do
+            id="$(printf '%s' "$raw" | xargs)"   # trim whitespace
+            [ -z "$id" ] && continue
+
+            status="$(aws rds describe-db-instances \
+              --db-instance-identifier "$id" \
+              --query 'DBInstances[0].DBInstanceStatus' --output text 2>/dev/null || echo 'MISSING')"
+
+            case "$status" in
+              MISSING)
+                echo "RDS '$id' not found. Skipping." ;;
+              stopped)
+                echo "Starting RDS '$id' ..."
+                aws rds start-db-instance --db-instance-identifier "$id" >/dev/null
+                echo "Start requested for '$id'." ;;
+              available|starting|configuring-enhanced-monitoring|backing-up)
+                echo "RDS '$id' already $status. Skipping start." ;;
+              *)
+                echo "RDS '$id' is in state '$status'; not startable right now. Skipping." ;;
+            esac
+          done
+
+      - name: Wait for RDS instance(s) to be available
+        run: |
+          set -euo pipefail
+          IFS=',' read -ra IDS <<< "$RDS_INSTANCES"
+          for raw in "${IDS[@]}"; do
+            id="$(printf '%s' "$raw" | xargs)"
+            [ -z "$id" ] && continue
+            exists="$(aws rds describe-db-instances \
+              --db-instance-identifier "$id" \
+              --query 'DBInstances[0].DBInstanceIdentifier' --output text 2>/dev/null || echo 'MISSING')"
+            [ "$exists" = "MISSING" ] && continue
+            echo "Waiting for RDS '$id' to become available ..."
+            aws rds wait db-instance-available --db-instance-identifier "$id"
+            echo "RDS '$id' is available."
+          done
+
+      - name: Scale Elastic Beanstalk environment back up
+        run: |
+          set -euo pipefail
+          status="$(aws elasticbeanstalk describe-environments \
+            --environment-names "$EB_ENVIRONMENT" \
+            --query 'Environments[0].Status' --output text)"
+
+          if [ "$status" = "None" ] || [ -z "$status" ]; then
+            echo "EB environment '$EB_ENVIRONMENT' not found. Skipping."
+            exit 0
+          fi
+          echo "EB '$EB_ENVIRONMENT' current status: $status"
+
+          echo "Scaling '$EB_ENVIRONMENT' to Min=$EB_MIN / Max=$EB_MAX ..."
+          aws elasticbeanstalk update-environment \
+            --environment-name "$EB_ENVIRONMENT" \
+            --option-settings \
+              "Namespace=aws:autoscaling:asg,OptionName=MinSize,Value=$EB_MIN" \
+              "Namespace=aws:autoscaling:asg,OptionName=MaxSize,Value=$EB_MAX"
+
+          echo "Waiting for environment update to complete ..."
+          aws elasticbeanstalk wait environment-updated \
+            --environment-name "$EB_ENVIRONMENT"
+
+          health="$(aws elasticbeanstalk describe-environments \
+            --environment-names "$EB_ENVIRONMENT" \
+            --query 'Environments[0].Health' --output text)"
+          echo "EB environment '$EB_ENVIRONMENT' health: $health"
+
+      - name: Summary
+        run: |
+          {
+            echo "### AWS Cost Startup complete"
+            echo ""
+            echo "- **RDS started:** \`$RDS_INSTANCES\`"
+            echo "- **EB scaled to:** Min=\`$EB_MIN\` / Max=\`$EB_MAX\` (\`$EB_ENVIRONMENT\`)"
+            echo "- **Region:** \`$AWS_REGION\`"
+          } >> "$GITHUB_STEP_SUMMARY"
