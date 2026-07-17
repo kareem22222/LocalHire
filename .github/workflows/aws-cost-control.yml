@@ -1,0 +1,221 @@
+name: AWS Cost Control (Start/Stop RDS + EB)
+
+# Single workflow to start or stop the LocalHire dev and/or prod stacks
+# (RDS instance + Elastic Beanstalk environment).
+#
+# TWO WAYS TO RUN:
+#   1. Manually (Actions -> Run workflow): pick "action" (stop/start) and
+#      "target" (dev / prod / both) from the dropdowns.
+#   2. Automatically on a schedule:
+#        - 21:00 IST (15:30 UTC) -> STOP  dev + prod
+#        - 09:00 IST (03:30 UTC) -> START dev + prod
+#      The workflow detects which cron fired and picks the action.
+#
+# GUARDS (manual runs only; the schedule runs unattended):
+#   - Any prod action requires actor == kareem22222.
+#   - STOPPING prod additionally requires typing CONFIRM.
+#
+# COST NOTE: scaling EB to 0 removes EC2 compute cost, but the load balancer
+# and RDS storage keep costing money while stopped.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'What to do'
+        required: true
+        default: stop
+        type: choice
+        options:
+          - stop
+          - start
+      target:
+        description: 'Which environment(s)'
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - prod
+          - both
+      confirm:
+        description: 'Type CONFIRM to STOP prod (only needed when stopping prod/both)'
+        required: false
+        default: ''
+      aws_region:
+        description: 'AWS region'
+        required: true
+        default: ap-south-2
+  schedule:
+    - cron: '30 15 * * *'   # 21:00 IST -> STOP dev + prod
+    - cron: '30 3 * * *'    # 09:00 IST -> START dev + prod
+
+permissions:
+  contents: read
+  id-token: write
+
+# Serialize all power operations so a manual run and a scheduled run can't
+# fight over the same environment.
+concurrency:
+  group: aws-cost-control
+  cancel-in-progress: false
+
+jobs:
+  control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Resolve action, targets and region
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          IN_ACTION: ${{ github.event.inputs.action }}
+          IN_TARGET: ${{ github.event.inputs.target }}
+          IN_REGION: ${{ github.event.inputs.aws_region }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "schedule" ]; then
+            case "$SCHEDULE" in
+              "30 15 * * *") ACTION="stop" ;;
+              "30 3 * * *")  ACTION="start" ;;
+              *) echo "Unrecognized schedule '$SCHEDULE'." >&2; exit 1 ;;
+            esac
+            TARGETS="dev prod"
+          else
+            ACTION="$IN_ACTION"
+            case "$IN_TARGET" in
+              dev)  TARGETS="dev" ;;
+              prod) TARGETS="prod" ;;
+              both) TARGETS="dev prod" ;;
+              *) echo "Unrecognized target '$IN_TARGET'." >&2; exit 1 ;;
+            esac
+          fi
+          REGION="${IN_REGION:-ap-south-2}"
+
+          {
+            echo "ACTION=$ACTION"
+            echo "TARGETS=$TARGETS"
+            echo "REGION=$REGION"
+          } >> "$GITHUB_ENV"
+          echo "Resolved -> ACTION=$ACTION | TARGETS='$TARGETS' | REGION=$REGION"
+
+      - name: Authorize prod actions (manual runs only)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          ACTOR: ${{ github.actor }}
+          CONFIRM: ${{ github.event.inputs.confirm }}
+        run: |
+          set -euo pipefail
+          if printf '%s' "$TARGETS" | grep -qw prod; then
+            if [ "$ACTOR" != "kareem22222" ]; then
+              echo "Only kareem22222 can start/stop prod. Actor was: $ACTOR" >&2
+              exit 1
+            fi
+            if [ "$ACTION" = "stop" ] && [ "$CONFIRM" != "CONFIRM" ]; then
+              echo "Stopping prod requires typing CONFIRM (exactly). Got: '$CONFIRM'" >&2
+              exit 1
+            fi
+            echo "Authorized prod '$ACTION' by $ACTOR."
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.1.0
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.REGION }}
+
+      - name: Execute
+        run: |
+          set -euo pipefail
+
+          # ---- environment map -------------------------------------------------
+          # Edit MIN/MAX here if an environment's real capacity differs.
+          env_config() {
+            case "$1" in
+              dev)  RDS="localhire-development"; EB="LocalHire-dev";  MIN=1; MAX=2 ;;
+              prod) RDS="localhire-production";  EB="LocalHire-prod"; MIN=1; MAX=2 ;;
+              *) return 1 ;;
+            esac
+          }
+
+          scale_eb() {
+            local eb="$1" min="$2" max="$3" status
+            status="$(aws elasticbeanstalk describe-environments \
+              --environment-names "$eb" \
+              --query 'Environments[0].Status' --output text)"
+            if [ "$status" = "None" ] || [ -z "$status" ]; then
+              echo "EB '$eb' not found. Skipping."
+              return 0
+            fi
+            echo "EB '$eb' status: $status -> scaling to Min=$min / Max=$max ..."
+            aws elasticbeanstalk update-environment \
+              --environment-name "$eb" \
+              --option-settings \
+                "Namespace=aws:autoscaling:asg,OptionName=MinSize,Value=$min" \
+                "Namespace=aws:autoscaling:asg,OptionName=MaxSize,Value=$max"
+            aws elasticbeanstalk wait environment-updated --environment-name "$eb"
+            echo "EB '$eb' now Min=$min / Max=$max."
+          }
+
+          stop_rds() {
+            local id="$1" status
+            status="$(aws rds describe-db-instances --db-instance-identifier "$id" \
+              --query 'DBInstances[0].DBInstanceStatus' --output text 2>/dev/null || echo MISSING)"
+            case "$status" in
+              MISSING) echo "RDS '$id' not found. Skipping." ;;
+              available) echo "Stopping RDS '$id' ..."; aws rds stop-db-instance --db-instance-identifier "$id" >/dev/null; echo "Stop requested for '$id'." ;;
+              stopped|stopping) echo "RDS '$id' already $status. Skipping." ;;
+              *) echo "RDS '$id' in state '$status'; not stoppable now. Skipping." ;;
+            esac
+          }
+
+          start_rds() {
+            local id="$1" status
+            status="$(aws rds describe-db-instances --db-instance-identifier "$id" \
+              --query 'DBInstances[0].DBInstanceStatus' --output text 2>/dev/null || echo MISSING)"
+            case "$status" in
+              MISSING) echo "RDS '$id' not found. Skipping." ;;
+              stopped) echo "Starting RDS '$id' ..."; aws rds start-db-instance --db-instance-identifier "$id" >/dev/null; echo "Start requested for '$id'." ;;
+              available|starting|configuring-enhanced-monitoring|backing-up) echo "RDS '$id' already $status. Skipping." ;;
+              *) echo "RDS '$id' in state '$status'; not startable now. Skipping." ;;
+            esac
+          }
+
+          wait_rds() {
+            local id="$1" exists
+            exists="$(aws rds describe-db-instances --db-instance-identifier "$id" \
+              --query 'DBInstances[0].DBInstanceIdentifier' --output text 2>/dev/null || echo MISSING)"
+            [ "$exists" = "MISSING" ] && return 0
+            echo "Waiting for RDS '$id' to become available ..."
+            aws rds wait db-instance-available --db-instance-identifier "$id"
+            echo "RDS '$id' is available."
+          }
+
+          for t in $TARGETS; do
+            if ! env_config "$t"; then
+              echo "Unknown target '$t'. Skipping."
+              continue
+            fi
+            echo "::group::${ACTION} ${t} (RDS=$RDS, EB=$EB)"
+            if [ "$ACTION" = "stop" ]; then
+              scale_eb "$EB" 0 0
+              stop_rds "$RDS"
+            else
+              start_rds "$RDS"
+              wait_rds "$RDS"
+              scale_eb "$EB" "$MIN" "$MAX"
+            fi
+            echo "::endgroup::"
+          done
+
+      - name: Summary
+        run: |
+          {
+            echo "### AWS Cost Control"
+            echo ""
+            echo "- **Action:** \`$ACTION\`"
+            echo "- **Targets:** \`$TARGETS\`"
+            echo "- **Region:** \`$REGION\`"
+            echo "- **Trigger:** \`${{ github.event_name }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
