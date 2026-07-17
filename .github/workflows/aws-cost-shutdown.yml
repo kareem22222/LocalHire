@@ -1,0 +1,130 @@
+name: AWS Cost Shutdown (Stop RDS + EB)
+
+# One-click cost saver: stops the selected RDS instance(s) and scales the
+# selected Elastic Beanstalk environment down to 0 running instances.
+#
+# What still costs money after this runs:
+#   - RDS: only the allocated storage (no compute). AWS auto-starts a stopped
+#     instance after 7 days, so there is a scheduled re-stop below as a guard.
+#   - Elastic Beanstalk: the environment definition + load balancer (if any).
+#     With 0 instances there are no EC2/compute charges. Terminate the env
+#     entirely if you also want to drop the load balancer cost.
+
+on:
+  workflow_dispatch:
+    inputs:
+      rds_instances:
+        description: 'Comma-separated RDS DB instance identifiers to STOP'
+        required: true
+        default: localhire-development
+      eb_environment_name:
+        description: 'Elastic Beanstalk environment to scale to 0'
+        required: true
+        default: LocalHire-dev
+      aws_region:
+        description: 'AWS region'
+        required: true
+        default: ap-south-2
+  # Daily shutdown at 21:00 IST (15:30 UTC). GitHub cron runs in UTC.
+  # Pairs with aws-cost-startup.yml which turns everything back on at 09:00 IST.
+  schedule:
+    - cron: '30 15 * * *'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: aws-power-${{ github.event.inputs.eb_environment_name || 'LocalHire-dev' }}
+  cancel-in-progress: false
+
+jobs:
+  shutdown:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RDS_INSTANCES: ${{ github.event.inputs.rds_instances || 'localhire-development' }}
+      EB_ENVIRONMENT: ${{ github.event.inputs.eb_environment_name || 'LocalHire-dev' }}
+      AWS_REGION: ${{ github.event.inputs.aws_region || 'ap-south-2' }}
+
+    steps:
+      - name: Guard against stopping prod resources
+        run: |
+          # Prevents an accidental prod shutdown. Remove this block if you
+          # intentionally want to stop prod resources from this workflow.
+          if printf '%s' "$RDS_INSTANCES" | grep -qi 'prod'; then
+            echo "Refusing to stop an RDS instance whose name contains 'prod': $RDS_INSTANCES" >&2
+            echo "Edit this guard in the workflow if this is intentional." >&2
+            exit 1
+          fi
+          if printf '%s' "$EB_ENVIRONMENT" | grep -qi 'prod'; then
+            echo "Refusing to scale down an EB environment whose name contains 'prod': $EB_ENVIRONMENT" >&2
+            exit 1
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.1.0
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Scale Elastic Beanstalk environment to 0
+        run: |
+          set -euo pipefail
+          status="$(aws elasticbeanstalk describe-environments \
+            --environment-names "$EB_ENVIRONMENT" \
+            --query 'Environments[0].Status' --output text)"
+
+          if [ "$status" = "None" ] || [ -z "$status" ]; then
+            echo "EB environment '$EB_ENVIRONMENT' not found. Skipping." 
+            exit 0
+          fi
+          echo "EB '$EB_ENVIRONMENT' current status: $status"
+
+          echo "Scaling '$EB_ENVIRONMENT' to Min=0 / Max=0 ..."
+          aws elasticbeanstalk update-environment \
+            --environment-name "$EB_ENVIRONMENT" \
+            --option-settings \
+              "Namespace=aws:autoscaling:asg,OptionName=MinSize,Value=0" \
+              "Namespace=aws:autoscaling:asg,OptionName=MaxSize,Value=0"
+
+          echo "Waiting for environment update to complete ..."
+          aws elasticbeanstalk wait environment-updated \
+            --environment-name "$EB_ENVIRONMENT"
+          echo "EB environment scaled to 0 instances."
+
+      - name: Stop RDS instance(s)
+        run: |
+          set -euo pipefail
+          IFS=',' read -ra IDS <<< "$RDS_INSTANCES"
+          for raw in "${IDS[@]}"; do
+            id="$(printf '%s' "$raw" | xargs)"   # trim whitespace
+            [ -z "$id" ] && continue
+
+            status="$(aws rds describe-db-instances \
+              --db-instance-identifier "$id" \
+              --query 'DBInstances[0].DBInstanceStatus' --output text 2>/dev/null || echo 'MISSING')"
+
+            case "$status" in
+              MISSING)
+                echo "RDS '$id' not found. Skipping." ;;
+              available)
+                echo "Stopping RDS '$id' ..."
+                aws rds stop-db-instance --db-instance-identifier "$id" >/dev/null
+                echo "Stop requested for '$id'." ;;
+              stopped|stopping)
+                echo "RDS '$id' already $status. Skipping." ;;
+              *)
+                echo "RDS '$id' is in state '$status'; not stoppable right now. Skipping." ;;
+            esac
+          done
+
+      - name: Summary
+        run: |
+          {
+            echo "### AWS Cost Shutdown complete"
+            echo ""
+            echo "- **RDS stopped:** \`$RDS_INSTANCES\`"
+            echo "- **EB scaled to 0:** \`$EB_ENVIRONMENT\`"
+            echo "- **Region:** \`$AWS_REGION\`"
+          } >> "$GITHUB_STEP_SUMMARY"
