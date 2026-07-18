@@ -9,6 +9,10 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       Jwt__Secret: ${JWT_SECRET:?Set JWT_SECRET in .env.rds}
+      AWS__S3Bucket: ${AWS_S3_BUCKET:-}
+      AWS__Region: ${AWS_REGION:-ap-south-2}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       ConnectionStrings__DefaultConnection: >-
         Host=${RDS_HOST};
         Port=${RDS_PORT:-5432};

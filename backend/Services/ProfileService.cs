@@ -48,6 +48,15 @@ public sealed class ProfileService : IProfileService
         user.CityArea = NormalizeOptional(request.CityArea);
         user.State = NormalizeOptional(request.State);
         user.Pincode = NormalizeOptional(request.Pincode);
+        if (user.Role == UserRole.LookingForWork)
+        {
+            user.JobTitle = NormalizeOptional(request.JobTitle);
+            user.ProfessionalSummary = NormalizeOptional(request.ProfessionalSummary);
+            user.ExperienceYears = request.ExperienceYears;
+            user.Education = NormalizeOptional(request.Education);
+            user.Skills = NormalizeList(request.Skills);
+            user.Languages = NormalizeList(request.Languages);
+        }
 
         await _db.SaveChangesAsync(ct);
 
@@ -84,8 +93,24 @@ public sealed class ProfileService : IProfileService
         new(user.Id, user.Name, user.Email, user.Role,
             user.Phone, user.DateOfBirth, user.Gender, user.AddressLine,
             user.CityArea, user.State, user.Pincode,
-            user.Latitude, user.Longitude, user.LocationUpdatedAt, user.CreatedAt);
+            user.Latitude, user.Longitude, user.LocationUpdatedAt, user.CreatedAt,
+            user.JobTitle, user.ProfessionalSummary, user.ExperienceYears, user.Education,
+            user.Skills, user.Languages, user.ResumeFileName, IsComplete(user));
+
+    private static bool IsComplete(User user) =>
+        user.Role != UserRole.LookingForWork ||
+        !string.IsNullOrWhiteSpace(user.Phone) &&
+        !string.IsNullOrWhiteSpace(user.JobTitle) &&
+        user.ExperienceYears is not null &&
+        !string.IsNullOrWhiteSpace(user.Education) &&
+        user.Languages.Count > 0 &&
+        !string.IsNullOrWhiteSpace(user.CityArea) &&
+        !string.IsNullOrWhiteSpace(user.State) &&
+        !string.IsNullOrWhiteSpace(user.Pincode);
 
     private static string? NormalizeOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static List<string> NormalizeList(IEnumerable<string>? values) =>
+        values?.Select(NormalizeOptional).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? [];
 }

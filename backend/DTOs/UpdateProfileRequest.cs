@@ -8,5 +8,11 @@ public sealed record UpdateProfileRequest(
     string? AddressLine,
     string? CityArea,
     string? State,
-    string? Pincode
+    string? Pincode,
+    string? JobTitle = null,
+    string? ProfessionalSummary = null,
+    int? ExperienceYears = null,
+    string? Education = null,
+    List<string>? Skills = null,
+    List<string>? Languages = null
 );

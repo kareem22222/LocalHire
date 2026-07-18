@@ -1,12 +1,14 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using LocalHire.Api.Data;
 using LocalHire.Api.DTOs;
 using LocalHire.Api.Models;
 using LocalHire.Api.Validators;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Swashbuckle.AspNetCore.Swagger;
 using Xunit;
 
 namespace LocalHire.Api.Tests;
@@ -19,6 +21,15 @@ public sealed class LocalHireApiTests
     private static readonly string[] ExpectedRoundTripLanguages = { "Kannada", "Hindi" };
     private static readonly string[] ExpectedRoundTripBenefits = { "Provident Fund", "Meals" };
     private static readonly string[] ExpectedUpdatedSkills = { "Billing" };
+
+    [Fact]
+    public void Swagger_document_includes_resume_upload()
+    {
+        using var factory = new ApiFactory();
+        var swagger = factory.Services.GetRequiredService<ISwaggerProvider>().GetSwagger("v1");
+
+        Assert.Contains("/api/me/resume", swagger.Paths.Keys);
+    }
 
     [Fact]
     public void Validators_reject_bad_roles_passwords_and_coordinates()
@@ -148,6 +159,10 @@ public sealed class LocalHireApiTests
         var bad = await client.PutAsJsonAsync("/api/me/profile",
             new UpdateProfileRequest("Asha Rao", null, null, null, null, null, null, "12"));
         Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+
+        var malformedDate = await client.PutAsync("/api/me/profile",
+            new StringContent("""{"name":"Asha Rao","dateOfBirth":""}""", Encoding.UTF8, "application/json"));
+        Assert.Equal(HttpStatusCode.BadRequest, malformedDate.StatusCode);
     }
 
     [Fact]

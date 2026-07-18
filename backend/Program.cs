@@ -1,5 +1,8 @@
 using System.Text;
 using System.Threading.RateLimiting;
+using Amazon;
+using Amazon.Runtime;
+using Amazon.S3;
 using FluentValidation;
 using LocalHire.Api.Data;
 using LocalHire.Api.Endpoints;
@@ -119,6 +122,19 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
+builder.Services.AddSingleton<IAmazonS3>(_ =>
+{
+    var region = RegionEndpoint.GetBySystemName(builder.Configuration["AWS:Region"] ?? "ap-south-1");
+    var accessKey = builder.Configuration["AWS:AccessKey"];
+    var secretKey = builder.Configuration["AWS:SecretKey"];
+
+    if (string.IsNullOrWhiteSpace(accessKey) != string.IsNullOrWhiteSpace(secretKey))
+        throw new InvalidOperationException("Configure both AWS:AccessKey and AWS:SecretKey, or neither.");
+
+    return string.IsNullOrWhiteSpace(accessKey)
+        ? new AmazonS3Client(region)
+        : new AmazonS3Client(new BasicAWSCredentials(accessKey, secretKey), region);
+});
 builder.Services.AddSingleton<JobCacheVersion>();
 builder.Services.AddScoped<JobService>();
 builder.Services.AddScoped<IJobService, CachedJobService>();

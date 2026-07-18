@@ -52,6 +52,15 @@ describe('ProfilePage', () => {
     expect(wrapper.text()).not.toContain('Company details')
   })
 
+  it('shows worker professional fields and makes the resume optional', () => {
+    const wrapper = mountProfilePage({ user: { name: 'Pat', role: 'LookingForWork', isProfileComplete: false } })
+
+    expect(wrapper.text()).toContain('Professional details')
+    expect(wrapper.text()).toContain('Resume (optional')
+    expect(wrapper.text()).toContain('Complete the required')
+    expect(wrapper.findAll('button').some((button) => button.text() === 'Back')).toBe(false)
+  })
+
   it('emits "back" when the back button is clicked', async () => {
     const wrapper = mountProfilePage({ user: { name: 'Pat' } })
 
@@ -78,5 +87,6 @@ describe('ProfilePage', () => {
     const saved = wrapper.emitted('save')
     expect(saved).toHaveLength(1)
     expect(saved[0][0].name).toBe('Pat Updated')
+    expect(saved[0][0].dateOfBirth).toBeNull()
   })
 })

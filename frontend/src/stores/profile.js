@@ -46,6 +46,13 @@ export const useProfileStore = defineStore('profile', () => {
     return data
   }
 
+  async function uploadResume(file) {
+    const { data } = await profileApi.uploadResume(file)
+    profile.value = data
+    fetchedAt.value = Date.now()
+    return data
+  }
+
   function invalidate() {
     fetchedAt.value = 0
   }
@@ -56,5 +63,5 @@ export const useProfileStore = defineStore('profile', () => {
     pendingRequest = null
   }
 
-  return { profile, fetchedAt, fetchProfile, updateProfile, updateLocation, invalidate, clear }
+  return { profile, fetchedAt, fetchProfile, updateProfile, updateLocation, uploadResume, invalidate, clear }
 })
