@@ -88,6 +88,20 @@ public sealed class ProfileServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Worker_profile_completion_requires_employability_fields_but_not_a_resume()
+    {
+        var id = await SeedUserAsync();
+        var request = new UpdateProfileRequest(
+            "Asha Rao", "+91 90000 00000", null, null, null, "Indiranagar", "Karnataka", "560038",
+            "Cashier", null, 0, "12th pass", ["Billing"], ["Hindi"]);
+
+        var updated = await _service.UpdateProfileAsync(id, request, CancellationToken.None);
+
+        Assert.True(updated.IsProfileComplete);
+        Assert.Null(updated.ResumeFileName);
+    }
+
+    [Fact]
     public async Task UpdateLocation_rejects_missing_coordinates()
     {
         var id = await SeedUserAsync();

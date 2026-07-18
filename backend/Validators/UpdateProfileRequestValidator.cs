@@ -41,5 +41,14 @@ public sealed class UpdateProfileRequestValidator : AbstractValidator<UpdateProf
             .Matches(@"^\d{6}$")
             .WithMessage("Pincode must be a 6-digit number.")
             .When(x => !string.IsNullOrWhiteSpace(x.Pincode));
+
+        RuleFor(x => x.JobTitle).MaximumLength(100).When(x => !string.IsNullOrWhiteSpace(x.JobTitle));
+        RuleFor(x => x.ProfessionalSummary).MaximumLength(1000).When(x => !string.IsNullOrWhiteSpace(x.ProfessionalSummary));
+        RuleFor(x => x.ExperienceYears).InclusiveBetween(0, 60).When(x => x.ExperienceYears is not null);
+        RuleFor(x => x.Education).MaximumLength(200).When(x => !string.IsNullOrWhiteSpace(x.Education));
+        RuleForEach(x => x.Skills).NotEmpty().MaximumLength(50);
+        RuleForEach(x => x.Languages).NotEmpty().MaximumLength(50);
+        RuleFor(x => x.Skills).Must(x => x is null || x.Count <= 20).WithMessage("At most 20 skills are allowed.");
+        RuleFor(x => x.Languages).Must(x => x is null || x.Count <= 10).WithMessage("At most 10 languages are allowed.");
     }
 }

@@ -1,5 +1,7 @@
 using System.Text;
 using System.Threading.RateLimiting;
+using Amazon;
+using Amazon.S3;
 using FluentValidation;
 using LocalHire.Api.Data;
 using LocalHire.Api.Endpoints;
@@ -119,6 +121,8 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
+builder.Services.AddSingleton<IAmazonS3>(_ => new AmazonS3Client(
+    RegionEndpoint.GetBySystemName(builder.Configuration["AWS:Region"] ?? "ap-south-1")));
 builder.Services.AddSingleton<JobCacheVersion>();
 builder.Services.AddScoped<JobService>();
 builder.Services.AddScoped<IJobService, CachedJobService>();

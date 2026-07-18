@@ -18,6 +18,17 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var stringListConverter = new ValueConverter<List<string>, string>(
+            v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+            v => string.IsNullOrEmpty(v)
+                ? new List<string>()
+                : JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>());
+
+        var stringListComparer = new ValueComparer<List<string>>(
+            (a, b) => (a ?? new List<string>()).SequenceEqual(b ?? new List<string>()),
+            v => v == null ? 0 : v.Aggregate(0, (acc, s) => HashCode.Combine(acc, s)),
+            v => v == null ? new List<string>() : v.ToList());
+
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(u => u.Id);
@@ -31,6 +42,13 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
             entity.Property(u => u.DateOfBirth).IsRequired(false);
             entity.Property(u => u.Gender).HasMaxLength(50).IsRequired(false);
             entity.Property(u => u.JobTitle).HasMaxLength(100).IsRequired(false);
+            entity.Property(u => u.ProfessionalSummary).HasMaxLength(1000).IsRequired(false);
+            entity.Property(u => u.ExperienceYears).IsRequired(false);
+            entity.Property(u => u.Education).HasMaxLength(200).IsRequired(false);
+            entity.Property(u => u.ResumeKey).HasMaxLength(300).IsRequired(false);
+            entity.Property(u => u.ResumeFileName).HasMaxLength(255).IsRequired(false);
+            entity.Property(u => u.Skills).HasConversion(stringListConverter).Metadata.SetValueComparer(stringListComparer);
+            entity.Property(u => u.Languages).HasConversion(stringListConverter).Metadata.SetValueComparer(stringListComparer);
             entity.Property(u => u.AddressLine).HasMaxLength(300).IsRequired(false);
             entity.Property(u => u.CityArea).HasMaxLength(200).IsRequired(false);
             entity.Property(u => u.State).HasMaxLength(100).IsRequired(false);
@@ -43,17 +61,6 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
 
         modelBuilder.Entity<JobPost>(entity =>
         {
-            var stringListConverter = new ValueConverter<List<string>, string>(
-                v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
-                v => string.IsNullOrEmpty(v)
-                    ? new List<string>()
-                    : JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>());
-
-            var stringListComparer = new ValueComparer<List<string>>(
-                (a, b) => (a ?? new List<string>()).SequenceEqual(b ?? new List<string>()),
-                v => v == null ? 0 : v.Aggregate(0, (acc, s) => HashCode.Combine(acc, s)),
-                v => v == null ? new List<string>() : v.ToList());
-
             entity.HasKey(j => j.Id);
             entity.Property(j => j.EmployerRole)
                 .HasMaxLength(50)

@@ -5,7 +5,7 @@ const props = defineProps({
   user: { type: Object, default: null },
 })
 
-const emit = defineEmits(['back', 'save'])
+const emit = defineEmits(['back', 'save', 'upload-resume'])
 
 const editing = ref(false)
 const saving = ref(false)
@@ -20,6 +20,7 @@ const INDIAN_STATES = [
   'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi',
   'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry',
 ]
+const isWorker = computed(() => props.user?.role === 'LookingForWork')
 
 const form = reactive({
   // Account / personal
@@ -33,6 +34,12 @@ const form = reactive({
   cityArea: '',
   state: '',
   pincode: '',
+  jobTitle: '',
+  professionalSummary: '',
+  experienceYears: '',
+  education: '',
+  skills: '',
+  languages: '',
 })
 
 function hydrate() {
@@ -46,6 +53,12 @@ function hydrate() {
   form.cityArea = u.cityArea || ''
   form.state = u.state || ''
   form.pincode = u.pincode || ''
+  form.jobTitle = u.jobTitle || ''
+  form.professionalSummary = u.professionalSummary || ''
+  form.experienceYears = u.experienceYears ?? ''
+  form.education = u.education || ''
+  form.skills = (u.skills || []).join(', ')
+  form.languages = (u.languages || []).join(', ')
 }
 
 watch(() => props.user, hydrate, { immediate: true })
@@ -96,11 +109,22 @@ async function save() {
       cityArea: form.cityArea.trim(),
       state: form.state,
       pincode: form.pincode.trim(),
+      jobTitle: form.jobTitle.trim(),
+      professionalSummary: form.professionalSummary.trim(),
+      experienceYears: form.experienceYears === '' ? null : Number(form.experienceYears),
+      education: form.education.trim(),
+      skills: form.skills.split(',').map((value) => value.trim()).filter(Boolean),
+      languages: form.languages.split(',').map((value) => value.trim()).filter(Boolean),
     })
   } finally {
     saving.value = false
     editing.value = false
   }
+}
+
+function uploadResume(event) {
+  const file = event.target.files?.[0]
+  if (file) emit('upload-resume', file)
 }
 
 function goBack() {
@@ -117,9 +141,9 @@ function goBack() {
         <h1 class="dash-welcome__title profile-hero__name">
           <span class="dash-welcome__name">{{ form.name || props.user?.name || 'User' }}</span>
         </h1>
-        <p class="profile-hero__headline">Hiring locally on LocalHire</p>
+        <p class="profile-hero__headline">{{ isWorker ? 'Finding work locally on LocalHire' : 'Hiring locally on LocalHire' }}</p>
         <div class="profile-hero__tags">
-          <span class="profile-badge profile-badge--role">Hiring</span>
+          <span class="profile-badge profile-badge--role">{{ isWorker ? 'Looking for work' : 'Hiring' }}</span>
           <span v-if="locationSummary" class="profile-badge">{{ locationSummary }}</span>
           <span v-if="memberSince" class="profile-badge profile-badge--muted">Member since {{ memberSince }}</span>
         </div>
@@ -127,7 +151,7 @@ function goBack() {
       <div class="profile-hero__actions">
         <template v-if="!editing">
           <button type="button" class="dash-btn dash-btn--primary" @click="startEdit">Edit profile</button>
-          <button type="button" class="dash-btn dash-btn--outline" @click="goBack">Back</button>
+          <button v-if="!isWorker || user?.isProfileComplete !== false" type="button" class="dash-btn dash-btn--outline" @click="goBack">Back</button>
         </template>
         <template v-else>
           <button type="button" class="dash-btn dash-btn--primary" :disabled="saving" @click="save">
@@ -136,6 +160,10 @@ function goBack() {
           <button type="button" class="dash-btn dash-btn--outline" :disabled="saving" @click="cancelEdit">Cancel</button>
         </template>
       </div>
+    </section>
+
+    <section v-if="isWorker && user?.isProfileComplete === false" class="profile-completion" role="status">
+      Complete the required contact, professional, and location fields to get full access. A resume is optional.
     </section>
 
     <!-- Account & personal -->
@@ -171,6 +199,50 @@ function goBack() {
             <option v-for="option in GENDER_OPTIONS" :key="option" :value="option">{{ option }}</option>
           </select>
           <p v-else class="profile-value">{{ form.gender || '—' }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="isWorker" class="profile-card">
+      <div class="profile-card__head">
+        <h2 class="dash-section__title">Professional details</h2>
+        <p class="profile-card__hint">Tell nearby employers what work fits you.</p>
+      </div>
+      <div class="profile-grid">
+        <div class="profile-field">
+          <label for="profile-job-title">Job title *</label>
+          <input v-if="editing" id="profile-job-title" v-model="form.jobTitle" type="text" placeholder="e.g. Delivery partner" />
+          <p v-else class="profile-value">{{ form.jobTitle || '—' }}</p>
+        </div>
+        <div class="profile-field">
+          <label for="profile-experience">Experience in years *</label>
+          <input v-if="editing" id="profile-experience" v-model="form.experienceYears" type="number" min="0" max="60" step="1" />
+          <p v-else class="profile-value">{{ form.experienceYears === '' ? '—' : `${form.experienceYears} years` }}</p>
+        </div>
+        <div class="profile-field profile-field--full">
+          <label for="profile-summary">Professional summary</label>
+          <textarea v-if="editing" id="profile-summary" v-model="form.professionalSummary" maxlength="1000" placeholder="A short summary of your work experience"></textarea>
+          <p v-else class="profile-value">{{ form.professionalSummary || '—' }}</p>
+        </div>
+        <div class="profile-field">
+          <label for="profile-education">Highest education *</label>
+          <input v-if="editing" id="profile-education" v-model="form.education" type="text" placeholder="e.g. 12th pass, Diploma" />
+          <p v-else class="profile-value">{{ form.education || '—' }}</p>
+        </div>
+        <div class="profile-field">
+          <label for="profile-languages">Languages * (comma separated)</label>
+          <input v-if="editing" id="profile-languages" v-model="form.languages" type="text" placeholder="Hindi, English" />
+          <p v-else class="profile-value">{{ form.languages || '—' }}</p>
+        </div>
+        <div class="profile-field profile-field--full">
+          <label for="profile-skills">Skills (comma separated)</label>
+          <input v-if="editing" id="profile-skills" v-model="form.skills" type="text" placeholder="Customer service, Billing, Driving" />
+          <p v-else class="profile-value">{{ form.skills || '—' }}</p>
+        </div>
+        <div class="profile-field profile-field--full">
+          <label for="profile-resume">Resume (optional, PDF/DOC/DOCX, max 5 MB)</label>
+          <input id="profile-resume" type="file" accept=".pdf,.doc,.docx" @change="uploadResume" />
+          <p v-if="user?.resumeFileName" class="profile-value">Uploaded: {{ user.resumeFileName }}</p>
         </div>
       </div>
     </section>
@@ -299,6 +371,14 @@ function goBack() {
   border-radius: 16px;
 }
 
+.profile-completion {
+  padding: 16px 20px;
+  color: #6b4600;
+  background: #fff7df;
+  border: 1px solid #f0d486;
+  border-radius: 12px;
+}
+
 .profile-card__head {
   margin-bottom: 22px;
 }
@@ -334,7 +414,8 @@ function goBack() {
 }
 
 .profile-field input,
-.profile-field select {
+.profile-field select,
+.profile-field textarea {
   width: 100%;
   padding: 12px 14px;
   font-size: 14px;
@@ -348,7 +429,8 @@ function goBack() {
 }
 
 .profile-field input:focus,
-.profile-field select:focus {
+.profile-field select:focus,
+.profile-field textarea:focus {
   border-color: #07559a;
   box-shadow: 0 0 0 3px rgba(7, 85, 154, 0.08);
 }

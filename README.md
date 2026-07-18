@@ -123,6 +123,10 @@ Keep JWT secrets out of Git. Each developer can use a different local secret.
 Production needs its own stable secret stored in a secure service such as AWS
 Secrets Manager. Changing the JWT secret invalidates existing tokens.
 
+Resume uploads use the AWS SDK credential chain. Configure the private S3 bucket
+and region with `AWS__S3Bucket` and `AWS__Region` (defaults to `ap-south-1`),
+then provide AWS credentials through your normal local or deployment environment.
+
 ## Tests
 
 Run frontend tests:

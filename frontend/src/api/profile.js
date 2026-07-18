@@ -13,3 +13,9 @@ export function updateProfile(details) {
 export function updateLocation(coords) {
   return api.put('/me/location', coords)
 }
+
+export function uploadResume(file) {
+  const data = new FormData()
+  data.append('resume', file)
+  return api.put('/me/resume', data)
+}

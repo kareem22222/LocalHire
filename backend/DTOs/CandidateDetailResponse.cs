@@ -20,5 +20,11 @@ public sealed record CandidateDetailResponse(
     string? Pincode,
     double? Latitude,
     double? Longitude,
-    DateTimeOffset CreatedAt
+    DateTimeOffset CreatedAt,
+    string? ProfessionalSummary = null,
+    int? ExperienceYears = null,
+    string? Education = null,
+    IReadOnlyList<string>? Skills = null,
+    IReadOnlyList<string>? Languages = null,
+    bool HasResume = false
 );

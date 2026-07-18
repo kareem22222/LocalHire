@@ -156,7 +156,13 @@ public sealed class JobService : IJobService
             worker.Pincode,
             worker.Latitude,
             worker.Longitude,
-            worker.CreatedAt);
+            worker.CreatedAt,
+            worker.ProfessionalSummary,
+            worker.ExperienceYears,
+            worker.Education,
+            worker.Skills,
+            worker.Languages,
+            worker.ResumeKey is not null);
     }
 
     public async Task<IReadOnlyList<JobPostResponse>> GetNearbyJobsAsync(double? lat, double? lng, CancellationToken ct)

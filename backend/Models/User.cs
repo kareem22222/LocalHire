@@ -18,6 +18,13 @@ public sealed class User
     /// employer's talent search by role. Not meaningful for hiring accounts.
     /// </summary>
     public string? JobTitle { get; set; }
+    public string? ProfessionalSummary { get; set; }
+    public int? ExperienceYears { get; set; }
+    public string? Education { get; set; }
+    public List<string> Skills { get; set; } = [];
+    public List<string> Languages { get; set; } = [];
+    public string? ResumeKey { get; set; }
+    public string? ResumeFileName { get; set; }
 
     public string? AddressLine { get; set; }
     public string? CityArea { get; set; }

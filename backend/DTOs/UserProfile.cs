@@ -19,5 +19,13 @@ public sealed record UserProfile(
     double? Latitude,
     double? Longitude,
     DateTimeOffset? LocationUpdatedAt,
-    DateTimeOffset CreatedAt
+    DateTimeOffset CreatedAt,
+    string? JobTitle,
+    string? ProfessionalSummary,
+    int? ExperienceYears,
+    string? Education,
+    IReadOnlyList<string> Skills,
+    IReadOnlyList<string> Languages,
+    string? ResumeFileName,
+    bool IsProfileComplete
 );

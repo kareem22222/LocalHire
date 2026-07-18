@@ -28,6 +28,7 @@ const userRole = computed(() => normalizeRole(user.value?.role))
 const isHiringUser = computed(() => userRole.value === 'hiring')
 const isWorkerUser = computed(() => userRole.value === 'worker')
 const profileSaveError = ref('')
+const resumeUploadError = ref('')
 
 // --- Shared ---
 const activeTab = ref(typeof localStorage !== 'undefined' ? (localStorage.getItem('dashboard_tab') || 'dashboard') : 'dashboard')
@@ -44,6 +45,7 @@ async function fetchProfile() {
       await loadMyJobs()
       await loadCandidates()
     } else if (role === 'worker') {
+      if (data.isProfileComplete === false) activeTab.value = 'profile'
       await loadMyApplications()
       await loadNearbyJobs()
     }
@@ -64,6 +66,7 @@ function handleProfileClick() {
 }
 
 function closeProfile() {
+  if (isWorkerUser.value && user.value?.isProfileComplete === false) return
   activeTab.value = 'dashboard'
 }
 
@@ -78,6 +81,15 @@ async function handleProfileSave(details) {
     profileSaveError.value = reason
       ? `Failed to save profile: ${reason}`
       : 'Failed to save profile. Your edits are kept locally.'
+  }
+}
+
+async function handleResumeUpload(file) {
+  resumeUploadError.value = ''
+  try {
+    await profileStore.uploadResume(file)
+  } catch (err) {
+    resumeUploadError.value = err.response?.data?.message || 'Failed to upload resume.'
   }
 }
 
@@ -315,8 +327,9 @@ function hasApplied(jobId) {
       </div>
     </header>
 
-    <ProfilePage v-if="activeTab === 'profile'" :user="user" @back="closeProfile" @save="handleProfileSave" />
+    <ProfilePage v-if="activeTab === 'profile'" :user="user" @back="closeProfile" @save="handleProfileSave" @upload-resume="handleResumeUpload" />
     <p v-if="profileSaveError" class="job-form__error" role="alert">{{ profileSaveError }}</p>
+    <p v-if="resumeUploadError" class="job-form__error" role="alert">{{ resumeUploadError }}</p>
 
     <HiringDashboard
       v-if="isHiringUser && activeTab !== 'profile'"
