@@ -54,8 +54,8 @@ public sealed class RegisterRequestValidatorTests
         AssertInvalid(Valid() with { Password = password }, nameof(RegisterRequest.Password));
 
     [Fact]
-    public void Rejects_password_over_128_characters() =>
-        AssertInvalid(Valid() with { Password = "Aa1!" + new string('a', 130) }, nameof(RegisterRequest.Password));
+    public void Rejects_password_over_72_utf8_bytes() =>
+        AssertInvalid(Valid() with { Password = "Aa1!" + new string('é', 35) }, nameof(RegisterRequest.Password));
 
     [Theory]
     [InlineData("")]

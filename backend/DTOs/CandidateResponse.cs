@@ -2,10 +2,8 @@ namespace LocalHire.Api.DTOs;
 
 /// <summary>
 /// A worker surfaced to a hiring employer in the "Talent near your business"
-/// list. Location fields come straight from the worker's profile; <see
-/// cref="DistanceKm"/> and <see cref="MatchScore"/> are computed relative to the
-/// employer's search origin (their coordinates or a supplied point). Distance is
-/// null when either side has no coordinates.
+/// list. Only the worker's approximate, user-entered area is exposed; precise
+/// coordinates remain server-side and are used only to calculate distance.
 /// </summary>
 public sealed record CandidateResponse(
     Guid Id,
@@ -14,8 +12,6 @@ public sealed record CandidateResponse(
     string? Area,
     string? State,
     string? Pincode,
-    double? Latitude,
-    double? Longitude,
     double? DistanceKm,
     int MatchScore
 );

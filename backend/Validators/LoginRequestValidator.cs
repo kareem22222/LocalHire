@@ -1,3 +1,4 @@
+using System.Text;
 using FluentValidation;
 using LocalHire.Api.DTOs;
 using LocalHire.Api.Models;
@@ -15,7 +16,9 @@ public sealed class LoginRequestValidator : AbstractValidator<LoginRequest>
             .EmailAddress();
 
         RuleFor(x => x.Password)
-            .NotEmpty();
+            .NotEmpty()
+            .Must(password => password is null || Encoding.UTF8.GetByteCount(password) <= 72)
+            .WithMessage("Password must be at most 72 UTF-8 bytes.");
 
         RuleFor(x => x.Role)
             .NotEmpty()

@@ -28,7 +28,9 @@ public sealed class ProfileServiceTests : IDisposable
         _service = new ProfileService(_db, new MemoryCache(new MemoryCacheOptions()));
     }
 
-    private async Task<Guid> SeedUserAsync()
+    private async Task<Guid> SeedUserAsync(
+        UserRole role = UserRole.LookingForWork,
+        string? jobTitle = null)
     {
         var user = new User
         {
@@ -36,7 +38,8 @@ public sealed class ProfileServiceTests : IDisposable
             Name = "Asha",
             Email = "asha@example.com",
             PasswordHash = "hash",
-            Role = UserRole.LookingForWork,
+            Role = role,
+            JobTitle = jobTitle,
             CreatedAt = DateTimeOffset.UtcNow,
         };
         _db.Users.Add(user);
@@ -79,12 +82,29 @@ public sealed class ProfileServiceTests : IDisposable
         var id = await SeedUserAsync();
         await _service.GetProfileAsync(id, CancellationToken.None); // prime cache
 
-        var request = new UpdateProfileRequest("Asha Rao", "+91 90000 00000", null, null, null, "Indiranagar", "Karnataka", "560038");
+        var request = new UpdateProfileRequest(
+            "Asha Rao", "+91 90000 00000", null, null, null,
+            "Indiranagar", "Karnataka", "560038", "  Electrician  ");
         var updated = await _service.UpdateProfileAsync(id, request, CancellationToken.None);
 
         Assert.Equal("Asha Rao", updated.Name);
+        Assert.Equal("Electrician", updated.JobTitle);
         var reread = await _service.GetProfileAsync(id, CancellationToken.None);
         Assert.Equal("Indiranagar", reread.CityArea);
+        Assert.Equal("Electrician", reread.JobTitle);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_clears_job_title_for_hiring_users()
+    {
+        var id = await SeedUserAsync(UserRole.Hiring, "Old title");
+        var request = new UpdateProfileRequest(
+            "Boss", null, null, null, null, null, null, null, "Electrician");
+
+        var updated = await _service.UpdateProfileAsync(id, request, CancellationToken.None);
+
+        Assert.Null(updated.JobTitle);
+        Assert.Null((await _db.Users.FindAsync(id))!.JobTitle);
     }
 
     [Fact]

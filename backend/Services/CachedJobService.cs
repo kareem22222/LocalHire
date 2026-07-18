@@ -5,9 +5,10 @@ using Microsoft.Extensions.Caching.Memory;
 namespace LocalHire.Api.Services;
 
 /// <summary>
-/// Caches job query DTOs in-process. Every key includes the requesting user when
-/// the result is user-specific. Successful writes advance a shared generation,
-/// making all prior job-query entries unreachable until their short TTL expires.
+/// Caches job and application query DTOs in-process. Profile-derived candidate
+/// data is deliberately read through so profile changes are visible immediately.
+/// Successful writes advance a shared generation, making all prior entries
+/// unreachable until their short TTL expires.
 /// </summary>
 public sealed class CachedJobService : IJobService
 {
@@ -63,8 +64,7 @@ public sealed class CachedJobService : IJobService
     }
 
     public Task<CandidateDetailResponse> GetCandidateDetailAsync(Guid workerId, CancellationToken ct) =>
-        GetOrCreateAsync($"candidate-detail:{workerId}",
-            () => _inner.GetCandidateDetailAsync(workerId, ct));
+        _inner.GetCandidateDetailAsync(workerId, ct);
 
     public Task<IReadOnlyList<JobPostResponse>> GetNearbyJobsAsync(
         double? lat, double? lng, CancellationToken ct)
@@ -77,17 +77,8 @@ public sealed class CachedJobService : IJobService
     }
 
     public Task<IReadOnlyList<CandidateResponse>> GetNearbyCandidatesAsync(
-        double? lat, double? lng, string? search, string? role, Guid employerId, CancellationToken ct)
-    {
-        var location = lat is null || lng is null
-            ? "all"
-            : $"{lat.Value.ToString("F3", CultureInfo.InvariantCulture)}:{lng.Value.ToString("F3", CultureInfo.InvariantCulture)}";
-        var term = string.IsNullOrWhiteSpace(search) ? string.Empty : search.Trim().ToLowerInvariant();
-        var roleKey = string.IsNullOrWhiteSpace(role) ? string.Empty : role.Trim().ToLowerInvariant();
-        var scope = location == "all" && term.Length == 0 ? employerId.ToString() : "global";
-        return GetOrCreateAsync($"candidates:{scope}:{location}:{term}:{roleKey}",
-            () => _inner.GetNearbyCandidatesAsync(lat, lng, search, role, employerId, ct));
-    }
+        double? lat, double? lng, string? search, string? role, Guid employerId, CancellationToken ct) =>
+        _inner.GetNearbyCandidatesAsync(lat, lng, search, role, employerId, ct);
 
     public async Task<JobApplicationResponse> ApplyAsync(
         Guid jobId, Guid workerId, CancellationToken ct)

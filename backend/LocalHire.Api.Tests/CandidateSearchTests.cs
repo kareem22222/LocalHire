@@ -44,7 +44,7 @@ public sealed class CandidateSearchTests
         Assert.Contains(byStateName, c => c.State == "Telangana");
 
         // 4) Role filter combined with the state default returns only that role in-state.
-        var byRole = await GetCandidates(client, "/api/hiring/candidates/nearby?role=Driver");
+        var byRole = await GetCandidates(client, "/api/hiring/candidates/nearby?role=driver");
         Assert.NotEmpty(byRole);
         Assert.All(byRole, c => Assert.Equal("Driver", c.Role));
         Assert.All(byRole, c => Assert.Equal("Karnataka", c.State));

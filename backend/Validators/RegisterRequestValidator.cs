@@ -1,3 +1,4 @@
+using System.Text;
 using FluentValidation;
 using LocalHire.Api.DTOs;
 using LocalHire.Api.Models;
@@ -22,7 +23,8 @@ public sealed class RegisterRequestValidator : AbstractValidator<RegisterRequest
         RuleFor(x => x.Password)
             .NotEmpty()
             .MinimumLength(8)
-            .MaximumLength(128)
+            .Must(password => password is null || Encoding.UTF8.GetByteCount(password) <= 72)
+            .WithMessage("Password must be at most 72 UTF-8 bytes.")
             .Matches(@"[A-Z]").WithMessage("Password must contain at least one uppercase letter.")
             .Matches(@"[a-z]").WithMessage("Password must contain at least one lowercase letter.")
             .Matches(@"\d").WithMessage("Password must contain at least one digit.")

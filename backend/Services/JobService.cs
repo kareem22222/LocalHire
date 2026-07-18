@@ -11,9 +11,12 @@ namespace LocalHire.Api.Services;
 public sealed class JobService : IJobService
 {
     private const double NearbyRadiusKm = 50;
+    private const int MaxJobBrowseResults = 100;
+    private const int MaxNearbyScanResults = 500;
     private const string JobPostNotFoundMessage = "Job post not found.";
 
     private readonly LocalHireDbContext _db;
+    private bool UsesSqlite => _db.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite";
 
     public JobService(LocalHireDbContext db)
     {
@@ -148,14 +151,9 @@ public sealed class JobService : IJobService
             worker.Name,
             worker.Email,
             worker.JobTitle,
-            worker.Gender,
-            worker.DateOfBirth,
-            worker.AddressLine,
             worker.CityArea,
             worker.State,
             worker.Pincode,
-            worker.Latitude,
-            worker.Longitude,
             worker.CreatedAt);
     }
 
@@ -182,6 +180,7 @@ public sealed class JobService : IJobService
             }
 
             var jobs = await nearbyQuery
+                .Take(MaxNearbyScanResults)
                 .Select(j => new { Job = j, Count = j.Applications.Count })
                 .ToListAsync(ct);
 
@@ -194,16 +193,25 @@ public sealed class JobService : IJobService
                 })
                 .Where(x => x.Distance <= NearbyRadiusKm)
                 .OrderBy(x => x.Distance)
+                .Take(MaxJobBrowseResults)
                 .Select(x => JobMapper.ToResponse(x.Job, x.Count))
                 .ToList();
         }
 
-        var allJobs = await query
-            .Select(j => new { Job = j, Count = j.Applications.Count })
-            .ToListAsync(ct);
+        var allJobsQuery = query
+            .Select(j => new { Job = j, Count = j.Applications.Count });
+
+        var allJobs = UsesSqlite
+            ? (await allJobsQuery.ToListAsync(ct))
+                .OrderByDescending(x => x.Job.CreatedAt)
+                .Take(MaxJobBrowseResults)
+                .ToList()
+            : await allJobsQuery
+                .OrderByDescending(x => x.Job.CreatedAt)
+                .Take(MaxJobBrowseResults)
+                .ToListAsync(ct);
 
         return allJobs
-            .OrderByDescending(x => x.Job.CreatedAt)
             .Select(x => JobMapper.ToResponse(x.Job, x.Count))
             .ToList();
     }
@@ -234,18 +242,20 @@ public sealed class JobService : IJobService
             query = await ApplyEmployerStateDefaultAsync(query, employerId, ct);
         }
 
-        // Reaches here for a global search (typed term, with or without
-        // coordinates) or the state-default fallback. Cap the fetch, then rank by
-        // proximity when we have an origin so the nearest matches come first while
-        // still surfacing matches that lie outside the local radius. Ordering by
-        // CreatedAt is done in memory because SQLite cannot ORDER BY a
-        // DateTimeOffset (Postgres handles it either way).
-        var matchedWorkers = await query
-            .Take(200)
-            .ToListAsync(ct);
+        // SQLite cannot order DateTimeOffset values. Production uses PostgreSQL,
+        // where ordering and the cap stay in SQL; the test provider sorts after
+        // materialization to preserve the same observable behavior.
+        var matchedWorkers = UsesSqlite
+            ? (await query.ToListAsync(ct))
+                .OrderByDescending(u => u.CreatedAt)
+                .Take(200)
+                .ToList()
+            : await query
+                .OrderByDescending(u => u.CreatedAt)
+                .Take(200)
+                .ToListAsync(ct);
 
-        return RankCandidates(
-            matchedWorkers.OrderByDescending(u => u.CreatedAt).ToList(), lat, lng);
+        return RankCandidates(matchedWorkers, lat, lng);
     }
 
     /// <summary>
@@ -273,7 +283,10 @@ public sealed class JobService : IJobService
         var roleFilter = role?.Trim();
         if (!string.IsNullOrEmpty(roleFilter))
         {
-            query = query.Where(u => u.JobTitle != null && u.JobTitle == roleFilter);
+            var normalizedRole = roleFilter.ToLower();
+#pragma warning disable CA1862 // EF Core cannot translate StringComparison overloads to SQL.
+            query = query.Where(u => u.JobTitle != null && u.JobTitle.ToLower() == normalizedRole);
+#pragma warning restore CA1862
         }
 
         return query;
@@ -287,7 +300,9 @@ public sealed class JobService : IJobService
     private static async Task<IReadOnlyList<CandidateResponse>> GetCandidatesWithinRadiusAsync(
         IQueryable<Models.User> query, double lat, double lng, CancellationToken ct)
     {
-        var workers = await ApplyBoundingBox(query, lat, lng).ToListAsync(ct);
+        var workers = await ApplyBoundingBox(query, lat, lng)
+            .Take(MaxNearbyScanResults)
+            .ToListAsync(ct);
 
         return workers
             .Select(u => new
@@ -397,8 +412,6 @@ public sealed class JobService : IJobService
             worker.CityArea,
             worker.State,
             worker.Pincode,
-            worker.Latitude,
-            worker.Longitude,
             distanceKm is null || distanceKm.Value >= double.MaxValue
                 ? null
                 : Math.Round(distanceKm.Value, 1),

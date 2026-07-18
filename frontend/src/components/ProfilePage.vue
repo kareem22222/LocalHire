@@ -1,5 +1,6 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
+import { normalizeRole } from '../utils/role'
 
 const props = defineProps({
   user: { type: Object, default: null },
@@ -28,6 +29,7 @@ const form = reactive({
   phone: '',
   dateOfBirth: '',
   gender: '',
+  jobTitle: '',
   // Location
   addressLine: '',
   cityArea: '',
@@ -42,6 +44,7 @@ function hydrate() {
   form.phone = u.phone || ''
   form.dateOfBirth = u.dateOfBirth || ''
   form.gender = u.gender || ''
+  form.jobTitle = u.jobTitle || ''
   form.addressLine = u.addressLine || ''
   form.cityArea = u.cityArea || ''
   form.state = u.state || ''
@@ -49,6 +52,16 @@ function hydrate() {
 }
 
 watch(() => props.user, hydrate, { immediate: true })
+
+const userRole = computed(() => normalizeRole(props.user?.role))
+const isWorkerUser = computed(() => userRole.value === 'worker')
+const roleLabel = computed(() => isWorkerUser.value ? 'Worker' : userRole.value === 'hiring' ? 'Hiring' : 'Account')
+const profileHeadline = computed(() => isWorkerUser.value
+  ? 'Looking for work on LocalHire'
+  : userRole.value === 'hiring' ? 'Hiring locally on LocalHire' : 'LocalHire member')
+const locationHint = computed(() => isWorkerUser.value
+  ? 'Helps us match you with nearby jobs.'
+  : userRole.value === 'hiring' ? 'Helps us match you with nearby talent.' : 'Helps improve your local matches.')
 
 const initials = computed(() => {
   const source = form.name || props.user?.name || 'U'
@@ -96,6 +109,7 @@ async function save() {
       cityArea: form.cityArea.trim(),
       state: form.state,
       pincode: form.pincode.trim(),
+      ...(isWorkerUser.value ? { jobTitle: form.jobTitle.trim() } : {}),
     })
   } finally {
     saving.value = false
@@ -117,9 +131,9 @@ function goBack() {
         <h1 class="dash-welcome__title profile-hero__name">
           <span class="dash-welcome__name">{{ form.name || props.user?.name || 'User' }}</span>
         </h1>
-        <p class="profile-hero__headline">Hiring locally on LocalHire</p>
+        <p class="profile-hero__headline">{{ profileHeadline }}</p>
         <div class="profile-hero__tags">
-          <span class="profile-badge profile-badge--role">Hiring</span>
+          <span class="profile-badge profile-badge--role">{{ roleLabel }}</span>
           <span v-if="locationSummary" class="profile-badge">{{ locationSummary }}</span>
           <span v-if="memberSince" class="profile-badge profile-badge--muted">Member since {{ memberSince }}</span>
         </div>
@@ -172,6 +186,11 @@ function goBack() {
           </select>
           <p v-else class="profile-value">{{ form.gender || '—' }}</p>
         </div>
+        <div v-if="isWorkerUser" class="profile-field">
+          <label for="profile-job-title">Job title</label>
+          <input v-if="editing" id="profile-job-title" v-model="form.jobTitle" type="text" maxlength="100" placeholder="e.g. Delivery Partner" />
+          <p v-else class="profile-value">{{ form.jobTitle || '—' }}</p>
+        </div>
       </div>
     </section>
 
@@ -179,7 +198,7 @@ function goBack() {
     <section class="profile-card">
       <div class="profile-card__head">
         <h2 class="dash-section__title">Location</h2>
-        <p class="profile-card__hint">Helps us match you with nearby talent.</p>
+        <p class="profile-card__hint">{{ locationHint }}</p>
       </div>
       <div class="profile-grid">
         <div class="profile-field profile-field--full">

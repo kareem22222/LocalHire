@@ -1,24 +1,17 @@
 namespace LocalHire.Api.DTOs;
 
 /// <summary>
-/// Full detail for a single worker, shown on the employer-facing candidate detail
-/// page. Includes every profile field an employer may need to make a decision
-/// EXCEPT the worker's phone number, which is intentionally withheld from the
-/// default view. The <see cref="Email"/> is only used to power the explicit
-/// "Contact" action on the detail page.
+/// Employer-facing worker details. Private profile fields such as date of birth,
+/// street address, phone number, and precise coordinates are intentionally not
+/// part of this discovery contract.
 /// </summary>
 public sealed record CandidateDetailResponse(
     Guid Id,
     string Name,
     string Email,
     string? Role,
-    string? Gender,
-    DateOnly? DateOfBirth,
-    string? AddressLine,
     string? Area,
     string? State,
     string? Pincode,
-    double? Latitude,
-    double? Longitude,
     DateTimeOffset CreatedAt
 );

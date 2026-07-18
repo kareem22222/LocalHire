@@ -67,9 +67,12 @@ if (invalidJwtSettings.Count > 0)
 
 builder.Services.Configure<JwtSettings>(jwtSection);
 
+builder.Services.AddProblemDetails();
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.IncludeErrorDetails = builder.Environment.IsDevelopment();
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -85,6 +88,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization(options =>
 {
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
     options.AddPolicy("HiringOnly", policy =>
         policy.RequireRole("Hiring"));
     options.AddPolicy("LookingForWorkOnly", policy =>
@@ -161,7 +167,21 @@ if (!app.Environment.IsEnvironment("Test"))
 // --- Middleware Pipeline ---
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    await next();
+});
+
 app.UseSerilogRequestLogging(options => options.ExcludeHealthChecks());
+
+if (app.Environment.IsProduction())
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -172,9 +192,9 @@ if (app.Environment.IsDevelopment())
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+app.UseAuthentication();
 if (!app.Environment.IsEnvironment("Test"))
     app.UseRateLimiter();
-app.UseAuthentication();
 app.UseAuthorization();
 
 // --- Health Endpoints ---
@@ -186,7 +206,8 @@ app.MapGet("/api/health", () => Results.Ok(new
 }))
 .WithName("GetServiceHealth")
 .WithTags("Health")
-.Produces(StatusCodes.Status200OK);
+.Produces(StatusCodes.Status200OK)
+.AllowAnonymous();
 
 app.MapGet("/api/health/database", async (
     LocalHireDbContext database,
@@ -231,7 +252,8 @@ app.MapGet("/api/health/database", async (
 .WithName("GetDatabaseHealth")
 .WithTags("Health")
 .Produces(StatusCodes.Status200OK)
-.ProducesProblem(StatusCodes.Status503ServiceUnavailable);
+.ProducesProblem(StatusCodes.Status503ServiceUnavailable)
+.RequireAuthorization();
 
 // --- Auth Endpoints ---
 app.MapAuthEndpoints();
@@ -242,7 +264,7 @@ app.MapProfileEndpoints();
 // --- Job Endpoints ---
 app.MapJobEndpoints();
 
-app.MapFallbackToFile("index.html");
+app.MapFallbackToFile("index.html").AllowAnonymous();
 
 app.Run();
 

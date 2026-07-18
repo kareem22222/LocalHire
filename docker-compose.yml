@@ -1,7 +1,7 @@
 services:
   database:
     container_name: localhire-database
-    image: postgres:17-alpine
+    image: postgres:17.10-alpine3.23
     ports:
       - "5433:5432"
     environment:

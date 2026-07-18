@@ -65,7 +65,7 @@ public sealed class CachedJobServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Explicit_location_candidate_searches_share_cache_across_employers()
+    public async Task Candidate_search_does_not_cache_profile_data()
     {
         var firstEmployer = Employer("first", "Karnataka");
         var secondEmployer = Employer("second", "Telangana");
@@ -81,8 +81,7 @@ public sealed class CachedJobServiceTests : IDisposable
             12.97, 77.64, null, null, secondEmployer.Id, CancellationToken.None);
 
         Assert.Single(first);
-        Assert.Single(second);
-        Assert.Equal(first[0].Id, second[0].Id);
+        Assert.Empty(second);
     }
 
     [Fact]

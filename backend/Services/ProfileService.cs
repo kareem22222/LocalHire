@@ -48,6 +48,9 @@ public sealed class ProfileService : IProfileService
         user.CityArea = NormalizeOptional(request.CityArea);
         user.State = NormalizeOptional(request.State);
         user.Pincode = NormalizeOptional(request.Pincode);
+        user.JobTitle = user.Role == UserRole.LookingForWork
+            ? NormalizeOptional(request.JobTitle)
+            : null;
 
         await _db.SaveChangesAsync(ct);
 
@@ -84,7 +87,8 @@ public sealed class ProfileService : IProfileService
         new(user.Id, user.Name, user.Email, user.Role,
             user.Phone, user.DateOfBirth, user.Gender, user.AddressLine,
             user.CityArea, user.State, user.Pincode,
-            user.Latitude, user.Longitude, user.LocationUpdatedAt, user.CreatedAt);
+            user.Latitude, user.Longitude, user.LocationUpdatedAt, user.CreatedAt,
+            user.JobTitle);
 
     private static string? NormalizeOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

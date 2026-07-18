@@ -35,6 +35,10 @@ public sealed class LoginRequestValidatorTests
     public void Rejects_empty_password() =>
         AssertInvalid(Valid() with { Password = "" }, nameof(LoginRequest.Password));
 
+    [Fact]
+    public void Rejects_password_over_72_utf8_bytes() =>
+        AssertInvalid(Valid() with { Password = "Aa1!" + new string('é', 35) }, nameof(LoginRequest.Password));
+
     [Theory]
     [InlineData("")]
     [InlineData("Boss")]

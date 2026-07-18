@@ -31,9 +31,6 @@ describe('CandidateDetailPage', () => {
         name: 'Ananya Rao',
         email: 'ananya@example.com',
         role: 'Cashier',
-        gender: 'Female',
-        dateOfBirth: '1990-01-02',
-        addressLine: '12 Market Road',
         area: 'Bandra',
         state: 'Maharashtra',
         pincode: '400050',
@@ -45,11 +42,8 @@ describe('CandidateDetailPage', () => {
 
     expect(wrapper.find('.candidate-detail__avatar').text()).toBe('AR')
     expect(wrapper.text()).toContain('Bandra, Maharashtra - 400050')
-    expect(wrapper.text()).toContain(new Date(1990, 0, 2).toLocaleDateString(undefined, {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    }))
+    expect(wrapper.text()).not.toContain('Date of birth')
+    expect(wrapper.text()).not.toContain('Address')
     expect(wrapper.text()).not.toContain('ananya@example.com')
 
     const buttons = wrapper.findAll('.candidate-detail__actions button')
@@ -62,7 +56,7 @@ describe('CandidateDetailPage', () => {
 
   it('reloads on route changes, reports failures, and navigates back', async () => {
     api.get.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({
-      data: { id: 'candidate-2', name: '', email: 'worker@example.com', dateOfBirth: 'unknown' },
+      data: { id: 'candidate-2', name: '', email: 'worker@example.com' },
     })
     const wrapper = await mountPage()
     await flushPromises()
@@ -71,7 +65,6 @@ describe('CandidateDetailPage', () => {
     await router.push('/hiring/candidates/candidate-2?contact=1')
     await flushPromises()
     expect(wrapper.text()).toContain('worker@example.com')
-    expect(wrapper.text()).toContain('unknown')
 
     await router.push('/hiring/candidates/candidate-2')
     await flushPromises()

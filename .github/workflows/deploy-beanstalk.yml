@@ -32,6 +32,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    environment: ${{ inputs.target_environment }}
 
     steps:
       - name: Authorize deployment target
@@ -48,6 +49,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.302
+
+      - name: Test backend
+        run: dotnet test backend/LocalHire.Api.slnx --configuration Release
+
+      - name: Validate deployment image
+        run: docker build --tag "localhire:${GITHUB_SHA}" .
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6.1.0
@@ -109,7 +121,8 @@ jobs:
             --environment-name "$ENVIRONMENT_NAME" \
             --option-settings \
               "Namespace=aws:elasticbeanstalk:application:environment,OptionName=ASPNETCORE_ENVIRONMENT,Value=${ASPNETCORE_ENVIRONMENT}" \
-              "Namespace=aws:elasticbeanstalk:application:environment,OptionName=MockData__SeedOnStartup,Value=${SEED_MOCK_DATA}"
+              "Namespace=aws:elasticbeanstalk:application:environment,OptionName=MockData__SeedOnStartup,Value=${SEED_MOCK_DATA}" \
+              "Namespace=aws:elasticbeanstalk:application:environment,OptionName=ASPNETCORE_FORWARDEDHEADERS_ENABLED,Value=true"
 
           aws elasticbeanstalk wait environment-updated \
             --environment-name "$ENVIRONMENT_NAME"

@@ -1,4 +1,4 @@
-using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
 
 namespace LocalHire.Api.Middleware;
 
@@ -6,11 +6,16 @@ public sealed class ExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<ExceptionHandlingMiddleware> _logger;
+    private readonly IProblemDetailsService _problemDetailsService;
 
-    public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
+    public ExceptionHandlingMiddleware(
+        RequestDelegate next,
+        ILogger<ExceptionHandlingMiddleware> logger,
+        IProblemDetailsService problemDetailsService)
     {
         _next = next;
         _logger = logger;
+        _problemDetailsService = problemDetailsService;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -31,15 +36,20 @@ public sealed class ExceptionHandlingMiddleware
         }
     }
 
-    private static async Task WriteErrorResponse(HttpContext context, int statusCode, string message)
+    private async Task WriteErrorResponse(HttpContext context, int statusCode, string message)
     {
         if (context.Response.HasStarted)
             return;
 
         context.Response.StatusCode = statusCode;
-        context.Response.ContentType = "application/json";
-
-        var response = new { error = message, status = statusCode };
-        await context.Response.WriteAsync(JsonSerializer.Serialize(response));
+        await _problemDetailsService.WriteAsync(new ProblemDetailsContext
+        {
+            HttpContext = context,
+            ProblemDetails = new ProblemDetails
+            {
+                Status = statusCode,
+                Detail = message
+            }
+        });
     }
 }

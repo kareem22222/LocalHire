@@ -19,5 +19,6 @@ public sealed record UserProfile(
     double? Latitude,
     double? Longitude,
     DateTimeOffset? LocationUpdatedAt,
-    DateTimeOffset CreatedAt
+    DateTimeOffset CreatedAt,
+    string? JobTitle = null
 );

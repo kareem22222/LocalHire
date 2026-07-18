@@ -37,6 +37,10 @@ public sealed class UpdateProfileRequestValidator : AbstractValidator<UpdateProf
             .MaximumLength(100)
             .When(x => !string.IsNullOrWhiteSpace(x.State));
 
+        RuleFor(x => x.JobTitle)
+            .MaximumLength(100)
+            .When(x => !string.IsNullOrWhiteSpace(x.JobTitle));
+
         RuleFor(x => x.Pincode)
             .Matches(@"^\d{6}$")
             .WithMessage("Pincode must be a 6-digit number.")

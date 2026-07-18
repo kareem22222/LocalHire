@@ -73,6 +73,10 @@ public sealed class UpdateProfileRequestValidatorTests
     public void Rejects_state_over_100_characters() =>
         AssertInvalid(Valid() with { State = new string('a', 101) }, nameof(UpdateProfileRequest.State));
 
+    [Fact]
+    public void Rejects_job_title_over_100_characters() =>
+        AssertInvalid(Valid() with { JobTitle = new string('a', 101) }, nameof(UpdateProfileRequest.JobTitle));
+
     [Theory]
     [InlineData("12")]
     [InlineData("abcdef")]
