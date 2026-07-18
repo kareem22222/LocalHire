@@ -103,7 +103,7 @@ async function save() {
     emit('save', {
       name: form.name.trim(),
       phone: form.phone.trim(),
-      dateOfBirth: form.dateOfBirth,
+      dateOfBirth: form.dateOfBirth || null,
       gender: form.gender,
       addressLine: form.addressLine.trim(),
       cityArea: form.cityArea.trim(),

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using LocalHire.Api.Data;
 using LocalHire.Api.DTOs;
 using LocalHire.Api.Models;
@@ -158,6 +159,10 @@ public sealed class LocalHireApiTests
         var bad = await client.PutAsJsonAsync("/api/me/profile",
             new UpdateProfileRequest("Asha Rao", null, null, null, null, null, null, "12"));
         Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+
+        var malformedDate = await client.PutAsync("/api/me/profile",
+            new StringContent("""{"name":"Asha Rao","dateOfBirth":""}""", Encoding.UTF8, "application/json"));
+        Assert.Equal(HttpStatusCode.BadRequest, malformedDate.StatusCode);
     }
 
     [Fact]

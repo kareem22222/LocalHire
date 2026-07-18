@@ -87,5 +87,6 @@ describe('ProfilePage', () => {
     const saved = wrapper.emitted('save')
     expect(saved).toHaveLength(1)
     expect(saved[0][0].name).toBe('Pat Updated')
+    expect(saved[0][0].dateOfBirth).toBeNull()
   })
 })

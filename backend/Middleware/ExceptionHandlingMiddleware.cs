@@ -24,6 +24,11 @@ public sealed class ExceptionHandlingMiddleware
             _logger.LogWarning(ex, "Application error: {Message}", ex.Message);
             await WriteErrorResponse(context, ex.StatusCode, ex.Message);
         }
+        catch (BadHttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Invalid HTTP request");
+            await WriteErrorResponse(context, ex.StatusCode, "Invalid request body.");
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception");
