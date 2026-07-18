@@ -3,7 +3,6 @@ import { clearSavedCandidates } from '../composables/useSavedCandidates'
 
 const api = axios.create({
   baseURL: '/api',
-  headers: { 'Content-Type': 'application/json' },
 })
 
 const TOKEN_STORAGE_KEY = 'localhire.accessToken'

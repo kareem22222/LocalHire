@@ -46,4 +46,10 @@ describe('api auth persistence', () => {
     const { isAuthenticated } = await import('./index.js')
     await expect(isAuthenticated()).resolves.toBe(false)
   })
+
+  it('lets Axios choose the content type for JSON and multipart requests', async () => {
+    const api = (await import('./index.js')).default
+
+    expect(api.defaults.headers['Content-Type']).toBeUndefined()
+  })
 })

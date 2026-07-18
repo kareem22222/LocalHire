@@ -6,7 +6,6 @@ using LocalHire.Api.Data;
 using LocalHire.Api.DTOs;
 using LocalHire.Api.Models;
 using LocalHire.Api.Services;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -66,7 +65,7 @@ public static class ProfileEndpoints
         .WithName("UpdateLocation");
 
         group.MapPut("/resume", async (
-            [FromForm] IFormFile resume,
+            IFormFile resume,
             ClaimsPrincipal principal,
             LocalHireDbContext db,
             IAmazonS3 s3,

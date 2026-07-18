@@ -112,6 +112,10 @@ LOCAL_DB_NAME=localhire_dev
 LOCAL_DB_USERNAME=localhire_admin
 LOCAL_DB_PASSWORD=localhire_dev_password
 JWT_SECRET=
+AWS_S3_BUCKET=localhire-resumes-dev
+AWS_REGION=ap-south-2
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
 ```
 
 If you change the database values in `.env`, update
@@ -123,9 +127,105 @@ Keep JWT secrets out of Git. Each developer can use a different local secret.
 Production needs its own stable secret stored in a secure service such as AWS
 Secrets Manager. Changing the JWT secret invalidates existing tokens.
 
-Resume uploads use the AWS SDK credential chain. Configure the private S3 bucket
-and region with `AWS__S3Bucket` and `AWS__Region` (defaults to `ap-south-1`),
-then provide AWS credentials through your normal local or deployment environment.
+## S3 Resume Storage
+
+Worker resumes are optional. The authenticated API uploads PDF, DOC, and DOCX
+files up to 5 MB to this private object key:
+
+```text
+resumes/{user-id}/current
+```
+
+Create a private S3 bucket in the region used by the application. Keep S3 Block
+Public Access enabled. Browser CORS configuration is not needed because the API,
+not the browser, sends the file to S3.
+
+Grant the development IAM user or production workload role only the permission
+the upload endpoint currently needs:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": "s3:PutObject",
+    "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME/resumes/*"
+  }]
+}
+```
+
+### Local development with `dotnet run`
+
+Store all local S3 settings outside the repository with .NET user-secrets:
+
+```powershell
+dotnet user-secrets set "AWS:S3Bucket" "localhire-resumes-dev" --project .\backend\LocalHire.Api.csproj
+dotnet user-secrets set "AWS:Region" "ap-south-2" --project .\backend\LocalHire.Api.csproj
+dotnet user-secrets set "AWS:AccessKey" "YOUR_IAM_ACCESS_KEY" --project .\backend\LocalHire.Api.csproj
+dotnet user-secrets set "AWS:SecretKey" "YOUR_IAM_SECRET_KEY" --project .\backend\LocalHire.Api.csproj
+```
+
+Use an IAM-user access key created for development, never a root access key.
+Long-lived IAM access keys normally start with `AKIA` and do not use a session
+token. Restart the API after changing secrets:
+
+```powershell
+dotnet run --project .\backend\LocalHire.Api.csproj
+```
+
+ASP.NET Core loads user-secrets only in the Development environment. User-secrets
+are outside Git but are not encrypted, so use them only for local development.
+
+### Local development with Docker Compose
+
+.NET user-secrets are not mounted into the API container. Copy `.env.example` to
+the ignored `.env` file and set these values there:
+
+```env
+AWS_S3_BUCKET=localhire-resumes-dev
+AWS_REGION=ap-south-2
+AWS_ACCESS_KEY_ID=YOUR_IAM_ACCESS_KEY
+AWS_SECRET_ACCESS_KEY=YOUR_IAM_SECRET_KEY
+```
+
+Then recreate the API container so it receives the configuration:
+
+```powershell
+docker compose up --build
+```
+
+The `.env` file is ignored by Git. It still contains plaintext development
+credentials, so do not share it or reuse those credentials in production.
+
+### Production
+
+Do not configure `AWS:AccessKey`, `AWS:SecretKey`, `AWS_ACCESS_KEY_ID`, or
+`AWS_SECRET_ACCESS_KEY` in production. Attach the policy above to the workload's
+IAM role instead (for example, an Elastic Beanstalk EC2 instance profile or an
+ECS task role). The AWS SDK automatically obtains temporary role credentials.
+
+For S3, production only needs these application settings:
+
+```env
+AWS__S3Bucket=YOUR-PRODUCTION-BUCKET
+AWS__Region=YOUR-BUCKET-REGION
+```
+
+The application uses explicit `AWS:AccessKey` and `AWS:SecretKey` values when
+both are configured. Otherwise it uses the standard AWS SDK credential chain,
+which supplies the production workload role. The bucket name must match the
+bucket in the IAM policy, and the configured region must match the bucket region.
+
+### Verification and common errors
+
+Sign in with a `LookingForWork` account, open the profile, and upload a valid
+resume. Confirm that `resumes/{user-id}/current` exists in the configured bucket.
+
+- `503 AWS:S3Bucket is not configured`: set the bucket and restart the API.
+- `The provided token is malformed`: remove an invalid `AWS_SESSION_TOKEN`, or
+  configure matching access and secret keys through user-secrets.
+- `AccessDenied`: check that the IAM identity or role has `s3:PutObject` on the
+  exact bucket and `resumes/*` prefix.
 
 ## Tests
 

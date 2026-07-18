@@ -30,6 +30,10 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       MockData__SeedOnStartup: "true"
       Jwt__Secret: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      AWS__S3Bucket: ${AWS_S3_BUCKET:-}
+      AWS__Region: ${AWS_REGION:-ap-south-2}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       ConnectionStrings__DefaultConnection: >-
         Host=database;
         Port=5432;
