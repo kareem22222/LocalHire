@@ -1,6 +1,5 @@
 using System.Text;
 using System.Threading.RateLimiting;
-using Amazon;
 using Amazon.Runtime;
 using Amazon.S3;
 using FluentValidation;
@@ -8,6 +7,7 @@ using LocalHire.Api.Data;
 using LocalHire.Api.Endpoints;
 using LocalHire.Api.Middleware;
 using LocalHire.Api.Services;
+using LocalHire.Api.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
@@ -124,25 +124,15 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
 builder.Services.AddSingleton<IAmazonS3>(_ =>
 {
-    var region = RegionEndpoint.GetBySystemName(builder.Configuration["AWS:Region"] ?? "ap-south-1");
     var accessKey = builder.Configuration["AWS:AccessKey"];
     var secretKey = builder.Configuration["AWS:SecretKey"];
 
     if (string.IsNullOrWhiteSpace(accessKey) != string.IsNullOrWhiteSpace(secretKey))
         throw new InvalidOperationException("Configure both AWS:AccessKey and AWS:SecretKey, or neither.");
 
-    var serviceUrl = builder.Configuration["AWS:ServiceUrl"];
-
-    var config = new AmazonS3Config();
-    if (!string.IsNullOrWhiteSpace(serviceUrl))
-    {
-        config.ServiceURL = serviceUrl;
-        config.ForcePathStyle = true;
-    }
-    else
-    {
-        config.RegionEndpoint = region;
-    }
+    var config = S3ConfigFactory.Build(
+        builder.Configuration["AWS:ServiceUrl"],
+        builder.Configuration["AWS:Region"]);
 
     return string.IsNullOrWhiteSpace(accessKey)
         ? new AmazonS3Client(config)

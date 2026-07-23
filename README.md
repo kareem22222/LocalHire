@@ -232,12 +232,15 @@ https://app.localstack.cloud) and point the API at LocalStack:
 ```env
 LOCALSTACK_AUTH_TOKEN=YOUR_LOCALSTACK_PRO_TOKEN
 AWS_SERVICE_URL=http://localstack:4566
+AWS_ACCESS_KEY_ID=test
+AWS_SECRET_ACCESS_KEY=test
 ```
 
-Leave the AWS keys blank — Compose falls back to LocalStack's dummy `test`
-credentials. Start with the profile enabled:
+LocalStack accepts any non-empty credentials, so the dummy `test` values above
+are enough. Start with the profile enabled:
 
 ```powershell
+docker rm -f localhire-localstack
 docker compose --profile localstack up --build
 ```
 
