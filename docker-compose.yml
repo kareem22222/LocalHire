@@ -30,8 +30,9 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       MockData__SeedOnStartup: "true"
       Jwt__Secret: ${JWT_SECRET:?Set JWT_SECRET in .env}
-      AWS__S3Bucket: ${AWS_S3_BUCKET:-}
+      AWS__S3Bucket: ${AWS_S3_BUCKET:-localhire-resumes-dev}
       AWS__Region: ${AWS_REGION:-ap-south-2}
+      AWS__ServiceUrl: ${AWS_SERVICE_URL-}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       ConnectionStrings__DefaultConnection: >-
@@ -46,6 +47,30 @@ services:
     depends_on:
       database:
         condition: service_healthy
+    restart: unless-stopped
+
+  localstack:
+    container_name: localhire-localstack
+    image: localstack/localstack-pro:latest
+    profiles:
+      - localstack
+    ports:
+      - "4566:4566"
+    environment:
+      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:-}
+      SERVICES: s3
+      DEBUG: "0"
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-localhire-resumes-dev}
+    volumes:
+      - ./localstack/init/ready.d:/etc/localstack/init/ready.d:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'curl -sf http://localhost:4566/_localstack/health >/dev/null 2>&1 || exit 1'
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     restart: unless-stopped
 
 volumes:
