@@ -131,9 +131,22 @@ builder.Services.AddSingleton<IAmazonS3>(_ =>
     if (string.IsNullOrWhiteSpace(accessKey) != string.IsNullOrWhiteSpace(secretKey))
         throw new InvalidOperationException("Configure both AWS:AccessKey and AWS:SecretKey, or neither.");
 
+    var serviceUrl = builder.Configuration["AWS:ServiceUrl"];
+
+    var config = new AmazonS3Config();
+    if (!string.IsNullOrWhiteSpace(serviceUrl))
+    {
+        config.ServiceURL = serviceUrl;
+        config.ForcePathStyle = true;
+    }
+    else
+    {
+        config.RegionEndpoint = region;
+    }
+
     return string.IsNullOrWhiteSpace(accessKey)
-        ? new AmazonS3Client(region)
-        : new AmazonS3Client(new BasicAWSCredentials(accessKey, secretKey), region);
+        ? new AmazonS3Client(config)
+        : new AmazonS3Client(new BasicAWSCredentials(accessKey, secretKey), config);
 });
 builder.Services.AddSingleton<JobCacheVersion>();
 builder.Services.AddScoped<JobService>();
