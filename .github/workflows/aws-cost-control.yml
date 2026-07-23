@@ -8,8 +8,7 @@ name: AWS Cost Control (Start/Stop RDS + EB)
 #      "target" (dev / prod / both) from the dropdowns.
 #   2. Automatically on a schedule:
 #        - 21:00 IST (15:30 UTC) -> STOP  dev + prod
-#        - 09:00 IST (03:30 UTC) -> START dev + prod
-#      The workflow detects which cron fired and picks the action.
+#      Starting is intentionally manual-only; there is no automatic start.
 #
 # GUARDS (manual runs only; the schedule runs unattended):
 #   - Any prod action requires actor == kareem22222.
@@ -48,7 +47,6 @@ on:
         default: ap-south-2
   schedule:
     - cron: '30 15 * * *'   # 21:00 IST -> STOP dev + prod
-    - cron: '30 3 * * *'    # 09:00 IST -> START dev + prod
 
 permissions:
   contents: read
@@ -78,7 +76,6 @@ jobs:
           if [ "$EVENT_NAME" = "schedule" ]; then
             case "$SCHEDULE" in
               "30 15 * * *") ACTION="stop" ;;
-              "30 3 * * *")  ACTION="start" ;;
               *) echo "Unrecognized schedule '$SCHEDULE'." >&2; exit 1 ;;
             esac
             TARGETS="dev prod"
