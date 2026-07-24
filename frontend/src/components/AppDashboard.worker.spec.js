@@ -91,9 +91,8 @@ describe('AppDashboard worker flow', () => {
     expect(api.post).toHaveBeenCalledWith('/work/jobs/job-1/apply')
   })
 
-  it('alerts when applying fails', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
-    api.post.mockRejectedValue({ response: { data: { message: 'Nope' } } })
+  it('shows and clears an inline error when applying fails', async () => {
+    api.post.mockRejectedValueOnce({ response: { data: { message: 'Nope' } } })
 
     const wrapper = mountAsWorker({ nearby: [fullJob] })
     await flushPromises()
@@ -101,7 +100,13 @@ describe('AppDashboard worker flow', () => {
     await findButtonByText(wrapper, 'Apply now').trigger('click')
     await flushPromises()
 
-    expect(alertSpy).toHaveBeenCalledWith('Nope')
+    expect(wrapper.get('[role="alert"]').text()).toBe('Nope')
+
+    api.post.mockResolvedValueOnce({ data: {} })
+    await findButtonByText(wrapper, 'Apply now').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
   })
 
   it('shows an Applied, disabled button for jobs already applied to', async () => {
@@ -147,7 +152,8 @@ describe('AppDashboard worker flow', () => {
     const wrapper = mountAsWorker({ nearby: [fullJob] })
     await flushPromises()
 
-    expect(wrapper.find('.worker-job-row').attributes('role')).toBe('link')
+    expect(wrapper.find('.worker-job-row__main').element.tagName).toBe('A')
+    expect(wrapper.find('.worker-job-row__main').attributes('href')).toBe('/work/jobs/job-1')
     expect(findButtonByText(wrapper, 'Applied jobs')).toBeTruthy()
   })
 

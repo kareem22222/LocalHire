@@ -1,8 +1,8 @@
 <script setup>
 import { computed } from 'vue'
 
+const form = defineModel('form', { type: Object, required: true })
 const props = defineProps({
-  form: { type: Object, required: true },
   editing: { type: Boolean, default: false },
 })
 
@@ -12,7 +12,7 @@ const WORK_MODES = [['OnSite', 'At workplace'], ['Hybrid', 'Hybrid'], ['Remote',
 const SKILL_LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Expert']
 const LANGUAGE_LEVELS = ['Basic', 'Conversational', 'Fluent', 'Native']
 
-const preferences = computed(() => props.form.workPreferences)
+const preferences = computed(() => form.value.workPreferences)
 
 function commaValue(values) {
   return (values || []).join(', ')
@@ -29,23 +29,23 @@ function toggleList(list, value, checked) {
 }
 
 function addExperience() {
-  props.form.workHistory.push({ jobTitle: '', employer: '', location: '', startDate: '', endDate: '', isCurrent: false, description: '' })
+  form.value.workHistory.push({ jobTitle: '', employer: '', location: '', startDate: '', endDate: '', isCurrent: false, description: '' })
 }
 
 function addEducation() {
-  props.form.educationHistory.push({ qualification: '', institution: '', fieldOfStudy: '', startYear: '', endYear: '' })
+  form.value.educationHistory.push({ qualification: '', institution: '', fieldOfStudy: '', startYear: '', endYear: '' })
 }
 
 function addSkill() {
-  props.form.skillDetails.push({ name: '', proficiency: '', yearsExperience: '' })
+  form.value.skillDetails.push({ name: '', proficiency: '', yearsExperience: '' })
 }
 
 function addLanguage() {
-  props.form.languageDetails.push({ name: '', proficiency: '', canSpeak: true, canRead: false, canWrite: false })
+  form.value.languageDetails.push({ name: '', proficiency: '', canSpeak: true, canRead: false, canWrite: false })
 }
 
 function addCredential() {
-  props.form.credentials.push({ name: '', issuer: '', issueDate: '', expiryDate: '', credentialId: '', url: '' })
+  form.value.credentials.push({ name: '', issuer: '', issueDate: '', expiryDate: '', credentialId: '', url: '' })
 }
 </script>
 
@@ -140,7 +140,7 @@ function addCredential() {
         <label v-if="!entry.isCurrent">End date<input v-model="entry.endDate" type="date" /></label>
         <label class="check align-end"><input v-model="entry.isCurrent" type="checkbox" /> I currently do this work</label>
         <label class="full">What did you do?<textarea v-model="entry.description" maxlength="1000" placeholder="Main duties, tools used, or achievements"></textarea></label>
-        <button type="button" class="remove" @click="form.workHistory.splice(index, 1)">Remove</button>
+        <button type="button" class="remove" :aria-label="`Remove work history ${index + 1}`" @click="form.workHistory.splice(index, 1)">Remove</button>
       </div>
       <div v-else>
         <h3>{{ entry.jobTitle }} · {{ entry.employer }}</h3>
@@ -161,7 +161,7 @@ function addCredential() {
         <label>Trade or subject<input v-model="entry.fieldOfStudy" maxlength="150" /></label>
         <label>Start year<input v-model="entry.startYear" type="number" min="1950" max="2100" /></label>
         <label>End year<input v-model="entry.endYear" type="number" min="1950" max="2100" /></label>
-        <button type="button" class="remove" @click="form.educationHistory.splice(index, 1)">Remove</button>
+        <button type="button" class="remove" :aria-label="`Remove education ${index + 1}`" @click="form.educationHistory.splice(index, 1)">Remove</button>
       </div>
       <div v-else><h3>{{ entry.qualification }} · {{ entry.institution }}</h3><p>{{ [entry.fieldOfStudy, entry.startYear, entry.endYear].filter(Boolean).join(' · ') }}</p></div>
     </div>
@@ -179,7 +179,7 @@ function addCredential() {
             <input v-model="entry.name" aria-label="Skill" required maxlength="50" placeholder="Billing, welding, driving" />
             <select v-model="entry.proficiency" aria-label="Skill level"><option value="">Level</option><option v-for="level in SKILL_LEVELS" :key="level">{{ level }}</option></select>
             <input v-model="entry.yearsExperience" aria-label="Years using skill" type="number" min="0" max="60" placeholder="Years" />
-            <button type="button" class="remove" @click="form.skillDetails.splice(index, 1)">Remove</button>
+            <button type="button" class="remove" :aria-label="`Remove skill ${index + 1}`" @click="form.skillDetails.splice(index, 1)">Remove</button>
           </template>
           <p v-else><strong>{{ entry.name }}</strong> · {{ entry.proficiency || 'Level not added' }}<span v-if="entry.yearsExperience != null && entry.yearsExperience !== ''"> · {{ entry.yearsExperience }} years</span></p>
         </div>
@@ -195,7 +195,7 @@ function addCredential() {
             <label class="check"><input v-model="entry.canSpeak" type="checkbox" /> Speak</label>
             <label class="check"><input v-model="entry.canRead" type="checkbox" /> Read</label>
             <label class="check"><input v-model="entry.canWrite" type="checkbox" /> Write</label>
-            <button type="button" class="remove" @click="form.languageDetails.splice(index, 1)">Remove</button>
+            <button type="button" class="remove" :aria-label="`Remove language ${index + 1}`" @click="form.languageDetails.splice(index, 1)">Remove</button>
           </template>
           <p v-else><strong>{{ entry.name }}</strong> · {{ entry.proficiency || 'Level not added' }} · {{ [entry.canSpeak && 'Speak', entry.canRead && 'Read', entry.canWrite && 'Write'].filter(Boolean).join(', ') }}</p>
         </div>
@@ -215,7 +215,7 @@ function addCredential() {
         <label>Expiry date<input v-model="entry.expiryDate" type="date" /></label>
         <label>Licence / certificate number<input v-model="entry.credentialId" maxlength="100" /></label>
         <label>Verification link (optional)<input v-model="entry.url" type="url" maxlength="500" placeholder="https://" /></label>
-        <button type="button" class="remove" @click="form.credentials.splice(index, 1)">Remove</button>
+        <button type="button" class="remove" :aria-label="`Remove licence or certificate ${index + 1}`" @click="form.credentials.splice(index, 1)">Remove</button>
       </div>
       <div v-else><h3>{{ entry.name }} · {{ entry.issuer }}</h3><p>{{ [entry.credentialId, entry.issueDate, entry.expiryDate && `Expires ${entry.expiryDate}`].filter(Boolean).join(' · ') }}</p></div>
     </div>
@@ -229,26 +229,26 @@ function addCredential() {
 header { margin-bottom: 20px; }
 h2 { margin: 0; color: #12324a; font: 700 20px Manrope, sans-serif; }
 h3 { margin: 0 0 6px; color: #12324a; font-size: 15px; }
-header p, .entry p, .empty, small { margin: 4px 0 0; color: #5d7482; font-size: 13px; }
+header p, .entry p, .empty, small { margin: 4px 0 0; color: #526977; font-size: 13px; }
 .worker-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px 22px; }
 .worker-grid label:not(.check) { display: flex; flex-direction: column; gap: 6px; color: #12324a; font-size: 13px; font-weight: 600; }
 .full { grid-column: 1 / -1; }
 input:not([type=checkbox]), select, textarea { width: 100%; padding: 11px 13px; color: #12324a; font: inherit; border: 1.5px solid rgba(18,50,74,.12); border-radius: 9px; background: #fff; }
 textarea { min-height: 90px; resize: vertical; }
-input:focus, select:focus, textarea:focus { outline: none; border-color: #21a947; box-shadow: 0 0 0 3px rgba(33,169,71,.1); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--worker-role-green-end); box-shadow: 0 0 0 3px rgba(var(--worker-role-green-rgb), .1); }
 fieldset { margin: 0; padding: 0; border: 0; }
 legend { margin-bottom: 9px; color: #12324a; font-size: 13px; font-weight: 700; }
 .check { display: inline-flex; align-items: center; gap: 7px; margin: 0 18px 8px 0; color: #314e60; font-size: 13px; font-weight: 500; }
-.check input { accent-color: #21a947; }
+.check input { accent-color: var(--worker-role-green-end); }
 .align-end { align-self: end; padding-bottom: 10px; }
 .read-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px 24px; }
 .read-grid div { display: flex; flex-direction: column; gap: 4px; }
-.read-grid span { color: #5d7482; font-size: 12px; }
+.read-grid span { color: #526977; font-size: 12px; }
 .read-grid strong { color: #12324a; font-size: 14px; overflow-wrap: anywhere; }
 .entry { margin-top: 14px; padding: 16px; border: 1px solid rgba(18,50,74,.08); border-radius: 11px; }
 .entry:first-of-type { margin-top: 0; }
 .add, .remove { border: 0; background: none; font: 700 13px inherit; cursor: pointer; }
-.add { margin-top: 14px; padding: 9px 13px; color: #188853; background: #e7f7ee; border-radius: 8px; }
+.add { margin-top: 14px; padding: 9px 13px; color: var(--worker-role-green-text); background: #e7f7ee; border-radius: 8px; }
 .remove { justify-self: start; padding: 0; color: #a23434; }
 .split { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }
 .compact { display: grid; grid-template-columns: 1.4fr 1fr .7fr auto; align-items: center; gap: 8px; padding: 10px; }

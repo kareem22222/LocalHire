@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using LocalHire.Api.Data;
 using LocalHire.Api.DTOs;
 using LocalHire.Api.Models;
@@ -231,6 +232,22 @@ public sealed class LocalHireApiTests
         Assert.Equal(
             comparer.GetHashCode(new List<string> { "Billing", null!, "Stock" }),
             comparer.GetHashCode(new List<string> { "Billing", null!, "Stock" }));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("null")]
+    public void Worker_json_converter_rejects_invalid_empty_values(string storedValue)
+    {
+        using var factory = new ApiFactory();
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<LocalHireDbContext>();
+        var converter = db.Model
+            .FindEntityType(typeof(User))!
+            .FindProperty(nameof(User.WorkPreferences))!
+            .GetValueConverter()!;
+
+        Assert.Throws<JsonException>(() => converter.ConvertFromProvider(storedValue));
     }
 
     [Fact]

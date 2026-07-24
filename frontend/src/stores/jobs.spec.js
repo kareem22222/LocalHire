@@ -113,4 +113,19 @@ describe('jobs store cache', () => {
     expect(jobsApi.getCandidate).toHaveBeenCalledTimes(1)
     expect(jobsApi.shortlistApplicant).toHaveBeenCalledWith('job-1', 'application-1')
   })
+
+  it('invalidates cached worker job details after applying', async () => {
+    jobsApi.getNearbyJobs.mockResolvedValue({ data: [{ id: 'job-1', title: 'Cashier' }] })
+    jobsApi.getWorkerJob.mockResolvedValue({ data: { id: 'job-1', title: 'Cashier', applicationCount: 1 } })
+    jobsApi.applyToJob.mockResolvedValue({ data: { id: 'application-1' } })
+    const store = useJobsStore()
+
+    await store.loadNearbyJobs()
+    await store.loadWorkerJob('job-1')
+    expect(jobsApi.getWorkerJob).not.toHaveBeenCalled()
+
+    await store.applyToJob('job-1')
+    await expect(store.loadWorkerJob('job-1')).resolves.toMatchObject({ applicationCount: 1 })
+    expect(jobsApi.getWorkerJob).toHaveBeenCalledTimes(1)
+  })
 })

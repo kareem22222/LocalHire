@@ -40,7 +40,12 @@ describe('CandidateDetailPage', () => {
         createdAt: '2025-01-01T00:00:00Z',
         professionalSummary: 'Experienced local cashier.',
         skillDetails: [{ name: 'Billing', proficiency: 'Advanced' }],
-        workPreferences: { desiredRoles: ['Cashier'], employmentTypes: ['FullTime'], availability: 'Immediately' },
+        workPreferences: {
+          desiredRoles: ['Cashier'], employmentTypes: ['FullTime', 'Contract', 'Temporary', 'Internship'],
+          shifts: ['Evening', 'Flexible'], workModes: ['Hybrid', 'Remote'],
+          expectedSalaryMin: 15000, expectedSalaryMax: 20000, salaryPeriod: 'Hourly',
+          availability: 'Immediately',
+        },
         workHistory: [{ jobTitle: 'Cashier', employer: 'Local Mart', isCurrent: true }],
       },
     })
@@ -52,6 +57,11 @@ describe('CandidateDetailPage', () => {
     expect(wrapper.text()).toContain('Experienced local cashier.')
     expect(wrapper.text()).toContain('Billing · Advanced')
     expect(wrapper.text()).toContain('Cashier · Local Mart')
+    expect(wrapper.text()).toContain('Apprenticeship / internship')
+    expect(wrapper.text()).toContain('Work from home')
+    expect(wrapper.text()).toContain('Hourly')
+    expect(wrapper.text()).not.toContain('Internship')
+    expect(wrapper.text()).not.toContain('Remote')
     expect(wrapper.text()).toContain(new Date(1990, 0, 2).toLocaleDateString(undefined, {
       day: 'numeric',
       month: 'long',

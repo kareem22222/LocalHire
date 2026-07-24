@@ -259,6 +259,7 @@ const locationStatus = ref('idle') // idle | prompt | denied | done
 const nearbyJobs = ref([])
 const workerCoords = ref(null)
 const applying = ref(null)
+const workerApplyError = ref('')
 const workerJobsLoading = ref(false)
 const workerSearch = ref('')
 const workerEmploymentType = ref('')
@@ -272,9 +273,11 @@ const workerLocationLabel = computed(() => {
 
 function workerJobParams() {
   const params = {}
-  if (workerCoords.value) {
-    params.lat = workerCoords.value.lat
-    params.lng = workerCoords.value.lng
+  const lat = workerCoords.value?.lat ?? user.value?.latitude
+  const lng = workerCoords.value?.lng ?? user.value?.longitude
+  if (lat != null && lng != null) {
+    params.lat = lat
+    params.lng = lng
   }
   if (workerSearch.value) params.search = workerSearch.value
   if (workerEmploymentType.value) params.employmentType = workerEmploymentType.value
@@ -342,13 +345,14 @@ async function loadMyApplications() {
 }
 
 async function applyToJob(jobId) {
+  workerApplyError.value = ''
   applying.value = jobId
   try {
     await jobsStore.applyToJob(jobId)
     await loadMyApplications()
     await loadNearbyJobs({ force: true })
   } catch (err) {
-    alert(err.response?.data?.message || 'Failed to apply.')
+    workerApplyError.value = err.response?.data?.message || 'Failed to apply.'
   } finally {
     applying.value = null
   }
@@ -417,6 +421,7 @@ async function applyToJob(jobId) {
       </div>
     </div>
 
+    <p v-if="isWorkerUser && activeTab !== 'profile' && workerApplyError" class="job-form__error" role="alert">{{ workerApplyError }}</p>
     <WorkerDashboard
       v-if="isWorkerUser && activeTab !== 'profile'"
       :user="user"
@@ -444,7 +449,7 @@ async function applyToJob(jobId) {
 
 <style scoped>
 .dash-shell--worker .dash-role-badge {
-  background: linear-gradient(135deg, #188853, #21a947);
-  box-shadow: 0 8px 24px rgba(33, 169, 71, 0.2);
+  background: var(--worker-role-gradient);
+  box-shadow: 0 8px 24px rgba(var(--worker-role-green-rgb), 0.2);
 }
 </style>

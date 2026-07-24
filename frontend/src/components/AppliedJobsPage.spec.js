@@ -26,7 +26,8 @@ describe('AppliedJobsPage', () => {
     expect(wrapper.text()).toContain('Applied jobs')
     expect(wrapper.text()).toContain('Shortlisted')
     expect(wrapper.text()).toContain('The employer may contact you next.')
-    expect(wrapper.find('.applied-card').attributes('role')).toBe('link')
+    expect(wrapper.find('.applied-card').element.tagName).toBe('A')
+    expect(wrapper.find('.applied-card').attributes('href')).toBe('/work/jobs/job-1')
   })
 
   it('routes from all controls and signs out', async () => {
@@ -40,7 +41,6 @@ describe('AppliedJobsPage', () => {
     await wrapper.findAll('button').find((item) => item.text() === 'Looking for work').trigger('click')
     await wrapper.findAll('button').find((item) => item.text() === 'Back to jobs').trigger('click')
     await wrapper.find('.applied-card').trigger('click')
-    await wrapper.find('.applied-card').trigger('keydown', { key: 'Enter' })
     await wrapper.findAll('button').find((item) => item.text() === 'Sign out').trigger('click')
 
     expect(push).toHaveBeenCalledWith('/')

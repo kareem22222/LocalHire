@@ -194,6 +194,7 @@ export const useJobsStore = defineStore('jobs', () => {
     myApplicationsFetchedAt.value = 0
     nearbyJobsByLocation.value = {}
     applicationsFetchedAt.value[jobId] = 0
+    jobFetchedAt.value[jobId] = 0
     return data
   }
 

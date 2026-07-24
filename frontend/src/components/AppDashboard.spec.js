@@ -100,6 +100,19 @@ describe('AppDashboard', () => {
     expect(api.get).toHaveBeenCalledWith('/work/jobs/nearby', { params: {} })
   })
 
+  it('uses saved profile coordinates for the initial worker job load', async () => {
+    api.get.mockImplementation((url) => Promise.resolve({
+      data: url === '/auth/me'
+        ? { name: 'Pat', role: 'LookingForWork', latitude: 12.34, longitude: 77.65 }
+        : [],
+    }))
+
+    mountDashboard()
+    await flushPromises()
+
+    expect(api.get).toHaveBeenCalledWith('/work/jobs/nearby', { params: { lat: 12.34, lng: 77.65 } })
+  })
+
   it('location success saves coordinates and reloads nearby jobs with coordinates', async () => {
     api.get.mockImplementation((url) => Promise.resolve({
       data: url === '/auth/me' ? { name: 'Pat', role: 'LookingForWork' } : [],

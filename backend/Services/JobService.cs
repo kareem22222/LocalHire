@@ -181,21 +181,7 @@ public sealed class JobService : IJobService
 
         if (lat is not null && lng is not null && !hasSearch)
         {
-            var box = GeoCalculator.GetBoundingBox(lat.Value, lng.Value, NearbyRadiusKm);
-
-            var nearbyQuery = query
-                .Where(j => j.Latitude != null && j.Longitude != null)
-                .Where(j => j.Latitude >= box.MinLat && j.Latitude <= box.MaxLat);
-
-            if (!box.CoversAllLongitudes)
-            {
-                if (box.MinLng < -180)
-                    nearbyQuery = nearbyQuery.Where(j => j.Longitude >= box.MinLng + 360 || j.Longitude <= box.MaxLng);
-                else if (box.MaxLng > 180)
-                    nearbyQuery = nearbyQuery.Where(j => j.Longitude >= box.MinLng || j.Longitude <= box.MaxLng - 360);
-                else
-                    nearbyQuery = nearbyQuery.Where(j => j.Longitude >= box.MinLng && j.Longitude <= box.MaxLng);
-            }
+            var nearbyQuery = ApplyJobBoundingBox(query, lat.Value, lng.Value);
 
             var jobs = await nearbyQuery
                 .Select(j => new { Job = j, Count = j.Applications.Count })
@@ -217,6 +203,10 @@ public sealed class JobService : IJobService
         if (!hasSearch && lat is null)
             query = await ApplyWorkerStateDefaultAsync(query, workerId, ct);
 
+        // Keep the cap before the in-memory ranking: SQLite cannot order
+        // DateTimeOffset or translate the Haversine calculation, and the bound
+        // prevents an unbounded materialization. The final in-memory ranking
+        // and Take(60) below remain unchanged.
         var matchedJobs = await query
             .Select(j => new { Job = j, Count = j.Applications.Count })
             .Take(200)
@@ -231,6 +221,23 @@ public sealed class JobService : IJobService
             .Take(60)
             .Select(x => JobMapper.ToResponse(x.Job, x.Count))
             .ToList();
+    }
+
+    private static IQueryable<JobPost> ApplyJobBoundingBox(
+        IQueryable<JobPost> query, double lat, double lng)
+    {
+        var box = GeoCalculator.GetBoundingBox(lat, lng, NearbyRadiusKm);
+        var nearbyQuery = query
+            .Where(j => j.Latitude != null && j.Longitude != null)
+            .Where(j => j.Latitude >= box.MinLat && j.Latitude <= box.MaxLat);
+
+        if (box.CoversAllLongitudes)
+            return nearbyQuery;
+        if (box.MinLng < -180)
+            return nearbyQuery.Where(j => j.Longitude >= box.MinLng + 360 || j.Longitude <= box.MaxLng);
+        if (box.MaxLng > 180)
+            return nearbyQuery.Where(j => j.Longitude >= box.MinLng || j.Longitude <= box.MaxLng - 360);
+        return nearbyQuery.Where(j => j.Longitude >= box.MinLng && j.Longitude <= box.MaxLng);
     }
 
     public async Task<JobPostResponse> GetActiveJobAsync(Guid id, CancellationToken ct)

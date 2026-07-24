@@ -20,9 +20,13 @@ const shortlisted = computed(() => candidate.value && isSaved(candidate.value.id
 const preferences = computed(() => candidate.value?.workPreferences || {})
 
 const OPTION_LABELS = {
-  FullTime: 'Full time', PartTime: 'Part time', Daily: 'Daily wage',
-  OnSite: 'At workplace', Immediately: 'Can join immediately', Within15Days: 'Within 15 days',
+  FullTime: 'Full time', PartTime: 'Part time', Contract: 'Contract', Temporary: 'Temporary',
+  Internship: 'Apprenticeship / internship', Daily: 'Daily wage',
+  Day: 'Day', Evening: 'Evening', Night: 'Night', Rotational: 'Rotational', Flexible: 'Flexible',
+  OnSite: 'At workplace', Hybrid: 'Hybrid', Remote: 'Work from home',
+  Immediately: 'Can join immediately', Within15Days: 'Within 15 days',
   Within30Days: 'Within 30 days', ServingNotice: 'Serving notice period',
+  Monthly: 'Monthly', Annual: 'Annual', Hourly: 'Hourly',
 }
 
 function list(values) {
@@ -32,7 +36,7 @@ function list(values) {
 const salarySummary = computed(() => {
   const { expectedSalaryMin: min, expectedSalaryMax: max, salaryPeriod: period } = preferences.value
   if (min == null && max == null) return 'Not specified'
-  return `₹${min ?? '0'} – ₹${max ?? 'open'} ${period || ''}`.trim()
+  return `₹${min ?? '0'} – ₹${max ?? 'open'} ${OPTION_LABELS[period] || ''}`.trim()
 })
 
 const initials = computed(() => {
@@ -399,8 +403,8 @@ function contact() {
 }
 
 .candidate-chips { display: flex; flex-wrap: wrap; gap: 7px; }
-.candidate-chips > span { padding: 5px 10px; color: #116738; background: #e7f7ee; border-radius: 999px; font-size: 12px; font-weight: 700; }
-.candidate-timeline { margin-top: 14px; padding: 15px 0 0 18px; border-top: 1px solid rgba(18, 50, 74, .08); border-left: 3px solid #21a947; }
+.candidate-chips > span { padding: 5px 10px; color: var(--worker-role-green-text); background: #e7f7ee; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.candidate-timeline { margin-top: 14px; padding: 15px 0 0 18px; border-top: 1px solid rgba(18, 50, 74, .08); border-left: 3px solid var(--worker-role-green-end); }
 .candidate-timeline h3 { margin: 0 0 5px; color: #12324a; font-size: 15px; }
 .candidate-timeline p { margin: 4px 0 0; color: #5d7482; font-size: 13px; }
 

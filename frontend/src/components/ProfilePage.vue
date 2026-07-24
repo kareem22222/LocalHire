@@ -79,8 +79,7 @@ function hydrate() {
     expectedSalaryMin: '', expectedSalaryMax: '', salaryPeriod: '', availability: '',
     noticePeriodDays: '', travelRadiusKm: '', willingToRelocate: false,
     canWorkWeekends: false, ownsVehicle: false, vehicleTypes: [],
-    ...(u.workPreferences || {}),
-  })
+  }, u.workPreferences)
   const copyEntries = (entries) => entries.map((entry) => ({ ...entry }))
   form.workHistory = copyEntries(u.workHistory || [])
   form.educationHistory = copyEntries(u.educationHistory || [])
@@ -146,16 +145,18 @@ function numberOrNull(value) {
   return value === '' || value == null ? null : Number(value)
 }
 
-function validate() {
-  const errors = []
-  const preferences = form.workPreferences
-  const salaryMin = numberOrNull(preferences.expectedSalaryMin)
-  const salaryMax = numberOrNull(preferences.expectedSalaryMax)
+function validateBasics(errors) {
   if (!form.name.trim()) errors.push('Full name is required.')
   if (form.phone && !/^[\d+\-()\s]{6,30}$/.test(form.phone)) errors.push('Enter a valid phone number.')
   if (form.pincode && !/^\d{6}$/.test(form.pincode)) errors.push('Pincode must contain exactly 6 digits.')
   if (form.dateOfBirth && form.dateOfBirth > new Date().toISOString().slice(0, 10)) errors.push('Date of birth cannot be in the future.')
   if (form.experienceYears !== '' && (Number(form.experienceYears) < 0 || Number(form.experienceYears) > 60)) errors.push('Experience must be between 0 and 60 years.')
+}
+
+function validatePreferences(errors) {
+  const preferences = form.workPreferences
+  const salaryMin = numberOrNull(preferences.expectedSalaryMin)
+  const salaryMax = numberOrNull(preferences.expectedSalaryMax)
   if (salaryMin != null && salaryMin < 0 || salaryMax != null && salaryMax < 0) errors.push('Expected salary cannot be negative.')
   if (salaryMin != null && salaryMax != null && salaryMax < salaryMin) errors.push('Maximum expected salary cannot be less than minimum expected salary.')
   if ((salaryMin != null || salaryMax != null) && !preferences.salaryPeriod) errors.push('Select a salary period.')
@@ -163,31 +164,62 @@ function validate() {
   if (preferences.noticePeriodDays !== '' && (Number(preferences.noticePeriodDays) < 0 || Number(preferences.noticePeriodDays) > 365)) errors.push('Notice period must be between 0 and 365 days.')
   if (preferences.desiredRoles.length > 10) errors.push('Add at most 10 desired roles.')
   if (preferences.preferredLocations.length > 10) errors.push('Add at most 10 preferred locations.')
+}
+
+function validateEntryCounts(errors) {
   if (form.workHistory.length > 10) errors.push('Add at most 10 work-history entries.')
   if (form.educationHistory.length > 10) errors.push('Add at most 10 education entries.')
   if (form.skillDetails.length > 30) errors.push('Add at most 30 skills.')
   if (form.languageDetails.length > 15) errors.push('Add at most 15 languages.')
   if (form.credentials.length > 15) errors.push('Add at most 15 licences or certificates.')
+}
+
+function validateWorkHistory(errors) {
   form.workHistory.forEach((entry, index) => {
     if (!entry.jobTitle.trim() || !entry.employer.trim()) errors.push(`Work history ${index + 1}: role and employer are required.`)
     if (!entry.isCurrent && entry.startDate && entry.endDate && entry.endDate < entry.startDate) errors.push(`Work history ${index + 1}: end date cannot be before start date.`)
   })
+}
+
+function validateEducation(errors) {
   form.educationHistory.forEach((entry, index) => {
     if (!entry.qualification.trim() || !entry.institution.trim()) errors.push(`Education ${index + 1}: qualification and institute are required.`)
     if (entry.startYear && entry.endYear && Number(entry.endYear) < Number(entry.startYear)) errors.push(`Education ${index + 1}: end year cannot be before start year.`)
     if ([entry.startYear, entry.endYear].some((year) => year && (Number(year) < 1950 || Number(year) > new Date().getFullYear() + 10))) errors.push(`Education ${index + 1}: enter a valid year.`)
   })
+}
+
+function validateSkillsAndLanguages(errors) {
   form.skillDetails.forEach((entry, index) => { if (!entry.name.trim()) errors.push(`Skill ${index + 1}: name is required.`) })
   form.languageDetails.forEach((entry, index) => { if (!entry.name.trim()) errors.push(`Language ${index + 1}: name is required.`) })
+}
+
+function isHttpUrl(value) {
+  try {
+    const url = new URL(value)
+    return ['http:', 'https:'].includes(url.protocol) && Boolean(url.hostname)
+  } catch {
+    return false
+  }
+}
+
+function validateCredentials(errors) {
   form.credentials.forEach((entry, index) => {
     if (!entry.name.trim() || !entry.issuer.trim()) errors.push(`Licence or certificate ${index + 1}: name and issuer are required.`)
     if (entry.issueDate && entry.expiryDate && entry.expiryDate < entry.issueDate) errors.push(`Licence or certificate ${index + 1}: expiry cannot be before issue date.`)
-    if (entry.url) {
-      try {
-        if (!['http:', 'https:'].includes(new URL(entry.url).protocol)) throw new Error()
-      } catch { errors.push(`Licence or certificate ${index + 1}: verification link must start with http:// or https://.`) }
-    }
+    if (entry.url && !isHttpUrl(entry.url)) errors.push(`Licence or certificate ${index + 1}: verification link must start with http:// or https://.`)
   })
+}
+
+function validate() {
+  const errors = []
+  validateBasics(errors)
+  validatePreferences(errors)
+  validateEntryCounts(errors)
+  validateWorkHistory(errors)
+  validateEducation(errors)
+  validateSkillsAndLanguages(errors)
+  validateCredentials(errors)
   return errors
 }
 
@@ -456,13 +488,13 @@ function goBack() {
 }
 
 .profile-page--worker :is(.profile-hero__avatar, .profile-badge--role, .dash-btn--primary) {
-  background: linear-gradient(135deg, #188853, #21a947);
-  box-shadow: 0 8px 24px rgba(33, 169, 71, 0.2);
+  background: var(--worker-role-gradient);
+  box-shadow: 0 8px 24px rgba(var(--worker-role-green-rgb), 0.2);
 }
 
 .profile-page--worker .dash-btn--outline {
-  color: #188853;
-  border-color: rgba(33, 169, 71, 0.25);
+  color: var(--worker-role-green-text);
+  border-color: rgba(var(--worker-role-green-rgb), 0.25);
 }
 
 .profile-badge--muted {
@@ -471,7 +503,7 @@ function goBack() {
 }
 
 .profile-badge--score {
-  color: #116738;
+  color: var(--worker-role-green-text);
   background: #e7f7ee;
 }
 

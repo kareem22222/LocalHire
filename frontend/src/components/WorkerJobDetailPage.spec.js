@@ -61,6 +61,30 @@ describe('WorkerJobDetailPage', () => {
     expect(wrapper.get('[role="alert"]').text()).toContain('Could not apply')
   })
 
+  it('keeps the applied state when refreshing applications fails', async () => {
+    let applicationLoads = 0
+    api.get.mockImplementation((url) => {
+      if (url === '/work/jobs/job-1') return Promise.resolve({ data: job })
+      applicationLoads += 1
+      return applicationLoads === 1
+        ? Promise.resolve({ data: [] })
+        : Promise.reject(new Error('refresh failed'))
+    })
+    const wrapper = mount(WorkerJobDetailPage, {
+      props: { id: 'job-1' },
+      global: { plugins: [createTestRouter()], stubs: { BrandLogo: true } },
+    })
+    await flushPromises()
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Apply now').trigger('click')
+    await flushPromises()
+
+    const appliedButton = wrapper.findAll('button').find((button) => button.text() === 'Applied')
+    expect(appliedButton.attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('Application status: Applied')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  })
+
   it('shows an existing application and routes from page controls', async () => {
     api.get.mockImplementation((url) => Promise.resolve({
       data: url === '/work/jobs/job-1' ? job : [{ jobPostId: 'job-1', status: 'Shortlisted' }],

@@ -102,4 +102,14 @@ public sealed class UpdateProfileRequestValidatorTests
     public void Rejects_an_inverted_expected_salary_range() => AssertInvalid(
         Valid() with { WorkPreferences = new WorkerPreferences { ExpectedSalaryMin = 20000, ExpectedSalaryMax = 10000 } },
         "WorkPreferences");
+
+    [Theory]
+    [InlineData("http://")]
+    [InlineData("ftp://example.com/certificate")]
+    public void Rejects_invalid_credential_urls(string url) => AssertInvalid(
+        Valid() with
+        {
+            Credentials = [new CredentialEntry { Name = "Driving licence", Issuer = "RTO", Url = url }]
+        },
+        "Credentials[0].Url");
 }

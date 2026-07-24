@@ -89,6 +89,14 @@ describe('WorkerProfileSections', () => {
     expect(form.workHistory[0].jobTitle).toBe('Electrician')
     expect(form.skillDetails[0].proficiency).toBe('Advanced')
 
+    expect(wrapper.findAll('button.remove').map((remove) => remove.attributes('aria-label'))).toEqual([
+      'Remove work history 1',
+      'Remove education 1',
+      'Remove skill 1',
+      'Remove language 1',
+      'Remove licence or certificate 1',
+    ])
+
     for (const remove of [...wrapper.findAll('button.remove')].reverse()) {
       await remove.trigger('click')
     }

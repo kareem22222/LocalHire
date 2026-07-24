@@ -169,6 +169,7 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
 
     private static T DeserializeJson<T>(string? value) where T : new() =>
         string.IsNullOrEmpty(value)
-            ? new T()
-            : JsonSerializer.Deserialize<T>(value, (JsonSerializerOptions?)null) ?? new T();
+            ? throw new JsonException($"Stored JSON for {typeof(T).Name} cannot be empty.")
+            : JsonSerializer.Deserialize<T>(value, (JsonSerializerOptions?)null)
+                ?? throw new JsonException($"Stored JSON for {typeof(T).Name} cannot be null.");
 }

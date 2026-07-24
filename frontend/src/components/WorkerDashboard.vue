@@ -81,7 +81,7 @@ function hasApplied(jobId) {
     </section>
 
     <div class="hiring-side-stack">
-      <aside class="hiring-sidebar">
+      <aside class="hiring-sidebar" aria-label="Profile strength">
         <h2>Profile strength</h2>
         <p>A complete profile helps local employers understand your experience and skills.</p>
         <div class="hiring-progress">
@@ -91,7 +91,7 @@ function hasApplied(jobId) {
         </div>
       </aside>
 
-      <aside class="hiring-sidebar hiring-quick">
+      <aside class="hiring-sidebar hiring-quick" aria-label="Quick actions">
         <h2>Quick actions</h2>
         <p>Review your applications or keep your work profile current.</p>
         <div class="hiring-quick__actions">
@@ -152,14 +152,13 @@ function hasApplied(jobId) {
           v-for="job in jobs"
           :key="job.id"
           class="worker-job-row"
-          role="link"
-          tabindex="0"
-          :aria-label="`View ${job.title} at ${job.workplaceName}`"
-          @click="emit('open-job', job.id)"
-          @keydown.enter="emit('open-job', job.id)"
-          @keydown.space.prevent="emit('open-job', job.id)"
         >
-          <div class="worker-job-row__main">
+          <a
+            class="worker-job-row__main"
+            :href="`/work/jobs/${job.id}`"
+            :aria-label="`View ${job.title} at ${job.workplaceName}`"
+            @click.prevent="emit('open-job', job.id)"
+          >
             <span class="worker-job-row__status">Now hiring</span>
             <h3>{{ job.title }}</h3>
             <p class="worker-job-row__company">{{ job.workplaceName }} · {{ formatJobLocation(job) }}</p>
@@ -169,14 +168,14 @@ function hasApplied(jobId) {
               <span v-if="formatSalary(job)">{{ formatSalary(job) }}</span>
               <span v-if="formatExperience(job)">{{ formatExperience(job) }}</span>
             </div>
-          </div>
+          </a>
           <div class="worker-job-row__actions">
-            <span class="worker-job-row__details">View details →</span>
+            <a class="worker-job-row__details" :href="`/work/jobs/${job.id}`" @click.prevent="emit('open-job', job.id)">View details →</a>
             <button
               type="button"
               class="dash-btn dash-btn--primary"
               :disabled="hasApplied(job.id) || applying === job.id"
-              @click.stop="emit('apply', job.id)"
+              @click="emit('apply', job.id)"
             >
               {{ hasApplied(job.id) ? 'Applied' : applying === job.id ? 'Applying...' : 'Apply now' }}
             </button>
@@ -194,27 +193,27 @@ function hasApplied(jobId) {
 
 <style scoped>
 .worker-dashboard :is(.hiring-metrics strong, .hiring-kicker, .hiring-progress strong) {
-  color: #188853;
+  color: var(--worker-role-green-text);
 }
 
 .worker-dashboard .dash-btn--primary {
-  background: linear-gradient(135deg, #188853, #21a947);
-  box-shadow: 0 10px 24px rgba(33, 169, 71, 0.18);
+  background: var(--worker-role-gradient);
+  box-shadow: 0 10px 24px rgba(var(--worker-role-green-rgb), 0.18);
 }
 
 .worker-dashboard .hiring-kicker::before,
 .worker-dashboard .hiring-progress b {
-  background: linear-gradient(90deg, #188853, #21a947);
+  background: linear-gradient(90deg, var(--worker-role-green-start), var(--worker-role-green-end));
 }
 
 .worker-dashboard .hiring-quick__link {
-  color: #188853;
-  border-color: rgba(33, 169, 71, 0.2);
+  color: var(--worker-role-green-text);
+  border-color: rgba(var(--worker-role-green-rgb), 0.2);
 }
 
 .worker-results,
 .worker-search__location-label {
-  color: #6f8794;
+  color: #526977;
   font-size: 13px;
   font-weight: 700;
 }
@@ -231,7 +230,7 @@ function hasApplied(jobId) {
   border: 1px solid rgba(18, 50, 74, 0.08);
   border-radius: 20px;
   background: #ffffff;
-  box-shadow: 0 12px 40px rgba(33, 169, 71, 0.07);
+  box-shadow: 0 12px 40px rgba(var(--worker-role-green-rgb), 0.07);
 }
 
 .worker-search__primary {
@@ -247,12 +246,12 @@ function hasApplied(jobId) {
 
 .worker-search__primary .hiring-search:focus-within,
 .worker-search__field select:focus {
-  border-color: rgba(33, 169, 71, 0.55);
-  box-shadow: 0 0 0 4px rgba(33, 169, 71, 0.1);
+  border-color: rgba(var(--worker-role-green-rgb), 0.55);
+  box-shadow: 0 0 0 4px rgba(var(--worker-role-green-rgb), 0.1);
 }
 
 .worker-search__primary .hiring-search svg {
-  color: #188853;
+  color: var(--worker-role-green-text);
 }
 
 .worker-search__filters {
@@ -271,7 +270,7 @@ function hasApplied(jobId) {
 
 .worker-search__field > span {
   padding-left: 3px;
-  color: #5d7482;
+  color: #526977;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -293,8 +292,8 @@ function hasApplied(jobId) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: #188853;
-  border-color: rgba(33, 169, 71, 0.28);
+  color: var(--worker-role-green-text);
+  border-color: rgba(var(--worker-role-green-rgb), 0.28);
   font-weight: 800;
 }
 
@@ -325,18 +324,22 @@ function hasApplied(jobId) {
   border-radius: 18px;
   background: #ffffff;
   box-shadow: 0 10px 32px rgba(18, 50, 74, 0.05);
-  cursor: pointer;
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.worker-job-row__main {
+  color: inherit;
+  text-decoration: none;
 }
 
 .worker-job-row:hover {
   transform: translateY(-2px);
-  border-color: rgba(33, 169, 71, 0.3);
-  box-shadow: 0 16px 36px rgba(33, 169, 71, 0.1);
+  border-color: rgba(var(--worker-role-green-rgb), 0.3);
+  box-shadow: 0 16px 36px rgba(var(--worker-role-green-rgb), 0.1);
 }
 
-.worker-job-row:focus-visible {
-  outline: 3px solid rgba(33, 169, 71, 0.25);
+.worker-job-row :is(a:focus-visible, button:focus-visible) {
+  outline: 3px solid rgba(var(--worker-role-green-rgb), 0.25);
   outline-offset: 2px;
 }
 
@@ -345,8 +348,8 @@ function hasApplied(jobId) {
   margin-bottom: 10px;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(33, 169, 71, 0.09);
-  color: #188853;
+  background: rgba(var(--worker-role-green-rgb), 0.09);
+  color: var(--worker-role-green-text);
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
@@ -360,7 +363,7 @@ function hasApplied(jobId) {
 
 .worker-job-row__company,
 .worker-job-row__description {
-  color: #5d7482;
+  color: #526977;
   font-size: 14px;
 }
 
@@ -402,9 +405,10 @@ function hasApplied(jobId) {
 }
 
 .worker-job-row__details {
-  color: #188853;
+  color: var(--worker-role-green-text);
   font-size: 13px;
   font-weight: 800;
+  text-decoration: none;
 }
 
 @media (max-width: 720px) {
