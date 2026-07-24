@@ -6,16 +6,10 @@ import { useJobsStore } from '../stores/jobs'
 import { useProfileStore } from '../stores/profile'
 import { normalizeRole } from '../utils/role'
 import { logout } from '../utils/session'
-import {
-  formatEmploymentType,
-  formatExperience,
-  formatJobLocation,
-  formatSalary,
-  formatShift,
-} from '../utils/jobDisplay'
 import BrandLogo from './BrandLogo.vue'
 import HiringDashboard from './HiringDashboard.vue'
 import ProfilePage from './ProfilePage.vue'
+import WorkerDashboard from './WorkerDashboard.vue'
 
 const emit = defineEmits(['logout', 'profile'])
 const router = useRouter()
@@ -27,7 +21,9 @@ const { myJobs, myApplications, candidates } = storeToRefs(jobsStore)
 const userRole = computed(() => normalizeRole(user.value?.role))
 const isHiringUser = computed(() => userRole.value === 'hiring')
 const isWorkerUser = computed(() => userRole.value === 'worker')
-const profileSaveError = ref('')
+const profileSaveErrors = ref([])
+const profileSaving = ref(false)
+const profileSaveVersion = ref(0)
 const resumeUploadError = ref('')
 
 // --- Shared ---
@@ -45,7 +41,6 @@ async function fetchProfile() {
       await loadMyJobs()
       await loadCandidates()
     } else if (role === 'worker') {
-      if (data.isProfileComplete === false) activeTab.value = 'profile'
       await loadMyApplications()
       await loadNearbyJobs()
     }
@@ -60,27 +55,37 @@ function handleLogout() {
 }
 
 function handleProfileClick() {
-  profileSaveError.value = ''
+  profileSaveErrors.value = []
   emit('profile', user.value)
   activeTab.value = 'profile'
 }
 
 function closeProfile() {
-  if (isWorkerUser.value && user.value?.isProfileComplete === false) return
   activeTab.value = 'dashboard'
 }
 
+function clearProfileErrors() {
+  profileSaveErrors.value = []
+}
+
+function profileErrorMessages(err) {
+  const data = err.response?.data
+  const validation = Object.values(data?.errors || {}).flat().filter(Boolean)
+  if (validation.length) return validation
+  return [data?.detail || data?.message || data?.error || data?.title || err.message || 'Failed to save profile.']
+}
+
 async function handleProfileSave(details) {
-  profileSaveError.value = ''
+  profileSaveErrors.value = []
+  profileSaving.value = true
   try {
     await profileStore.updateProfile(details)
+    profileSaveVersion.value += 1
     activeTab.value = 'profile'
   } catch (err) {
-    user.value = { ...user.value, ...details }
-    const reason = err.response?.data?.message || err.message
-    profileSaveError.value = reason
-      ? `Failed to save profile: ${reason}`
-      : 'Failed to save profile. Your edits are kept locally.'
+    profileSaveErrors.value = profileErrorMessages(err)
+  } finally {
+    profileSaving.value = false
   }
 }
 
@@ -254,6 +259,35 @@ const locationStatus = ref('idle') // idle | prompt | denied | done
 const nearbyJobs = ref([])
 const workerCoords = ref(null)
 const applying = ref(null)
+const workerJobsLoading = ref(false)
+const workerSearch = ref('')
+const workerEmploymentType = ref('')
+
+const workerLocationLabel = computed(() => {
+  if (locationStatus.value === 'done') return 'Using your current location'
+  if (locationStatus.value === 'prompt') return 'Getting your location...'
+  if (locationStatus.value === 'denied') return user.value?.state ? `Roles in ${user.value.state}` : 'Location unavailable'
+  return user.value?.state ? `Roles in ${user.value.state}` : 'Add your state to see local roles'
+})
+
+function workerJobParams() {
+  const params = {}
+  if (workerCoords.value) {
+    params.lat = workerCoords.value.lat
+    params.lng = workerCoords.value.lng
+  }
+  if (workerSearch.value) params.search = workerSearch.value
+  if (workerEmploymentType.value) params.employmentType = workerEmploymentType.value
+  return params
+}
+
+function goWorkerJob(id) {
+  router.push({ name: 'worker-job-detail', params: { id } })
+}
+
+function goWorkerApplications() {
+  router.push({ name: 'worker-applications' })
+}
 
 function requestLocation() {
   if (!navigator.geolocation) {
@@ -271,24 +305,33 @@ function requestLocation() {
         await profileStore.updateLocation({ latitude: lat, longitude: lng })
       } catch {
       }
-      await loadNearbyJobs(lat, lng)
+      await loadNearbyJobs({ force: true })
       await loadMyApplications()
     },
     () => {
       locationStatus.value = 'denied'
-      loadNearbyJobs()
+      workerCoords.value = null
+      loadNearbyJobs({ force: true })
       loadMyApplications()
     },
     { enableHighAccuracy: false, timeout: 10000 },
   )
 }
 
-async function loadNearbyJobs(lat, lng) {
+async function loadNearbyJobs(options = {}) {
+  workerJobsLoading.value = true
   try {
-    const params = lat != null && lng != null ? { lat, lng } : {}
-    nearbyJobs.value = await jobsStore.loadNearbyJobs(params)
+    nearbyJobs.value = await jobsStore.loadNearbyJobs(workerJobParams(), options)
   } catch {
+  } finally {
+    workerJobsLoading.value = false
   }
+}
+
+async function searchJobs(payload) {
+  workerSearch.value = payload.search || ''
+  workerEmploymentType.value = payload.employmentType || ''
+  await loadNearbyJobs({ force: true })
 }
 
 async function loadMyApplications() {
@@ -303,7 +346,7 @@ async function applyToJob(jobId) {
   try {
     await jobsStore.applyToJob(jobId)
     await loadMyApplications()
-    await loadNearbyJobs(workerCoords.value?.lat, workerCoords.value?.lng)
+    await loadNearbyJobs({ force: true })
   } catch (err) {
     alert(err.response?.data?.message || 'Failed to apply.')
   } finally {
@@ -311,24 +354,30 @@ async function applyToJob(jobId) {
   }
 }
 
-function hasApplied(jobId) {
-  return myApplications.value.some((application) => application.jobPostId === jobId)
-}
 </script>
 
 <template>
-  <div class="dash-shell">
+  <div class="dash-shell" :class="{ 'dash-shell--worker': isWorkerUser }">
     <header class="dash-header">
       <BrandLogo @click.prevent="goToDashboard" />
       <div class="dash-header__right">
-        <button type="button" class="dash-btn dash-btn--primary dash-role-badge" @click="closeProfile">{{ isHiringUser ? 'Hiring' : isWorkerUser ? 'Worker' : 'Account' }}</button>
+        <button type="button" class="dash-btn dash-btn--primary dash-role-badge" @click="closeProfile">{{ isHiringUser ? 'Hiring' : isWorkerUser ? 'Looking for work' : 'Account' }}</button>
         <button type="button" class="dash-user-name" @click="handleProfileClick">{{ user?.name || 'User' }}</button>
         <button class="dash-logout-btn" @click="handleLogout">Sign out</button>
       </div>
     </header>
 
-    <ProfilePage v-if="activeTab === 'profile'" :user="user" @back="closeProfile" @save="handleProfileSave" @upload-resume="handleResumeUpload" />
-    <p v-if="profileSaveError" class="job-form__error" role="alert">{{ profileSaveError }}</p>
+    <ProfilePage
+      v-if="activeTab === 'profile'"
+      :user="user"
+      :saving="profileSaving"
+      :save-version="profileSaveVersion"
+      :save-errors="profileSaveErrors"
+      @back="closeProfile"
+      @save="handleProfileSave"
+      @clear-errors="clearProfileErrors"
+      @upload-resume="handleResumeUpload"
+    />
     <p v-if="resumeUploadError" class="job-form__error" role="alert">{{ resumeUploadError }}</p>
 
     <HiringDashboard
@@ -368,89 +417,22 @@ function hasApplied(jobId) {
       </div>
     </div>
 
-    <main v-if="isWorkerUser && activeTab !== 'profile'" class="dash-main">
-
-      <!-- ===== WORKER DASHBOARD ===== -->
-        <div class="dash-welcome">
-          <h1 class="dash-welcome__title">
-            Worker Dashboard,
-            <span class="dash-welcome__name">{{ user?.name }}</span>
-          </h1>
-          <p class="dash-welcome__desc">
-            Find nearby job opportunities and manage your applications.
-          </p>
-        </div>
-
-        <!-- Location prompt -->
-        <div v-if="locationStatus === 'idle'" class="location-prompt">
-          <p class="location-prompt__text">Enable location to see nearby jobs in your area.</p>
-          <button class="dash-btn dash-btn--primary" @click="requestLocation">Share Location</button>
-        </div>
-        <div v-else-if="locationStatus === 'prompt'" class="location-prompt">
-          <p class="location-prompt__text">Requesting location access...</p>
-        </div>
-        <div v-else-if="locationStatus === 'denied'" class="location-prompt location-prompt--denied">
-          <p class="location-prompt__text">Location access denied. You can still browse all active jobs, or enable location in your browser settings.</p>
-          <button class="dash-btn dash-btn--outline" @click="requestLocation">Try again</button>
-        </div>
-
-        <!-- Nearby Jobs -->
-        <div class="dash-section">
-          <h2 class="dash-section__title">Nearby Jobs</h2>
-          <div v-if="nearbyJobs.length === 0" class="dash-empty">
-            No active jobs found{{ locationStatus === 'denied' ? '. Try enabling location or check back later.' : ' in your area.' }}
-          </div>
-          <div v-for="job in nearbyJobs" :key="job.id" class="job-card">
-            <div class="job-card__body">
-              <h3 class="job-card__title">{{ job.title }}</h3>
-              <p class="job-card__meta">{{ job.workplaceName }} &middot; {{ formatJobLocation(job) }}</p>
-              <p class="job-card__desc">{{ job.description }}</p>
-              <div class="job-detail-tags">
-                <span v-if="formatEmploymentType(job)" class="job-detail-tag">{{ formatEmploymentType(job) }}</span>
-                <span v-if="formatSalary(job)" class="job-detail-tag job-detail-tag--salary">{{ formatSalary(job) }}</span>
-                <span v-if="formatExperience(job)" class="job-detail-tag">{{ formatExperience(job) }}</span>
-                <span v-if="job.minEducation" class="job-detail-tag">{{ job.minEducation }}</span>
-                <span v-if="formatShift(job)" class="job-detail-tag">{{ formatShift(job) }}</span>
-                <span v-if="job.openings" class="job-detail-tag">{{ job.openings }} opening{{ job.openings !== 1 ? 's' : '' }}</span>
-                <span v-for="lang in job.languages || []" :key="`lang-${lang}`" class="job-detail-tag">{{ lang }}</span>
-              </div>
-              <div v-if="(job.requiredSkills || []).length" class="job-detail-chips">
-                <span v-for="skill in job.requiredSkills" :key="skill">{{ skill }}</span>
-              </div>
-              <div v-if="(job.benefits || []).length" class="job-detail-benefits">
-                <strong>Benefits:</strong> {{ job.benefits.join(', ') }}
-              </div>
-            </div>
-            <div class="job-card__actions">
-              <span class="job-card__count">{{ job.applicationCount }} applicant{{ job.applicationCount !== 1 ? 's' : '' }}</span>
-              <button
-                class="dash-btn"
-                :class="hasApplied(job.id) ? 'dash-btn--disabled' : 'dash-btn--primary'"
-                :disabled="hasApplied(job.id) || applying === job.id"
-                @click="applyToJob(job.id)"
-              >
-                {{ hasApplied(job.id) ? 'Applied' : applying === job.id ? 'Applying...' : 'Apply' }}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- My Applications -->
-        <div class="dash-section">
-          <h2 class="dash-section__title">My Applications</h2>
-          <div v-if="myApplications.length === 0" class="dash-empty">You haven't applied to any jobs yet.</div>
-          <div v-for="app in myApplications" :key="app.id" class="job-card">
-            <div class="job-card__body">
-              <h3 class="job-card__title">{{ app.jobTitle }}</h3>
-              <p class="job-card__meta">{{ app.workplaceName }} &middot; {{ app.cityArea }}</p>
-            </div>
-            <div class="job-card__actions">
-              <span class="job-card__badge" :class="`job-card__badge--${app.status.toLowerCase()}`">{{ app.status }}</span>
-              <span class="job-card__date">{{ new Date(app.createdAt).toLocaleDateString() }}</span>
-            </div>
-          </div>
-        </div>
-    </main>
+    <WorkerDashboard
+      v-if="isWorkerUser && activeTab !== 'profile'"
+      :user="user"
+      :jobs="nearbyJobs"
+      :applications="myApplications"
+      :loading="workerJobsLoading"
+      :location-label="workerLocationLabel"
+      :locating="locationStatus === 'prompt'"
+      :applying="applying"
+      @search-jobs="searchJobs"
+      @use-my-location="requestLocation"
+      @apply="applyToJob"
+      @open-profile="handleProfileClick"
+      @open-job="goWorkerJob"
+      @view-applications="goWorkerApplications"
+    />
 
     <main v-else-if="user && !isHiringUser && activeTab !== 'profile'" class="dash-main">
       <div class="dash-empty">
@@ -461,49 +443,8 @@ function hasApplied(jobId) {
 </template>
 
 <style scoped>
-.job-detail-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.job-detail-tag {
-  font-size: 12px;
-  font-weight: 600;
-  color: #0e2638;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: #eef3f5;
-}
-
-.job-detail-tag--salary {
-  color: #064b29;
-  background: #e7f6ee;
-}
-
-.job-detail-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-}
-
-.job-detail-chips span {
-  font-size: 12px;
-  color: #07559a;
-  padding: 3px 9px;
-  border-radius: 8px;
-  border: 1px solid rgba(7, 85, 154, 0.2);
-}
-
-.job-detail-benefits {
-  margin-top: 10px;
-  font-size: 13px;
-  color: #40545f;
-}
-
-.job-detail-benefits strong {
-  color: #12324a;
+.dash-shell--worker .dash-role-badge {
+  background: linear-gradient(135deg, #188853, #21a947);
+  box-shadow: 0 8px 24px rgba(33, 169, 71, 0.2);
 }
 </style>

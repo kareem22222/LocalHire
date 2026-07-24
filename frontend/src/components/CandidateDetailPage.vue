@@ -17,6 +17,23 @@ const showContact = ref(route.query.contact === '1')
 
 const candidateId = computed(() => route.params.id)
 const shortlisted = computed(() => candidate.value && isSaved(candidate.value.id))
+const preferences = computed(() => candidate.value?.workPreferences || {})
+
+const OPTION_LABELS = {
+  FullTime: 'Full time', PartTime: 'Part time', Daily: 'Daily wage',
+  OnSite: 'At workplace', Immediately: 'Can join immediately', Within15Days: 'Within 15 days',
+  Within30Days: 'Within 30 days', ServingNotice: 'Serving notice period',
+}
+
+function list(values) {
+  return (values || []).map((value) => OPTION_LABELS[value] || value).join(', ')
+}
+
+const salarySummary = computed(() => {
+  const { expectedSalaryMin: min, expectedSalaryMax: max, salaryPeriod: period } = preferences.value
+  if (min == null && max == null) return 'Not specified'
+  return `₹${min ?? '0'} – ₹${max ?? 'open'} ${period || ''}`.trim()
+})
 
 const initials = computed(() => {
   const name = candidate.value?.name || 'U'
@@ -127,6 +144,69 @@ function contact() {
               <a :href="`mailto:${candidate.email}`" class="candidate-detail__value candidate-detail__link">{{ candidate.email }}</a>
             </div>
           </div>
+        </section>
+
+        <section class="candidate-detail__card">
+          <h2>Professional profile</h2>
+          <div class="candidate-detail__grid">
+            <div class="candidate-detail__field candidate-detail__field--full">
+              <span class="candidate-detail__label">Summary</span>
+              <p class="candidate-detail__value">{{ candidate.professionalSummary || 'Not added' }}</p>
+            </div>
+            <div class="candidate-detail__field"><span class="candidate-detail__label">Experience</span><p class="candidate-detail__value">{{ candidate.experienceYears == null ? 'Not added' : `${candidate.experienceYears} years` }}</p></div>
+            <div class="candidate-detail__field"><span class="candidate-detail__label">Highest education</span><p class="candidate-detail__value">{{ candidate.education || 'Not added' }}</p></div>
+            <div class="candidate-detail__field candidate-detail__field--full">
+              <span class="candidate-detail__label">Skills</span>
+              <div class="candidate-chips">
+                <span v-for="skill in candidate.skillDetails?.length ? candidate.skillDetails : (candidate.skills || []).map(name => ({ name }))" :key="skill.name">{{ skill.name }}<template v-if="skill.proficiency"> · {{ skill.proficiency }}</template></span>
+                <p v-if="!candidate.skillDetails?.length && !candidate.skills?.length" class="candidate-detail__value">Not added</p>
+              </div>
+            </div>
+            <div class="candidate-detail__field candidate-detail__field--full">
+              <span class="candidate-detail__label">Languages</span>
+              <div class="candidate-chips">
+                <span v-for="language in candidate.languageDetails?.length ? candidate.languageDetails : (candidate.languages || []).map(name => ({ name }))" :key="language.name">{{ language.name }}<template v-if="language.proficiency"> · {{ language.proficiency }}</template></span>
+                <p v-if="!candidate.languageDetails?.length && !candidate.languages?.length" class="candidate-detail__value">Not added</p>
+              </div>
+            </div>
+            <div class="candidate-detail__field"><span class="candidate-detail__label">Resume</span><p class="candidate-detail__value">{{ candidate.hasResume ? 'Available' : 'Not uploaded' }}</p></div>
+          </div>
+        </section>
+
+        <section class="candidate-detail__card">
+          <h2>Work preferences</h2>
+          <div class="candidate-detail__grid">
+            <div class="candidate-detail__field"><span class="candidate-detail__label">Desired roles</span><p class="candidate-detail__value">{{ list(preferences.desiredRoles) || 'Not specified' }}</p></div>
+            <div class="candidate-detail__field"><span class="candidate-detail__label">Employment type</span><p class="candidate-detail__value">{{ list(preferences.employmentTypes) || 'Not specified' }}</p></div>
+            <div class="candidate-detail__field"><span class="candidate-detail__label">Shifts</span><p class="candidate-detail__value">{{ list(preferences.shifts) || 'Not specified' }}</p></div>
+            <div class="candidate-detail__field"><span class="candidate-detail__label">Workplace</span><p class="candidate-detail__value">{{ list(preferences.workModes) || 'Not specified' }}</p></div>
+            <div class="candidate-detail__field"><span class="candidate-detail__label">Expected salary</span><p class="candidate-detail__value">{{ salarySummary }}</p></div>
+            <div class="candidate-detail__field"><span class="candidate-detail__label">Availability</span><p class="candidate-detail__value">{{ OPTION_LABELS[preferences.availability] || preferences.availability || 'Not specified' }}<template v-if="preferences.noticePeriodDays != null"> · {{ preferences.noticePeriodDays }} days</template></p></div>
+            <div class="candidate-detail__field"><span class="candidate-detail__label">Travel distance</span><p class="candidate-detail__value">{{ preferences.travelRadiusKm == null ? 'Not specified' : `Up to ${preferences.travelRadiusKm} km` }}</p></div>
+            <div class="candidate-detail__field"><span class="candidate-detail__label">Preferred areas</span><p class="candidate-detail__value">{{ list(preferences.preferredLocations) || 'Not specified' }}</p></div>
+            <div class="candidate-detail__field candidate-detail__field--full"><span class="candidate-detail__label">Work readiness</span><p class="candidate-detail__value">{{ [preferences.willingToRelocate && 'Can relocate', preferences.canWorkWeekends && 'Can work weekends', preferences.ownsVehicle && `Vehicle: ${list(preferences.vehicleTypes) || 'Yes'}`].filter(Boolean).join(' · ') || 'Not specified' }}</p></div>
+          </div>
+        </section>
+
+        <section v-if="candidate.workHistory?.length" class="candidate-detail__card">
+          <h2>Work history</h2>
+          <article v-for="(entry, index) in candidate.workHistory" :key="index" class="candidate-timeline">
+            <h3>{{ entry.jobTitle }} · {{ entry.employer }}</h3>
+            <p>{{ [entry.location, entry.startDate, entry.isCurrent ? 'Present' : entry.endDate].filter(Boolean).join(' · ') }}</p>
+            <p v-if="entry.description">{{ entry.description }}</p>
+          </article>
+        </section>
+
+        <section v-if="candidate.educationHistory?.length || candidate.credentials?.length" class="candidate-detail__card">
+          <h2>Education, training, and licences</h2>
+          <article v-for="(entry, index) in candidate.educationHistory" :key="`education-${index}`" class="candidate-timeline">
+            <h3>{{ entry.qualification }} · {{ entry.institution }}</h3>
+            <p>{{ [entry.fieldOfStudy, entry.startYear, entry.endYear].filter(Boolean).join(' · ') }}</p>
+          </article>
+          <article v-for="(entry, index) in candidate.credentials" :key="`credential-${index}`" class="candidate-timeline">
+            <h3>{{ entry.name }} · {{ entry.issuer }}</h3>
+            <p>{{ [entry.credentialId, entry.issueDate, entry.expiryDate && `Expires ${entry.expiryDate}`].filter(Boolean).join(' · ') }}</p>
+          </article>
         </section>
 
         <section class="candidate-detail__card">
@@ -317,6 +397,12 @@ function contact() {
 .candidate-detail__link:hover {
   text-decoration: underline;
 }
+
+.candidate-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.candidate-chips > span { padding: 5px 10px; color: #116738; background: #e7f7ee; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.candidate-timeline { margin-top: 14px; padding: 15px 0 0 18px; border-top: 1px solid rgba(18, 50, 74, .08); border-left: 3px solid #21a947; }
+.candidate-timeline h3 { margin: 0 0 5px; color: #12324a; font-size: 15px; }
+.candidate-timeline p { margin: 4px 0 0; color: #5d7482; font-size: 13px; }
 
 @media (max-width: 700px) {
   .candidate-detail__hero {

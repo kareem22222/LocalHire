@@ -42,9 +42,9 @@ const fullJob = {
   applicationCount: 0,
 }
 
-function mountAsWorker({ nearby = [], applications = [] } = {}) {
+function mountAsWorker({ nearby = [], applications = [], profile = {} } = {}) {
   api.get.mockImplementation((url) => {
-    if (url === '/auth/me') return Promise.resolve({ data: { name: 'Pat', role: 'LookingForWork' } })
+    if (url === '/auth/me') return Promise.resolve({ data: { name: 'Pat', role: 'LookingForWork', ...profile } })
     if (url === '/work/jobs/nearby') return Promise.resolve({ data: nearby })
     if (url === '/work/applications') return Promise.resolve({ data: applications })
     return Promise.resolve({ data: [] })
@@ -65,9 +65,10 @@ describe('AppDashboard worker flow', () => {
     api.put.mockReset()
     api.post.mockResolvedValue({ data: {} })
     api.put.mockResolvedValue({ data: {} })
+    localStorage.removeItem('dashboard_tab')
   })
 
-  it('renders formatted job details from the display helpers', async () => {
+  it('keeps the job list to a readable summary', async () => {
     const wrapper = mountAsWorker({ nearby: [fullJob] })
     await flushPromises()
 
@@ -75,19 +76,16 @@ describe('AppDashboard worker flow', () => {
     expect(text).toContain('Full-time')
     expect(text).toContain('₹15,000 – ₹25,000 / monthly')
     expect(text).toContain('1–3 yrs exp')
-    expect(text).toContain('Mon-Sat, 09:00–18:00')
-    expect(text).toContain('10th pass')
-    expect(text).toContain('Billing')
-    expect(text).toContain('Hindi')
-    expect(text).toContain('PF')
-    expect(text).toContain('2 openings')
+    expect(text).toContain('Handle billing')
+    expect(text).toContain('View details')
+    expect(text).not.toContain('Mon-Sat')
   })
 
   it('applies to a job and reloads applications', async () => {
     const wrapper = mountAsWorker({ nearby: [fullJob] })
     await flushPromises()
 
-    await findButtonByText(wrapper, 'Apply').trigger('click')
+    await findButtonByText(wrapper, 'Apply now').trigger('click')
     await flushPromises()
 
     expect(api.post).toHaveBeenCalledWith('/work/jobs/job-1/apply')
@@ -100,7 +98,7 @@ describe('AppDashboard worker flow', () => {
     const wrapper = mountAsWorker({ nearby: [fullJob] })
     await flushPromises()
 
-    await findButtonByText(wrapper, 'Apply').trigger('click')
+    await findButtonByText(wrapper, 'Apply now').trigger('click')
     await flushPromises()
 
     expect(alertSpy).toHaveBeenCalledWith('Nope')
@@ -124,10 +122,33 @@ describe('AppDashboard worker flow', () => {
     const wrapper = mountAsWorker()
     await flushPromises()
 
-    await findButtonByText(wrapper, 'Share Location').trigger('click')
+    await wrapper.find('.worker-search__location').trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Location access denied')
+    expect(wrapper.text()).toContain('Location unavailable')
+  })
+
+  it('uses the hiring dashboard layout with worker search, filters, and a profile score', async () => {
+    const wrapper = mountAsWorker({ nearby: [fullJob] })
+    await flushPromises()
+
+    expect(wrapper.find('.hiring-metrics').exists()).toBe(true)
+    expect(wrapper.text()).toContain('profile score')
+    expect(wrapper.find('.worker-search__field select').exists()).toBe(true)
+
+    await wrapper.find('.hiring-search input').setValue('Cashier')
+    await wrapper.find('.worker-search').trigger('submit')
+    await flushPromises()
+
+    expect(api.get).toHaveBeenCalledWith('/work/jobs/nearby', { params: { search: 'Cashier' } })
+  })
+
+  it('opens job details from the clickable row and exposes the applied jobs button', async () => {
+    const wrapper = mountAsWorker({ nearby: [fullJob] })
+    await flushPromises()
+
+    expect(wrapper.find('.worker-job-row').attributes('role')).toBe('link')
+    expect(findButtonByText(wrapper, 'Applied jobs')).toBeTruthy()
   })
 
   it('logs out via the session helper', async () => {
@@ -156,5 +177,13 @@ describe('AppDashboard worker flow', () => {
     wrapper.vm.goToDashboard()
     await flushPromises()
     expect(wrapper.vm.activeTab).toBe('dashboard')
+  })
+
+  it('opens the dashboard for an incomplete worker returning from another page', async () => {
+    const wrapper = mountAsWorker({ profile: { isProfileComplete: false } })
+    await flushPromises()
+
+    expect(wrapper.find('.profile-page').exists()).toBe(false)
+    expect(wrapper.find('.worker-search').exists()).toBe(true)
   })
 })

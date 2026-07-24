@@ -1,14 +1,18 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
+import WorkerProfileSections from './WorkerProfileSections.vue'
 
 const props = defineProps({
   user: { type: Object, default: null },
+  saving: { type: Boolean, default: false },
+  saveVersion: { type: Number, default: 0 },
+  saveErrors: { type: Array, default: () => [] },
 })
 
-const emit = defineEmits(['back', 'save', 'upload-resume'])
+const emit = defineEmits(['back', 'save', 'clear-errors', 'upload-resume'])
 
 const editing = ref(false)
-const saving = ref(false)
+const clientErrors = ref([])
 
 const GENDER_OPTIONS = ['Female', 'Male', 'Non-binary', 'Prefer not to say']
 const INDIAN_STATES = [
@@ -40,6 +44,17 @@ const form = reactive({
   education: '',
   skills: '',
   languages: '',
+  workPreferences: {
+    desiredRoles: [], employmentTypes: [], shifts: [], workModes: [], preferredLocations: [],
+    expectedSalaryMin: '', expectedSalaryMax: '', salaryPeriod: '', availability: '',
+    noticePeriodDays: '', travelRadiusKm: '', willingToRelocate: false,
+    canWorkWeekends: false, ownsVehicle: false, vehicleTypes: [],
+  },
+  workHistory: [],
+  educationHistory: [],
+  skillDetails: [],
+  languageDetails: [],
+  credentials: [],
 })
 
 function hydrate() {
@@ -59,9 +74,36 @@ function hydrate() {
   form.education = u.education || ''
   form.skills = (u.skills || []).join(', ')
   form.languages = (u.languages || []).join(', ')
+  Object.assign(form.workPreferences, {
+    desiredRoles: [], employmentTypes: [], shifts: [], workModes: [], preferredLocations: [],
+    expectedSalaryMin: '', expectedSalaryMax: '', salaryPeriod: '', availability: '',
+    noticePeriodDays: '', travelRadiusKm: '', willingToRelocate: false,
+    canWorkWeekends: false, ownsVehicle: false, vehicleTypes: [],
+    ...(u.workPreferences || {}),
+  })
+  const copyEntries = (entries) => entries.map((entry) => ({ ...entry }))
+  form.workHistory = copyEntries(u.workHistory || [])
+  form.educationHistory = copyEntries(u.educationHistory || [])
+  form.skillDetails = copyEntries(u.skillDetails?.length
+    ? u.skillDetails
+    : (u.skills || []).map((name) => ({ name, proficiency: '', yearsExperience: '' })))
+  form.languageDetails = copyEntries(u.languageDetails?.length
+    ? u.languageDetails
+    : (u.languages || []).map((name) => ({ name, proficiency: '', canSpeak: true, canRead: false, canWrite: false })))
+  form.credentials = copyEntries(u.credentials || [])
 }
 
-watch(() => props.user, hydrate, { immediate: true })
+watch(() => props.user, () => {
+  if (editing.value) return
+  hydrate()
+}, { immediate: true })
+
+watch(() => props.saveVersion, () => {
+  hydrate()
+  editing.value = false
+})
+
+const visibleErrors = computed(() => [...clientErrors.value, ...props.saveErrors])
 
 const initials = computed(() => {
   const source = form.name || props.user?.name || 'U'
@@ -88,19 +130,73 @@ const locationSummary = computed(() => {
 })
 
 function startEdit() {
+  clientErrors.value = []
+  emit('clear-errors')
   editing.value = true
 }
 
 function cancelEdit() {
   hydrate()
+  clientErrors.value = []
+  emit('clear-errors')
   editing.value = false
 }
 
-// Kept async so a profile-update API call can be awaited here without changing callers.
-async function save() {
-  saving.value = true
-  try {
-    emit('save', {
+function numberOrNull(value) {
+  return value === '' || value == null ? null : Number(value)
+}
+
+function validate() {
+  const errors = []
+  const preferences = form.workPreferences
+  const salaryMin = numberOrNull(preferences.expectedSalaryMin)
+  const salaryMax = numberOrNull(preferences.expectedSalaryMax)
+  if (!form.name.trim()) errors.push('Full name is required.')
+  if (form.phone && !/^[\d+\-()\s]{6,30}$/.test(form.phone)) errors.push('Enter a valid phone number.')
+  if (form.pincode && !/^\d{6}$/.test(form.pincode)) errors.push('Pincode must contain exactly 6 digits.')
+  if (form.dateOfBirth && form.dateOfBirth > new Date().toISOString().slice(0, 10)) errors.push('Date of birth cannot be in the future.')
+  if (form.experienceYears !== '' && (Number(form.experienceYears) < 0 || Number(form.experienceYears) > 60)) errors.push('Experience must be between 0 and 60 years.')
+  if (salaryMin != null && salaryMin < 0 || salaryMax != null && salaryMax < 0) errors.push('Expected salary cannot be negative.')
+  if (salaryMin != null && salaryMax != null && salaryMax < salaryMin) errors.push('Maximum expected salary cannot be less than minimum expected salary.')
+  if ((salaryMin != null || salaryMax != null) && !preferences.salaryPeriod) errors.push('Select a salary period.')
+  if (preferences.travelRadiusKm !== '' && (Number(preferences.travelRadiusKm) < 1 || Number(preferences.travelRadiusKm) > 500)) errors.push('Travel distance must be between 1 and 500 km.')
+  if (preferences.noticePeriodDays !== '' && (Number(preferences.noticePeriodDays) < 0 || Number(preferences.noticePeriodDays) > 365)) errors.push('Notice period must be between 0 and 365 days.')
+  if (preferences.desiredRoles.length > 10) errors.push('Add at most 10 desired roles.')
+  if (preferences.preferredLocations.length > 10) errors.push('Add at most 10 preferred locations.')
+  if (form.workHistory.length > 10) errors.push('Add at most 10 work-history entries.')
+  if (form.educationHistory.length > 10) errors.push('Add at most 10 education entries.')
+  if (form.skillDetails.length > 30) errors.push('Add at most 30 skills.')
+  if (form.languageDetails.length > 15) errors.push('Add at most 15 languages.')
+  if (form.credentials.length > 15) errors.push('Add at most 15 licences or certificates.')
+  form.workHistory.forEach((entry, index) => {
+    if (!entry.jobTitle.trim() || !entry.employer.trim()) errors.push(`Work history ${index + 1}: role and employer are required.`)
+    if (!entry.isCurrent && entry.startDate && entry.endDate && entry.endDate < entry.startDate) errors.push(`Work history ${index + 1}: end date cannot be before start date.`)
+  })
+  form.educationHistory.forEach((entry, index) => {
+    if (!entry.qualification.trim() || !entry.institution.trim()) errors.push(`Education ${index + 1}: qualification and institute are required.`)
+    if (entry.startYear && entry.endYear && Number(entry.endYear) < Number(entry.startYear)) errors.push(`Education ${index + 1}: end year cannot be before start year.`)
+    if ([entry.startYear, entry.endYear].some((year) => year && (Number(year) < 1950 || Number(year) > new Date().getFullYear() + 10))) errors.push(`Education ${index + 1}: enter a valid year.`)
+  })
+  form.skillDetails.forEach((entry, index) => { if (!entry.name.trim()) errors.push(`Skill ${index + 1}: name is required.`) })
+  form.languageDetails.forEach((entry, index) => { if (!entry.name.trim()) errors.push(`Language ${index + 1}: name is required.`) })
+  form.credentials.forEach((entry, index) => {
+    if (!entry.name.trim() || !entry.issuer.trim()) errors.push(`Licence or certificate ${index + 1}: name and issuer are required.`)
+    if (entry.issueDate && entry.expiryDate && entry.expiryDate < entry.issueDate) errors.push(`Licence or certificate ${index + 1}: expiry cannot be before issue date.`)
+    if (entry.url) {
+      try {
+        if (!['http:', 'https:'].includes(new URL(entry.url).protocol)) throw new Error()
+      } catch { errors.push(`Licence or certificate ${index + 1}: verification link must start with http:// or https://.`) }
+    }
+  })
+  return errors
+}
+
+function save() {
+  clientErrors.value = validate()
+  emit('clear-errors')
+  if (clientErrors.value.length) return
+
+  emit('save', {
       name: form.name.trim(),
       phone: form.phone.trim(),
       dateOfBirth: form.dateOfBirth || null,
@@ -113,13 +209,21 @@ async function save() {
       professionalSummary: form.professionalSummary.trim(),
       experienceYears: form.experienceYears === '' ? null : Number(form.experienceYears),
       education: form.education.trim(),
-      skills: form.skills.split(',').map((value) => value.trim()).filter(Boolean),
-      languages: form.languages.split(',').map((value) => value.trim()).filter(Boolean),
-    })
-  } finally {
-    saving.value = false
-    editing.value = false
-  }
+      skills: form.skillDetails.map(({ name }) => name.trim()).filter(Boolean),
+      languages: form.languageDetails.map(({ name }) => name.trim()).filter(Boolean),
+      workPreferences: {
+        ...form.workPreferences,
+        expectedSalaryMin: numberOrNull(form.workPreferences.expectedSalaryMin),
+        expectedSalaryMax: numberOrNull(form.workPreferences.expectedSalaryMax),
+        noticePeriodDays: numberOrNull(form.workPreferences.noticePeriodDays),
+        travelRadiusKm: numberOrNull(form.workPreferences.travelRadiusKm),
+      },
+      workHistory: form.workHistory.map((entry) => ({ ...entry, endDate: entry.isCurrent ? null : entry.endDate || null, startDate: entry.startDate || null })),
+      educationHistory: form.educationHistory.map((entry) => ({ ...entry, startYear: entry.startYear === '' ? null : Number(entry.startYear), endYear: entry.endYear === '' ? null : Number(entry.endYear) })),
+      skillDetails: form.skillDetails.map((entry) => ({ ...entry, yearsExperience: entry.yearsExperience === '' ? null : Number(entry.yearsExperience) })),
+      languageDetails: form.languageDetails,
+      credentials: form.credentials.map((entry) => ({ ...entry, issueDate: entry.issueDate || null, expiryDate: entry.expiryDate || null })),
+  })
 }
 
 function uploadResume(event) {
@@ -133,7 +237,7 @@ function goBack() {
 </script>
 
 <template>
-  <main class="dash-main profile-page">
+  <form class="dash-main profile-page" :class="{ 'profile-page--worker': isWorker }" @submit.prevent="save">
     <!-- Header / hero card -->
     <section class="profile-hero">
       <div class="profile-hero__avatar" aria-hidden="true">{{ initials }}</div>
@@ -144,6 +248,7 @@ function goBack() {
         <p class="profile-hero__headline">{{ isWorker ? 'Finding work locally on LocalHire' : 'Hiring locally on LocalHire' }}</p>
         <div class="profile-hero__tags">
           <span class="profile-badge profile-badge--role">{{ isWorker ? 'Looking for work' : 'Hiring' }}</span>
+          <span v-if="isWorker" class="profile-badge profile-badge--score">{{ user?.profileCompletionPercent ?? 0 }}% profile</span>
           <span v-if="locationSummary" class="profile-badge">{{ locationSummary }}</span>
           <span v-if="memberSince" class="profile-badge profile-badge--muted">Member since {{ memberSince }}</span>
         </div>
@@ -162,6 +267,12 @@ function goBack() {
       </div>
     </section>
 
+    <section v-if="visibleErrors.length" class="profile-errors" role="alert" aria-live="polite">
+      <strong>We could not save your profile:</strong>
+      <ul><li v-for="message in visibleErrors" :key="message">{{ message }}</li></ul>
+      <p>Your changes are still here. Correct the details below and save again.</p>
+    </section>
+
     <section v-if="isWorker && user?.isProfileComplete === false" class="profile-completion" role="status">
       Complete the required contact, professional, and location fields to get full access. A resume is optional.
     </section>
@@ -175,7 +286,7 @@ function goBack() {
       <div class="profile-grid">
         <div class="profile-field">
           <label for="profile-name">Full name</label>
-          <input v-if="editing" id="profile-name" v-model="form.name" type="text" placeholder="Your full name" />
+          <input v-if="editing" id="profile-name" v-model="form.name" type="text" maxlength="100" required placeholder="Your full name" />
           <p v-else class="profile-value">{{ form.name || '—' }}</p>
         </div>
         <div class="profile-field">
@@ -184,7 +295,7 @@ function goBack() {
         </div>
         <div class="profile-field">
           <label for="profile-phone">Phone</label>
-          <input v-if="editing" id="profile-phone" v-model="form.phone" type="tel" inputmode="tel" placeholder="+91 98765 43210" />
+          <input v-if="editing" id="profile-phone" v-model="form.phone" type="tel" inputmode="tel" maxlength="30" pattern="[0-9+()\- ]{6,30}" placeholder="+91 98765 43210" />
           <p v-else class="profile-value">{{ form.phone || '—' }}</p>
         </div>
         <div class="profile-field">
@@ -211,7 +322,7 @@ function goBack() {
       <div class="profile-grid">
         <div class="profile-field">
           <label for="profile-job-title">Job title *</label>
-          <input v-if="editing" id="profile-job-title" v-model="form.jobTitle" type="text" placeholder="e.g. Delivery partner" />
+          <input v-if="editing" id="profile-job-title" v-model="form.jobTitle" type="text" maxlength="100" placeholder="e.g. Delivery partner" />
           <p v-else class="profile-value">{{ form.jobTitle || '—' }}</p>
         </div>
         <div class="profile-field">
@@ -226,18 +337,8 @@ function goBack() {
         </div>
         <div class="profile-field">
           <label for="profile-education">Highest education *</label>
-          <input v-if="editing" id="profile-education" v-model="form.education" type="text" placeholder="e.g. 12th pass, Diploma" />
+          <input v-if="editing" id="profile-education" v-model="form.education" type="text" maxlength="200" placeholder="e.g. 12th pass, Diploma" />
           <p v-else class="profile-value">{{ form.education || '—' }}</p>
-        </div>
-        <div class="profile-field">
-          <label for="profile-languages">Languages * (comma separated)</label>
-          <input v-if="editing" id="profile-languages" v-model="form.languages" type="text" placeholder="Hindi, English" />
-          <p v-else class="profile-value">{{ form.languages || '—' }}</p>
-        </div>
-        <div class="profile-field profile-field--full">
-          <label for="profile-skills">Skills (comma separated)</label>
-          <input v-if="editing" id="profile-skills" v-model="form.skills" type="text" placeholder="Customer service, Billing, Driving" />
-          <p v-else class="profile-value">{{ form.skills || '—' }}</p>
         </div>
         <div class="profile-field profile-field--full">
           <label for="profile-resume">Resume (optional, PDF/DOC/DOCX, max 5 MB)</label>
@@ -246,6 +347,8 @@ function goBack() {
         </div>
       </div>
     </section>
+
+    <WorkerProfileSections v-if="isWorker" :form="form" :editing="editing" />
 
     <!-- Location -->
     <section class="profile-card">
@@ -256,12 +359,12 @@ function goBack() {
       <div class="profile-grid">
         <div class="profile-field profile-field--full">
           <label for="profile-address">Address line</label>
-          <input v-if="editing" id="profile-address" v-model="form.addressLine" type="text" placeholder="House / street / landmark" />
+          <input v-if="editing" id="profile-address" v-model="form.addressLine" type="text" maxlength="300" placeholder="House / street / landmark" />
           <p v-else class="profile-value">{{ form.addressLine || '—' }}</p>
         </div>
         <div class="profile-field">
           <label for="profile-city-area">City / Area</label>
-          <input v-if="editing" id="profile-city-area" v-model="form.cityArea" type="text" placeholder="e.g. Indiranagar, Bengaluru" />
+          <input v-if="editing" id="profile-city-area" v-model="form.cityArea" type="text" maxlength="200" placeholder="e.g. Indiranagar, Bengaluru" />
           <p v-else class="profile-value">{{ form.cityArea || '—' }}</p>
         </div>
         <div class="profile-field">
@@ -279,7 +382,7 @@ function goBack() {
         </div>
       </div>
     </section>
-  </main>
+  </form>
 </template>
 
 <style scoped>
@@ -313,7 +416,7 @@ function goBack() {
   font-weight: 800;
   color: #fff;
   border-radius: 50%;
-  background: linear-gradient(135deg, #07559a, #12ad59);
+  background: linear-gradient(135deg, #07559a, #0966ad);
   box-shadow: 0 8px 24px rgba(7, 85, 154, 0.22);
 }
 
@@ -352,9 +455,24 @@ function goBack() {
   background: linear-gradient(135deg, #07559a, #0966ad);
 }
 
+.profile-page--worker :is(.profile-hero__avatar, .profile-badge--role, .dash-btn--primary) {
+  background: linear-gradient(135deg, #188853, #21a947);
+  box-shadow: 0 8px 24px rgba(33, 169, 71, 0.2);
+}
+
+.profile-page--worker .dash-btn--outline {
+  color: #188853;
+  border-color: rgba(33, 169, 71, 0.25);
+}
+
 .profile-badge--muted {
   color: #5d7482;
   background: rgba(18, 50, 74, 0.04);
+}
+
+.profile-badge--score {
+  color: #116738;
+  background: #e7f7ee;
 }
 
 .profile-hero__actions {
@@ -378,6 +496,17 @@ function goBack() {
   border: 1px solid #f0d486;
   border-radius: 12px;
 }
+
+.profile-errors {
+  padding: 16px 20px;
+  color: #842029;
+  background: #fff2f3;
+  border: 1px solid #efb8bd;
+  border-radius: 12px;
+}
+
+.profile-errors ul { margin: 8px 0; padding-left: 20px; }
+.profile-errors p { margin: 0; font-size: 13px; }
 
 .profile-card__head {
   margin-bottom: 22px;

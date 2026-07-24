@@ -40,6 +40,10 @@ export function getNearbyJobs(params = {}) {
   return api.get('/work/jobs/nearby', { params })
 }
 
+export function getWorkerJob(id) {
+  return api.get(`/work/jobs/${id}`)
+}
+
 export function applyToJob(jobId) {
   return api.post(`/work/jobs/${jobId}/apply`)
 }

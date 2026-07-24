@@ -1,3 +1,5 @@
+using LocalHire.Api.Models;
+
 namespace LocalHire.Api.DTOs;
 
 /// <summary>
@@ -26,5 +28,11 @@ public sealed record CandidateDetailResponse(
     string? Education = null,
     IReadOnlyList<string>? Skills = null,
     IReadOnlyList<string>? Languages = null,
-    bool HasResume = false
+    bool HasResume = false,
+    WorkerPreferences? WorkPreferences = null,
+    IReadOnlyList<WorkExperienceEntry>? WorkHistory = null,
+    IReadOnlyList<EducationEntry>? EducationHistory = null,
+    IReadOnlyList<SkillProfile>? SkillDetails = null,
+    IReadOnlyList<LanguageProfile>? LanguageDetails = null,
+    IReadOnlyList<CredentialEntry>? Credentials = null
 );

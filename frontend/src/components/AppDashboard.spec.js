@@ -38,6 +38,7 @@ describe('AppDashboard', () => {
     api.get.mockResolvedValue({ data: [] })
     api.post.mockResolvedValue({ data: {} })
     api.put.mockResolvedValue({ data: {} })
+    localStorage.removeItem('dashboard_tab')
   })
 
   it('loads hiring jobs after profile fetch', async () => {
@@ -109,7 +110,7 @@ describe('AppDashboard', () => {
 
     const wrapper = mountDashboard()
     await flushPromises()
-    await wrapper.find('.location-prompt button').trigger('click')
+    await wrapper.find('.worker-search__location').trigger('click')
     await flushPromises()
 
     expect(api.put).toHaveBeenCalledWith('/me/location', { latitude: 12.346, longitude: 78.901 })
@@ -126,7 +127,7 @@ describe('AppDashboard', () => {
 
     const wrapper = mountDashboard()
     await flushPromises()
-    await wrapper.find('.location-prompt button').trigger('click')
+    await wrapper.find('.worker-search__location').trigger('click')
     await flushPromises()
 
     expect(api.get).toHaveBeenCalledWith('/work/jobs/nearby', { params: {} })
@@ -306,7 +307,7 @@ describe('AppDashboard', () => {
       await wrapper.find('.dash-role-badge').trigger('click')
 
       expect(wrapper.find('.profile-page').exists()).toBe(false)
-      expect(wrapper.text()).toContain('Worker Dashboard')
+      expect(wrapper.text()).toContain('Roles for you')
     })
 
     it('hides the worker dashboard while the profile page is open and restores it on back', async () => {
@@ -316,17 +317,17 @@ describe('AppDashboard', () => {
 
       const wrapper = mountDashboard()
       await flushPromises()
-      expect(wrapper.text()).toContain('Worker Dashboard')
+      expect(wrapper.text()).toContain('Roles for you')
 
       await wrapper.find('.dash-user-name').trigger('click')
 
-      expect(wrapper.text()).not.toContain('Worker Dashboard')
+      expect(wrapper.text()).not.toContain('Roles for you')
       expect(wrapper.find('.profile-page').exists()).toBe(true)
 
       await findButtonByText(wrapper, 'Back').trigger('click')
 
       expect(wrapper.find('.profile-page').exists()).toBe(false)
-      expect(wrapper.text()).toContain('Worker Dashboard')
+      expect(wrapper.text()).toContain('Roles for you')
     })
 
     it('hides the unidentified-account message while the profile page is open and restores it on back', async () => {
@@ -382,9 +383,10 @@ describe('AppDashboard', () => {
       }))
       // Returns to the dashboard after saving
       expect(wrapper.find('.profile-page').exists()).toBe(true)
+      expect(findButtonByText(wrapper, 'Edit profile')).toBeTruthy()
     })
 
-    it('shows profile save failures and keeps the edited profile locally', async () => {
+    it('shows profile save failures without treating rejected data as saved', async () => {
       api.get.mockImplementation((url) => Promise.resolve({
         data: url === '/auth/me' ? { name: 'Pat', email: 'pat@example.com', role: 'Hiring' } : [],
       }))
@@ -400,8 +402,31 @@ describe('AppDashboard', () => {
       await flushPromises()
 
       expect(wrapper.find('.profile-page').exists()).toBe(true)
-      expect(wrapper.find('[role="alert"]').text()).toBe('Failed to save profile: Network down')
-      expect(wrapper.vm.user.name).toBe('Pat Rao')
+      expect(wrapper.find('[role="alert"]').text()).toContain('Network down')
+      expect(wrapper.find('#profile-name').element.value).toBe('Pat Rao')
+      expect(wrapper.vm.user.name).toBe('Pat')
+      expect(findButtonByText(wrapper, 'Save')).toBeTruthy()
+    })
+
+    it('shows every backend profile validation reason', async () => {
+      api.get.mockImplementation((url) => Promise.resolve({
+        data: url === '/auth/me' ? { name: 'Pat', email: 'pat@example.com', role: 'Hiring' } : [],
+      }))
+      api.put.mockRejectedValue({ response: { status: 400, data: { errors: {
+        'WorkPreferences.ExpectedSalaryMax': ['Maximum expected salary is too low.'],
+        'WorkHistory[0].Employer': ['Employer is required.'],
+      } } } })
+
+      const wrapper = mountDashboard()
+      await flushPromises()
+      await wrapper.find('.dash-user-name').trigger('click')
+      await findButtonByText(wrapper, 'Edit profile').trigger('click')
+      await findButtonByText(wrapper, 'Save').trigger('click')
+      await flushPromises()
+
+      const alert = wrapper.get('[role="alert"]').text()
+      expect(alert).toContain('Maximum expected salary is too low.')
+      expect(alert).toContain('Employer is required.')
     })
   })
 })

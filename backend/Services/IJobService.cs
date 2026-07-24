@@ -1,4 +1,5 @@
 using LocalHire.Api.DTOs;
+using LocalHire.Api.Models;
 
 namespace LocalHire.Api.Services;
 
@@ -35,12 +36,15 @@ public interface IJobService
     Task<CandidateDetailResponse> GetCandidateDetailAsync(Guid workerId, CancellationToken ct);
 
     /// <summary>
-    /// Returns active jobs. When <paramref name="lat"/> and <paramref name="lng"/>
-    /// are supplied they are assumed already validated; results are filtered to a
-    /// fixed radius and ordered by distance. Otherwise all active jobs are returned
-    /// newest first.
+    /// Returns active jobs for a worker. Typed searches can match jobs anywhere;
+    /// otherwise coordinates use the nearby radius and the default list is scoped
+    /// to the worker's state.
     /// </summary>
-    Task<IReadOnlyList<JobPostResponse>> GetNearbyJobsAsync(double? lat, double? lng, CancellationToken ct);
+    Task<IReadOnlyList<JobPostResponse>> GetNearbyJobsAsync(
+        double? lat, double? lng, string? search, EmploymentType? employmentType,
+        Guid workerId, CancellationToken ct);
+
+    Task<JobPostResponse> GetActiveJobAsync(Guid id, CancellationToken ct);
 
     /// <summary>
     /// Returns workers ("candidates") for an employer's talent search. An optional

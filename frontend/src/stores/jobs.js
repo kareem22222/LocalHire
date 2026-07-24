@@ -5,8 +5,12 @@ import * as jobsApi from '../api/jobs.js'
 const JOBS_TTL_MS = 2 * 60 * 1000
 
 function nearbyKey(params = {}) {
-  if (params.lat == null || params.lng == null) return 'all'
-  return `${Number(params.lat).toFixed(3)},${Number(params.lng).toFixed(3)}`
+  const location = params.lat == null || params.lng == null
+    ? 'all'
+    : `${Number(params.lat).toFixed(3)},${Number(params.lng).toFixed(3)}`
+  const term = (params.search || '').trim().toLowerCase()
+  const employmentType = (params.employmentType || '').trim().toLowerCase()
+  return `${location}|${term}|${employmentType}`
 }
 
 function candidatesKey(params = {}) {
@@ -112,7 +116,24 @@ export const useJobsStore = defineStore('jobs', () => {
     if (!force && cached && isFresh(cached.fetchedAt)) return cached.data
     return runOnce(`nearby:${key}`, async () => {
       const { data } = await jobsApi.getNearbyJobs(params)
-      nearbyJobsByLocation.value[key] = { data, fetchedAt: Date.now() }
+      const fetchedAt = Date.now()
+      nearbyJobsByLocation.value[key] = { data, fetchedAt }
+      for (const job of data) {
+        jobsById.value[job.id] = job
+        jobFetchedAt.value[job.id] = fetchedAt
+      }
+      return data
+    })
+  }
+
+  async function loadWorkerJob(id, { force = false } = {}) {
+    if (!force && jobsById.value[id] && isFresh(jobFetchedAt.value[id])) {
+      return jobsById.value[id]
+    }
+    return runOnce(`worker-job:${id}`, async () => {
+      const { data } = await jobsApi.getWorkerJob(id)
+      jobsById.value[id] = data
+      jobFetchedAt.value[id] = Date.now()
       return data
     })
   }
@@ -207,6 +228,7 @@ export const useJobsStore = defineStore('jobs', () => {
     shortlistApplicant,
     loadCandidate,
     loadNearbyJobs,
+    loadWorkerJob,
     loadNearbyCandidates,
     loadMyApplications,
     createJob,

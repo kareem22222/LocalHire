@@ -26,6 +26,13 @@ public sealed record UserProfile(
     string? Education,
     IReadOnlyList<string> Skills,
     IReadOnlyList<string> Languages,
+    WorkerPreferences WorkPreferences,
+    IReadOnlyList<WorkExperienceEntry> WorkHistory,
+    IReadOnlyList<EducationEntry> EducationHistory,
+    IReadOnlyList<SkillProfile> SkillDetails,
+    IReadOnlyList<LanguageProfile> LanguageDetails,
+    IReadOnlyList<CredentialEntry> Credentials,
     string? ResumeFileName,
-    bool IsProfileComplete
+    bool IsProfileComplete,
+    int ProfileCompletionPercent
 );

@@ -1,3 +1,5 @@
+using LocalHire.Api.Models;
+
 namespace LocalHire.Api.DTOs;
 
 public sealed record UpdateProfileRequest(
@@ -14,5 +16,11 @@ public sealed record UpdateProfileRequest(
     int? ExperienceYears = null,
     string? Education = null,
     List<string>? Skills = null,
-    List<string>? Languages = null
+    List<string>? Languages = null,
+    WorkerPreferences? WorkPreferences = null,
+    List<WorkExperienceEntry>? WorkHistory = null,
+    List<EducationEntry>? EducationHistory = null,
+    List<SkillProfile>? SkillDetails = null,
+    List<LanguageProfile>? LanguageDetails = null,
+    List<CredentialEntry>? Credentials = null
 );

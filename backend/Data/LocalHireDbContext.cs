@@ -29,6 +29,19 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
             v => v == null ? 0 : v.Aggregate(0, (acc, s) => HashCode.Combine(acc, s)),
             v => v == null ? new List<string>() : v.ToList());
 
+        var preferencesConverter = JsonConverter<WorkerPreferences>();
+        var preferencesComparer = JsonComparer<WorkerPreferences>();
+        var workHistoryConverter = JsonConverter<List<WorkExperienceEntry>>();
+        var workHistoryComparer = JsonComparer<List<WorkExperienceEntry>>();
+        var educationHistoryConverter = JsonConverter<List<EducationEntry>>();
+        var educationHistoryComparer = JsonComparer<List<EducationEntry>>();
+        var skillDetailsConverter = JsonConverter<List<SkillProfile>>();
+        var skillDetailsComparer = JsonComparer<List<SkillProfile>>();
+        var languageDetailsConverter = JsonConverter<List<LanguageProfile>>();
+        var languageDetailsComparer = JsonComparer<List<LanguageProfile>>();
+        var credentialsConverter = JsonConverter<List<CredentialEntry>>();
+        var credentialsComparer = JsonComparer<List<CredentialEntry>>();
+
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(u => u.Id);
@@ -49,6 +62,12 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
             entity.Property(u => u.ResumeFileName).HasMaxLength(255).IsRequired(false);
             entity.Property(u => u.Skills).HasConversion(stringListConverter).Metadata.SetValueComparer(stringListComparer);
             entity.Property(u => u.Languages).HasConversion(stringListConverter).Metadata.SetValueComparer(stringListComparer);
+            entity.Property(u => u.WorkPreferences).HasConversion(preferencesConverter).Metadata.SetValueComparer(preferencesComparer);
+            entity.Property(u => u.WorkHistory).HasConversion(workHistoryConverter).Metadata.SetValueComparer(workHistoryComparer);
+            entity.Property(u => u.EducationHistory).HasConversion(educationHistoryConverter).Metadata.SetValueComparer(educationHistoryComparer);
+            entity.Property(u => u.SkillDetails).HasConversion(skillDetailsConverter).Metadata.SetValueComparer(skillDetailsComparer);
+            entity.Property(u => u.LanguageDetails).HasConversion(languageDetailsConverter).Metadata.SetValueComparer(languageDetailsComparer);
+            entity.Property(u => u.Credentials).HasConversion(credentialsConverter).Metadata.SetValueComparer(credentialsComparer);
             entity.Property(u => u.AddressLine).HasMaxLength(300).IsRequired(false);
             entity.Property(u => u.CityArea).HasMaxLength(200).IsRequired(false);
             entity.Property(u => u.State).HasMaxLength(100).IsRequired(false);
@@ -135,4 +154,21 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }
+
+    private static ValueConverter<T, string> JsonConverter<T>() where T : new() => new(
+        value => SerializeJson(value),
+        value => DeserializeJson<T>(value));
+
+    private static ValueComparer<T> JsonComparer<T>() where T : new() => new(
+        (left, right) => SerializeJson(left).Equals(SerializeJson(right), StringComparison.Ordinal),
+        value => StringComparer.Ordinal.GetHashCode(SerializeJson(value)),
+        value => DeserializeJson<T>(SerializeJson(value)));
+
+    private static string SerializeJson<T>(T value) =>
+        JsonSerializer.Serialize(value, (JsonSerializerOptions?)null);
+
+    private static T DeserializeJson<T>(string? value) where T : new() =>
+        string.IsNullOrEmpty(value)
+            ? new T()
+            : JsonSerializer.Deserialize<T>(value, (JsonSerializerOptions?)null) ?? new T();
 }
