@@ -1,5 +1,6 @@
 using System;
 using LocalHire.Api.DTOs;
+using LocalHire.Api.Models;
 using LocalHire.Api.Validators;
 using Xunit;
 
@@ -82,4 +83,33 @@ public sealed class UpdateProfileRequestValidatorTests
 
     [Fact]
     public void Accepts_six_digit_pincode() => AssertValid(Valid() with { Pincode = "560038" });
+
+    [Fact]
+    public void Accepts_practical_worker_details() => AssertValid(Valid() with
+    {
+        WorkPreferences = new WorkerPreferences
+        {
+            DesiredRoles = ["Welder"], EmploymentTypes = ["Daily"], Shifts = ["Day"],
+            WorkModes = ["OnSite"], ExpectedSalaryMin = 800, ExpectedSalaryMax = 1200,
+            SalaryPeriod = "Daily", Availability = "Immediately", TravelRadiusKm = 25,
+        },
+        WorkHistory = [new WorkExperienceEntry { JobTitle = "Welder", Employer = "Self-employed" }],
+        SkillDetails = [new SkillProfile { Name = "Arc welding", Proficiency = "Advanced" }],
+        LanguageDetails = [new LanguageProfile { Name = "Hindi", Proficiency = "Fluent" }],
+    });
+
+    [Fact]
+    public void Rejects_an_inverted_expected_salary_range() => AssertInvalid(
+        Valid() with { WorkPreferences = new WorkerPreferences { ExpectedSalaryMin = 20000, ExpectedSalaryMax = 10000 } },
+        "WorkPreferences");
+
+    [Theory]
+    [InlineData("http://")]
+    [InlineData("ftp://example.com/certificate")]
+    public void Rejects_invalid_credential_urls(string url) => AssertInvalid(
+        Valid() with
+        {
+            Credentials = [new CredentialEntry { Name = "Driving licence", Issuer = "RTO", Url = url }]
+        },
+        "Credentials[0].Url");
 }

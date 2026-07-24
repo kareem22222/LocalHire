@@ -54,8 +54,18 @@ public sealed class ProfileService : IProfileService
             user.ProfessionalSummary = NormalizeOptional(request.ProfessionalSummary);
             user.ExperienceYears = request.ExperienceYears;
             user.Education = NormalizeOptional(request.Education);
-            user.Skills = NormalizeList(request.Skills);
-            user.Languages = NormalizeList(request.Languages);
+            user.WorkPreferences = NormalizePreferences(request.WorkPreferences);
+            user.WorkHistory = request.WorkHistory ?? [];
+            user.EducationHistory = request.EducationHistory ?? [];
+            user.SkillDetails = request.SkillDetails ?? [];
+            user.LanguageDetails = request.LanguageDetails ?? [];
+            user.Credentials = request.Credentials ?? [];
+            user.Skills = NormalizeList(user.SkillDetails.Count > 0
+                ? user.SkillDetails.Select(skill => skill.Name)
+                : request.Skills);
+            user.Languages = NormalizeList(user.LanguageDetails.Count > 0
+                ? user.LanguageDetails.Select(language => language.Name)
+                : request.Languages);
         }
 
         await _db.SaveChangesAsync(ct);
@@ -95,7 +105,10 @@ public sealed class ProfileService : IProfileService
             user.CityArea, user.State, user.Pincode,
             user.Latitude, user.Longitude, user.LocationUpdatedAt, user.CreatedAt,
             user.JobTitle, user.ProfessionalSummary, user.ExperienceYears, user.Education,
-            user.Skills, user.Languages, user.ResumeFileName, IsComplete(user));
+            user.Skills, user.Languages, user.WorkPreferences, user.WorkHistory,
+            user.EducationHistory, user.SkillDetails, user.LanguageDetails, user.Credentials,
+            user.ResumeFileName, IsComplete(user),
+            CompletionPercent(user));
 
     private static bool IsComplete(User user) =>
         user.Role != UserRole.LookingForWork ||
@@ -113,4 +126,46 @@ public sealed class ProfileService : IProfileService
 
     private static List<string> NormalizeList(IEnumerable<string>? values) =>
         values?.Select(NormalizeOptional).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? [];
+
+    private static WorkerPreferences NormalizePreferences(WorkerPreferences? preferences)
+    {
+        preferences ??= new WorkerPreferences();
+        preferences.DesiredRoles = NormalizeList(preferences.DesiredRoles);
+        preferences.EmploymentTypes = NormalizeList(preferences.EmploymentTypes);
+        preferences.Shifts = NormalizeList(preferences.Shifts);
+        preferences.WorkModes = NormalizeList(preferences.WorkModes);
+        preferences.PreferredLocations = NormalizeList(preferences.PreferredLocations);
+        preferences.VehicleTypes = NormalizeList(preferences.VehicleTypes);
+        preferences.SalaryPeriod = NormalizeOptional(preferences.SalaryPeriod);
+        preferences.Availability = NormalizeOptional(preferences.Availability);
+        return preferences;
+    }
+
+    private static int CompletionPercent(User user)
+    {
+        var preferences = user.WorkPreferences;
+        var checks = new[]
+        {
+            !string.IsNullOrWhiteSpace(user.Phone),
+            !string.IsNullOrWhiteSpace(user.JobTitle),
+            !string.IsNullOrWhiteSpace(user.ProfessionalSummary),
+            user.ExperienceYears is not null || user.WorkHistory.Count > 0,
+            user.WorkHistory.Count > 0,
+            !string.IsNullOrWhiteSpace(user.Education) || user.EducationHistory.Count > 0,
+            user.SkillDetails.Count > 0 || user.Skills.Count > 0,
+            user.LanguageDetails.Count > 0 || user.Languages.Count > 0,
+            preferences.DesiredRoles.Count > 0,
+            preferences.EmploymentTypes.Count > 0,
+            preferences.Shifts.Count > 0 || preferences.WorkModes.Count > 0,
+            preferences.ExpectedSalaryMin is not null || preferences.ExpectedSalaryMax is not null,
+            !string.IsNullOrWhiteSpace(preferences.Availability),
+            preferences.TravelRadiusKm is not null || preferences.PreferredLocations.Count > 0,
+            user.Credentials.Count > 0 || user.ResumeKey is not null,
+            !string.IsNullOrWhiteSpace(user.CityArea) &&
+                !string.IsNullOrWhiteSpace(user.State) &&
+                !string.IsNullOrWhiteSpace(user.Pincode),
+        };
+
+        return (int)Math.Round(checks.Count(value => value) * 100d / checks.Length);
+    }
 }

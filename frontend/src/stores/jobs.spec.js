@@ -12,6 +12,7 @@ vi.mock('../api/jobs.js', () => ({
   shortlistApplicant: vi.fn(),
   getCandidate: vi.fn(),
   getNearbyJobs: vi.fn(),
+  getWorkerJob: vi.fn(),
   getNearbyCandidates: vi.fn(),
   applyToJob: vi.fn(),
   getMyApplications: vi.fn(),
@@ -48,7 +49,9 @@ describe('jobs store cache', () => {
 
     await expect(first).resolves.toEqual([{ id: 'job-1' }])
     await expect(second).resolves.toEqual([{ id: 'job-1' }])
+    await expect(store.loadWorkerJob('job-1')).resolves.toEqual({ id: 'job-1' })
     expect(jobsApi.getNearbyJobs).toHaveBeenCalledTimes(1)
+    expect(jobsApi.getWorkerJob).not.toHaveBeenCalled()
   })
 
   it('keeps the latest candidate search visible when responses arrive out of order', async () => {
@@ -109,5 +112,20 @@ describe('jobs store cache', () => {
     expect(jobsApi.getJob).toHaveBeenCalledTimes(2)
     expect(jobsApi.getCandidate).toHaveBeenCalledTimes(1)
     expect(jobsApi.shortlistApplicant).toHaveBeenCalledWith('job-1', 'application-1')
+  })
+
+  it('invalidates cached worker job details after applying', async () => {
+    jobsApi.getNearbyJobs.mockResolvedValue({ data: [{ id: 'job-1', title: 'Cashier' }] })
+    jobsApi.getWorkerJob.mockResolvedValue({ data: { id: 'job-1', title: 'Cashier', applicationCount: 1 } })
+    jobsApi.applyToJob.mockResolvedValue({ data: { id: 'application-1' } })
+    const store = useJobsStore()
+
+    await store.loadNearbyJobs()
+    await store.loadWorkerJob('job-1')
+    expect(jobsApi.getWorkerJob).not.toHaveBeenCalled()
+
+    await store.applyToJob('job-1')
+    await expect(store.loadWorkerJob('job-1')).resolves.toMatchObject({ applicationCount: 1 })
+    expect(jobsApi.getWorkerJob).toHaveBeenCalledTimes(1)
   })
 })

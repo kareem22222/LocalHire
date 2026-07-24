@@ -23,6 +23,12 @@ public sealed class User
     public string? Education { get; set; }
     public List<string> Skills { get; set; } = [];
     public List<string> Languages { get; set; } = [];
+    public WorkerPreferences WorkPreferences { get; set; } = new();
+    public List<WorkExperienceEntry> WorkHistory { get; set; } = [];
+    public List<EducationEntry> EducationHistory { get; set; } = [];
+    public List<SkillProfile> SkillDetails { get; set; } = [];
+    public List<LanguageProfile> LanguageDetails { get; set; } = [];
+    public List<CredentialEntry> Credentials { get; set; } = [];
     public string? ResumeKey { get; set; }
     public string? ResumeFileName { get; set; }
 

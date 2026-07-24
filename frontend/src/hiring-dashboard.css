@@ -68,7 +68,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #07559a, #21a947);
+  background: #07559a;
 }
 
 .hiring-hero h1 {
@@ -260,9 +260,9 @@
 .candidate-card__top span {
   display: inline-flex;
   padding: 7px 10px;
-  color: #188853;
+  color: #07559a;
   border-radius: 999px;
-  background: rgba(33, 169, 71, 0.08);
+  background: rgba(7, 85, 154, 0.08);
   font-size: 11px;
   font-weight: 800;
 }
@@ -371,7 +371,7 @@
 }
 
 .hiring-progress strong {
-  color: #21a947;
+  color: #07559a;
   font-family: Manrope, sans-serif;
   font-size: 42px;
 }
@@ -388,7 +388,7 @@
   width: 88%;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #07559a, #21a947);
+  background: linear-gradient(90deg, #07559a, #0966ad);
 }
 
 .candidate-list__head {
@@ -413,7 +413,7 @@
   font-size: 22px;
   font-weight: 800;
   border-radius: 18px;
-  background: linear-gradient(135deg, #07559a, #21a947);
+  background: linear-gradient(135deg, #07559a, #0966ad);
 }
 
 .candidate-card__top {

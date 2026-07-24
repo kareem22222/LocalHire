@@ -9,6 +9,11 @@
 
 /* ---------- Reset & Base ---------- */
 :root {
+  --worker-role-green-start: #188853;
+  --worker-role-green-end: #21a947;
+  --worker-role-green-text: #116b3b;
+  --worker-role-green-rgb: 33, 169, 71;
+  --worker-role-gradient: linear-gradient(135deg, var(--worker-role-green-start), var(--worker-role-green-end));
   font-family: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: #12324a;
   background: #ffffff;

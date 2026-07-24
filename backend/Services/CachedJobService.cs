@@ -1,5 +1,6 @@
 using System.Globalization;
 using LocalHire.Api.DTOs;
+using LocalHire.Api.Models;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace LocalHire.Api.Services;
@@ -67,14 +68,20 @@ public sealed class CachedJobService : IJobService
             () => _inner.GetCandidateDetailAsync(workerId, ct));
 
     public Task<IReadOnlyList<JobPostResponse>> GetNearbyJobsAsync(
-        double? lat, double? lng, CancellationToken ct)
+        double? lat, double? lng, string? search, EmploymentType? employmentType,
+        Guid workerId, CancellationToken ct)
     {
         var location = lat is null || lng is null
             ? "all"
             : $"{lat.Value.ToString("F3", CultureInfo.InvariantCulture)}:{lng.Value.ToString("F3", CultureInfo.InvariantCulture)}";
-        return GetOrCreateAsync($"nearby:{location}",
-            () => _inner.GetNearbyJobsAsync(lat, lng, ct));
+        var term = string.IsNullOrWhiteSpace(search) ? string.Empty : search.Trim().ToLowerInvariant();
+        var scope = location == "all" && term.Length == 0 ? workerId.ToString() : "global";
+        return GetOrCreateAsync($"nearby:{scope}:{location}:{term}:{employmentType}",
+            () => _inner.GetNearbyJobsAsync(lat, lng, search, employmentType, workerId, ct));
     }
+
+    public Task<JobPostResponse> GetActiveJobAsync(Guid id, CancellationToken ct) =>
+        GetOrCreateAsync($"active-job:{id}", () => _inner.GetActiveJobAsync(id, ct));
 
     public Task<IReadOnlyList<CandidateResponse>> GetNearbyCandidatesAsync(
         double? lat, double? lng, string? search, string? role, Guid employerId, CancellationToken ct)

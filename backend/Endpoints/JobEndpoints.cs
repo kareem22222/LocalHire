@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FluentValidation;
 using LocalHire.Api.DTOs;
+using LocalHire.Api.Models;
 using LocalHire.Api.Services;
 
 namespace LocalHire.Api.Endpoints;
@@ -161,6 +162,9 @@ public static class JobEndpoints
         workGroup.MapGet("/jobs/nearby", async (
             double? lat,
             double? lng,
+            string? search,
+            EmploymentType? employmentType,
+            ClaimsPrincipal user,
             IJobService jobService,
             CancellationToken ct) =>
         {
@@ -168,10 +172,21 @@ public static class JobEndpoints
             if (coordinateError is not null)
                 return coordinateError;
 
-            var jobs = await jobService.GetNearbyJobsAsync(lat, lng, ct);
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            var jobs = await jobService.GetNearbyJobsAsync(
+                lat, lng, search, employmentType, userId, ct);
             return Results.Ok(jobs);
         })
         .WithName("GetNearbyJobs");
+
+        workGroup.MapGet("/jobs/{id:guid}", async (
+            Guid id,
+            IJobService jobService,
+            CancellationToken ct) =>
+            Results.Ok(await jobService.GetActiveJobAsync(id, ct)))
+        .WithName("GetWorkerJob");
 
         workGroup.MapPost("/jobs/{id:guid}/apply", async (
             Guid id,

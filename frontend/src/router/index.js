@@ -7,6 +7,8 @@ import AllCandidatesPage from '../components/AllCandidatesPage.vue'
 import JobApplicantsPage from '../components/JobApplicantsPage.vue'
 import CandidateDetailPage from '../components/CandidateDetailPage.vue'
 import ShortlistsPage from '../components/ShortlistsPage.vue'
+import WorkerJobDetailPage from '../components/WorkerJobDetailPage.vue'
+import AppliedJobsPage from '../components/AppliedJobsPage.vue'
 
 const routes = [
   { path: '/', name: 'dashboard', component: AppDashboard },
@@ -14,6 +16,13 @@ const routes = [
   { path: '/hiring/roles', name: 'all-roles', component: AllRolesPage },
   { path: '/hiring/candidates', name: 'all-candidates', component: AllCandidatesPage },
   { path: '/hiring/shortlists', name: 'review-shortlists', component: ShortlistsPage },
+  { path: '/work/applications', name: 'worker-applications', component: AppliedJobsPage },
+  {
+    path: '/work/jobs/:id',
+    name: 'worker-job-detail',
+    component: WorkerJobDetailPage,
+    props: true,
+  },
   {
     path: '/hiring/candidates/:id',
     name: 'candidate-detail',

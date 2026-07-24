@@ -102,6 +102,33 @@ public sealed class ProfileServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Worker_profile_persists_practical_job_readiness_details()
+    {
+        var id = await SeedUserAsync();
+        var request = new UpdateProfileRequest(
+            "Asha Rao", "+91 90000 00000", null, null, null, "Mysuru", "Karnataka", "570001",
+            "Electrician", "ITI-trained electrician available for local work.", 3, "ITI",
+            WorkPreferences: new WorkerPreferences
+            {
+                DesiredRoles = ["Electrician"], EmploymentTypes = ["FullTime"], Shifts = ["Day"],
+                ExpectedSalaryMin = 18000, SalaryPeriod = "Monthly", Availability = "Immediately",
+                TravelRadiusKm = 20, OwnsVehicle = true, VehicleTypes = ["Two-wheeler"],
+            },
+            WorkHistory: [new WorkExperienceEntry { JobTitle = "Electrician", Employer = "Self-employed", IsCurrent = true }],
+            EducationHistory: [new EducationEntry { Qualification = "ITI Electrician", Institution = "Government ITI" }],
+            SkillDetails: [new SkillProfile { Name = "House wiring", Proficiency = "Advanced", YearsExperience = 3 }],
+            LanguageDetails: [new LanguageProfile { Name = "Kannada", Proficiency = "Native", CanSpeak = true }],
+            Credentials: [new CredentialEntry { Name = "Wireman certificate", Issuer = "State board" }]);
+
+        var updated = await _service.UpdateProfileAsync(id, request, CancellationToken.None);
+
+        Assert.Equal("Electrician", updated.WorkPreferences.DesiredRoles.Single());
+        Assert.Equal("Self-employed", updated.WorkHistory.Single().Employer);
+        Assert.Equal("House wiring", updated.Skills.Single());
+        Assert.Equal(100, updated.ProfileCompletionPercent);
+    }
+
+    [Fact]
     public async Task UpdateLocation_rejects_missing_coordinates()
     {
         var id = await SeedUserAsync();

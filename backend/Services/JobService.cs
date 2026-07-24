@@ -162,30 +162,26 @@ public sealed class JobService : IJobService
             worker.Education,
             worker.Skills,
             worker.Languages,
-            worker.ResumeKey is not null);
+            worker.ResumeKey is not null,
+            worker.WorkPreferences,
+            worker.WorkHistory,
+            worker.EducationHistory,
+            worker.SkillDetails,
+            worker.LanguageDetails,
+            worker.Credentials);
     }
 
-    public async Task<IReadOnlyList<JobPostResponse>> GetNearbyJobsAsync(double? lat, double? lng, CancellationToken ct)
+    public async Task<IReadOnlyList<JobPostResponse>> GetNearbyJobsAsync(
+        double? lat, double? lng, string? search, EmploymentType? employmentType,
+        Guid workerId, CancellationToken ct)
     {
-        var query = _db.JobPosts.Where(j => j.IsActive);
+        var term = search?.Trim();
+        var hasSearch = !string.IsNullOrEmpty(term);
+        var query = ApplyJobFilters(_db.JobPosts.Where(j => j.IsActive), term, employmentType);
 
-        if (lat is not null && lng is not null)
+        if (lat is not null && lng is not null && !hasSearch)
         {
-            var box = GeoCalculator.GetBoundingBox(lat.Value, lng.Value, NearbyRadiusKm);
-
-            var nearbyQuery = query
-                .Where(j => j.Latitude != null && j.Longitude != null)
-                .Where(j => j.Latitude >= box.MinLat && j.Latitude <= box.MaxLat);
-
-            if (!box.CoversAllLongitudes)
-            {
-                if (box.MinLng < -180)
-                    nearbyQuery = nearbyQuery.Where(j => j.Longitude >= box.MinLng + 360 || j.Longitude <= box.MaxLng);
-                else if (box.MaxLng > 180)
-                    nearbyQuery = nearbyQuery.Where(j => j.Longitude >= box.MinLng || j.Longitude <= box.MaxLng - 360);
-                else
-                    nearbyQuery = nearbyQuery.Where(j => j.Longitude >= box.MinLng && j.Longitude <= box.MaxLng);
-            }
+            var nearbyQuery = ApplyJobBoundingBox(query, lat.Value, lng.Value);
 
             var jobs = await nearbyQuery
                 .Select(j => new { Job = j, Count = j.Applications.Count })
@@ -204,14 +200,91 @@ public sealed class JobService : IJobService
                 .ToList();
         }
 
-        var allJobs = await query
+        if (!hasSearch && lat is null)
+            query = await ApplyWorkerStateDefaultAsync(query, workerId, ct);
+
+        // Keep the cap before the in-memory ranking: SQLite cannot order
+        // DateTimeOffset or translate the Haversine calculation, and the bound
+        // prevents an unbounded materialization. The final in-memory ranking
+        // and Take(60) below remain unchanged.
+        var matchedJobs = await query
             .Select(j => new { Job = j, Count = j.Applications.Count })
+            .Take(200)
             .ToListAsync(ct);
 
-        return allJobs
-            .OrderByDescending(x => x.Job.CreatedAt)
+        var ranked = lat is not null && lng is not null
+            ? matchedJobs.OrderBy(x => GeoCalculator.HaversineDistance(
+                lat.Value, lng.Value, x.Job.Latitude, x.Job.Longitude))
+            : matchedJobs.OrderByDescending(x => x.Job.CreatedAt);
+
+        return ranked
+            .Take(60)
             .Select(x => JobMapper.ToResponse(x.Job, x.Count))
             .ToList();
+    }
+
+    private static IQueryable<JobPost> ApplyJobBoundingBox(
+        IQueryable<JobPost> query, double lat, double lng)
+    {
+        var box = GeoCalculator.GetBoundingBox(lat, lng, NearbyRadiusKm);
+        var nearbyQuery = query
+            .Where(j => j.Latitude != null && j.Longitude != null)
+            .Where(j => j.Latitude >= box.MinLat && j.Latitude <= box.MaxLat);
+
+        if (box.CoversAllLongitudes)
+            return nearbyQuery;
+        if (box.MinLng < -180)
+            return nearbyQuery.Where(j => j.Longitude >= box.MinLng + 360 || j.Longitude <= box.MaxLng);
+        if (box.MaxLng > 180)
+            return nearbyQuery.Where(j => j.Longitude >= box.MinLng || j.Longitude <= box.MaxLng - 360);
+        return nearbyQuery.Where(j => j.Longitude >= box.MinLng && j.Longitude <= box.MaxLng);
+    }
+
+    public async Task<JobPostResponse> GetActiveJobAsync(Guid id, CancellationToken ct)
+    {
+        var result = await _db.JobPosts
+            .Where(j => j.Id == id && j.IsActive)
+            .Select(j => new { Job = j, Count = j.Applications.Count })
+            .FirstOrDefaultAsync(ct);
+
+        return result is null
+            ? throw new NotFoundException("Job post not found or no longer active.")
+            : JobMapper.ToResponse(result.Job, result.Count);
+    }
+
+    private static IQueryable<JobPost> ApplyJobFilters(
+        IQueryable<JobPost> query, string? term, EmploymentType? employmentType)
+    {
+        if (!string.IsNullOrEmpty(term))
+        {
+            var needle = term.ToLower();
+#pragma warning disable CA1862 // EF Core cannot translate StringComparison overloads to SQL.
+            query = query.Where(j =>
+                j.Title.ToLower().Contains(needle) ||
+                j.Description.ToLower().Contains(needle) ||
+                j.WorkplaceName.ToLower().Contains(needle) ||
+                j.CityArea.ToLower().Contains(needle) ||
+                (j.State != null && j.State.ToLower().Contains(needle)) ||
+                (j.Pincode != null && j.Pincode.Contains(needle)));
+#pragma warning restore CA1862
+        }
+
+        return employmentType is null
+            ? query
+            : query.Where(j => j.EmploymentType == employmentType);
+    }
+
+    private async Task<IQueryable<JobPost>> ApplyWorkerStateDefaultAsync(
+        IQueryable<JobPost> query, Guid workerId, CancellationToken ct)
+    {
+        var workerState = await _db.Users
+            .Where(u => u.Id == workerId)
+            .Select(u => u.State)
+            .FirstOrDefaultAsync(ct);
+
+        return string.IsNullOrWhiteSpace(workerState)
+            ? query
+            : query.Where(j => j.State != null && j.State == workerState);
     }
 
     public async Task<IReadOnlyList<CandidateResponse>> GetNearbyCandidatesAsync(
