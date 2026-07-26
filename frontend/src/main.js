@@ -3,5 +3,6 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import './styles.css'
+import './light-theme.css'
 
 createApp(App).use(createPinia()).use(router).mount('#app')

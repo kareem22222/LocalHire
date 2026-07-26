@@ -1,0 +1,108 @@
+/* Single light visual system shared by the landing page and authenticated routes. */
+:root {
+  --surface: #ffffff;
+  --surface-soft: #f3f8fa;
+  --ink: #12324a;
+  --ink-muted: #5d7482;
+  --line: rgba(18, 50, 74, 0.1);
+  --accent: #07559a;
+  --accent-teal: #168caa;
+  --accent-green: #20a875;
+  color-scheme: light;
+}
+
+body {
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 8% 8%, rgba(7, 85, 154, 0.1), transparent 30rem),
+    radial-gradient(circle at 92% 18%, rgba(32, 168, 117, 0.08), transparent 30rem),
+    #f7fbfd;
+}
+
+.app-shell,
+.dash-shell,
+.worker-page-shell,
+.applied-shell,
+.privacy-page { background: transparent; }
+
+.network-bg { opacity: 0.52; filter: saturate(0.9); }
+
+.section-index {
+  position: fixed;
+  top: 50%;
+  left: clamp(14px, 2vw, 32px);
+  z-index: 120;
+  transform: translateY(-50%);
+}
+
+.quick-dock {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  z-index: 170;
+  box-shadow: 0 16px 44px rgba(7, 85, 154, 0.16);
+  transform: translateX(-50%);
+}
+
+.hero-section { min-height: 106vh; padding-top: 150px; }
+.hero-content { max-width: 1000px; }
+.hero-title { font-size: clamp(58px, 8vw, 124px); text-shadow: 0 18px 70px rgba(7, 85, 154, 0.08); }
+.hero-actions--enhanced { align-items: center; }
+
+.live-section {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(360px, 1.15fr);
+  gap: clamp(32px, 7vw, 100px);
+  align-items: center;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: clamp(90px, 11vw, 160px) clamp(24px, 7vw, 96px);
+}
+
+.live-section__copy > span { color: var(--accent-green); font: 800 11px ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; }
+.live-section__copy h2 { max-width: 660px; margin: 18px 0; color: var(--ink); font: 800 clamp(42px, 6vw, 78px)/.98 Manrope, sans-serif; letter-spacing: -.055em; }
+.live-section__copy p { max-width: 560px; color: var(--ink-muted); line-height: 1.75; }
+.live-card { padding: clamp(14px, 2vw, 22px); }
+.live-card .animated-list__item { display: grid; gap: 5px; }
+.live-card .animated-list__item strong { color: var(--ink); font-size: 14px; }
+.live-card .animated-list__item small { color: var(--ink-muted); }
+.dash-header {
+  border-bottom-color: var(--line);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 12px 38px rgba(7, 85, 154, 0.08);
+  backdrop-filter: blur(20px);
+}
+
+.hiring-dashboard { padding-top: 46px; }
+.hiring-metrics { gap: 10px; padding: 10px; overflow: visible; background: rgba(18, 50, 74, 0.05); }
+.hiring-metrics > .border-glow { overflow: hidden; border-radius: 16px; }
+.hiring-metrics > .border-glow .border-glow__inner { padding: 22px; text-align: center; }
+.dashboard-animated-list .animated-list__scroller { max-height: 720px; padding: 0; }
+.dashboard-animated-list .animated-list__item { padding: 0; border: 0; background: transparent; box-shadow: none; }
+.dashboard-animated-list .animated-list__item.selected { background: transparent; transform: none; }
+.dashboard-animated-list .animated-list__fade { display: none; }
+
+:is(.stat-card, .dash-card, .job-card, .hiring-sidebar, .hiring-role-card, .candidate-card, .worker-job-row, .profile-card, .worker-card, .candidate-detail__card, .worker-detail-card, .applied-card, .job-form, .auth-modal, .privacy-card) {
+  border-color: transparent;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(135deg, rgba(7, 85, 154, 0.28), rgba(38, 184, 199, 0.08) 48%, rgba(32, 168, 117, 0.25)) border-box;
+  box-shadow: 0 16px 50px rgba(7, 85, 154, 0.08);
+}
+
+:is(.stat-card, .dash-card, .job-card, .hiring-sidebar, .hiring-role-card, .candidate-card, .worker-job-row, .profile-card, .worker-card, .candidate-detail__card, .worker-detail-card, .applied-card):hover {
+  border-color: rgba(7, 85, 154, 0.24);
+  box-shadow: 0 20px 58px rgba(7, 85, 154, 0.13);
+}
+
+@media (max-width: 700px) {
+  .section-index { display: none; }
+  .hero-section { min-height: 100vh; padding-top: 120px; }
+  .live-section { grid-template-columns: 1fr; padding-inline: 18px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :is(.stat-card, .dash-card, .job-card, .hiring-sidebar, .hiring-role-card, .candidate-card, .worker-job-row, .profile-card, .worker-card, .candidate-detail__card, .worker-detail-card, .applied-card) {
+    transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+  }
+}

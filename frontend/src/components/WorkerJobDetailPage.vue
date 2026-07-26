@@ -9,7 +9,6 @@ import {
   formatSalary,
   formatShift,
 } from '../utils/jobDisplay'
-import { logout } from '../utils/session'
 import BrandLogo from './BrandLogo.vue'
 
 const props = defineProps({ id: { type: String, required: true } })
@@ -64,10 +63,6 @@ async function apply() {
   <div class="dash-shell worker-page-shell">
     <header class="dash-header">
       <BrandLogo @click.prevent="router.push('/')" />
-      <div class="dash-header__right">
-        <button type="button" class="dash-btn worker-primary dash-role-badge" @click="router.push('/')">Looking for work</button>
-        <button type="button" class="dash-logout-btn" @click="logout">Sign out</button>
-      </div>
     </header>
 
     <main class="worker-detail-page">

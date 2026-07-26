@@ -1,17 +1,16 @@
 <script setup>
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useJobsStore } from '../stores/jobs'
 import { useProfileStore } from '../stores/profile'
 import { normalizeRole } from '../utils/role'
-import { logout } from '../utils/session'
 import BrandLogo from './BrandLogo.vue'
 import HiringDashboard from './HiringDashboard.vue'
 import ProfilePage from './ProfilePage.vue'
 import WorkerDashboard from './WorkerDashboard.vue'
 
-const emit = defineEmits(['logout', 'profile'])
+const route = useRoute()
 const router = useRouter()
 const profileStore = useProfileStore()
 const jobsStore = useJobsStore()
@@ -27,10 +26,17 @@ const profileSaveVersion = ref(0)
 const resumeUploadError = ref('')
 
 // --- Shared ---
-const activeTab = ref(typeof localStorage !== 'undefined' ? (localStorage.getItem('dashboard_tab') || 'dashboard') : 'dashboard')
+const activeTab = ref(route.query.tab === 'profile'
+  ? 'profile'
+  : typeof localStorage !== 'undefined' ? (localStorage.getItem('dashboard_tab') || 'dashboard') : 'dashboard')
 
 watch(activeTab, (tab) => {
   if (typeof localStorage !== 'undefined') localStorage.setItem('dashboard_tab', tab)
+})
+
+watch(() => route.query.tab, (tab) => {
+  if (tab === 'profile') handleProfileClick()
+  else if (activeTab.value === 'profile') activeTab.value = 'dashboard'
 })
 
 async function fetchProfile() {
@@ -48,20 +54,14 @@ async function fetchProfile() {
   }
 }
 
-function handleLogout() {
-  profileStore.clear()
-  jobsStore.clear()
-  logout()
-}
-
 function handleProfileClick() {
   profileSaveErrors.value = []
-  emit('profile', user.value)
   activeTab.value = 'profile'
 }
 
 function closeProfile() {
   activeTab.value = 'dashboard'
+  if (route.query.tab === 'profile') router.replace('/')
 }
 
 function clearProfileErrors() {
@@ -250,6 +250,7 @@ function closeApplications() {
 function goToDashboard() {
   selectedJobApplications.value = null
   activeTab.value = 'dashboard'
+  if (route.path !== '/' || route.query.tab) router.push('/')
 }
 
 // ============================================================
@@ -364,11 +365,6 @@ async function applyToJob(jobId) {
   <div class="dash-shell" :class="{ 'dash-shell--worker': isWorkerUser }">
     <header class="dash-header">
       <BrandLogo @click.prevent="goToDashboard" />
-      <div class="dash-header__right">
-        <button type="button" class="dash-btn dash-btn--primary dash-role-badge" @click="closeProfile">{{ isHiringUser ? 'Hiring' : isWorkerUser ? 'Looking for work' : 'Account' }}</button>
-        <button type="button" class="dash-user-name" @click="handleProfileClick">{{ user?.name || 'User' }}</button>
-        <button class="dash-logout-btn" @click="handleLogout">Sign out</button>
-      </div>
     </header>
 
     <ProfilePage
@@ -446,10 +442,3 @@ async function applyToJob(jobId) {
     </main>
   </div>
 </template>
-
-<style scoped>
-.dash-shell--worker .dash-role-badge {
-  background: var(--worker-role-gradient);
-  box-shadow: 0 8px 24px rgba(var(--worker-role-green-rgb), 0.2);
-}
-</style>

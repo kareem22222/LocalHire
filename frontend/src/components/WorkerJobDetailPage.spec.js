@@ -3,10 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import api from '../api'
 import { createTestRouter } from '../test/router'
 import WorkerJobDetailPage from './WorkerJobDetailPage.vue'
-import { logout } from '../utils/session'
 
 vi.mock('../api', () => ({ default: { get: vi.fn(), post: vi.fn() } }))
-vi.mock('../utils/session', () => ({ logout: vi.fn() }))
 
 const job = {
   id: 'job-1', title: 'Cashier', description: 'Handle billing', workplaceName: 'Corner Shop',
@@ -85,7 +83,7 @@ describe('WorkerJobDetailPage', () => {
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
   })
 
-  it('shows an existing application and routes from page controls', async () => {
+  it('shows an existing application and routes without duplicate account actions', async () => {
     api.get.mockImplementation((url) => Promise.resolve({
       data: url === '/work/jobs/job-1' ? job : [{ jobPostId: 'job-1', status: 'Shortlisted' }],
     }))
@@ -99,11 +97,9 @@ describe('WorkerJobDetailPage', () => {
 
     expect(wrapper.text()).toContain('Application status: Shortlisted')
     expect(wrapper.findAll('button').find((item) => item.text() === 'Applied').attributes('disabled')).toBeDefined()
-    await wrapper.findAll('button').find((item) => item.text() === 'Looking for work').trigger('click')
     await wrapper.findAll('button').find((item) => item.text() === 'Back').trigger('click')
-    await wrapper.findAll('button').find((item) => item.text() === 'Sign out').trigger('click')
     expect(push).toHaveBeenCalledWith('/')
-    expect(logout).toHaveBeenCalled()
+    expect(wrapper.text()).not.toContain('Sign out')
   })
 
   it('shows unavailable jobs and returns to the dashboard', async () => {

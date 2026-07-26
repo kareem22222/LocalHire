@@ -3,10 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import api from '../api'
 import { createTestRouter } from '../test/router'
 import AppliedJobsPage from './AppliedJobsPage.vue'
-import { logout } from '../utils/session'
 
 vi.mock('../api', () => ({ default: { get: vi.fn() } }))
-vi.mock('../utils/session', () => ({ logout: vi.fn() }))
 
 describe('AppliedJobsPage', () => {
   beforeEach(() => {
@@ -30,7 +28,7 @@ describe('AppliedJobsPage', () => {
     expect(wrapper.find('.applied-card').attributes('href')).toBe('/work/jobs/job-1')
   })
 
-  it('routes from all controls and signs out', async () => {
+  it('routes from page controls without duplicating account actions', async () => {
     const router = createTestRouter()
     const push = vi.spyOn(router, 'push')
     const wrapper = mount(AppliedJobsPage, {
@@ -38,14 +36,12 @@ describe('AppliedJobsPage', () => {
     })
     await flushPromises()
 
-    await wrapper.findAll('button').find((item) => item.text() === 'Looking for work').trigger('click')
     await wrapper.findAll('button').find((item) => item.text() === 'Back to jobs').trigger('click')
     await wrapper.find('.applied-card').trigger('click')
-    await wrapper.findAll('button').find((item) => item.text() === 'Sign out').trigger('click')
 
     expect(push).toHaveBeenCalledWith('/')
     expect(push).toHaveBeenCalledWith({ name: 'worker-job-detail', params: { id: 'job-1' } })
-    expect(logout).toHaveBeenCalled()
+    expect(wrapper.text()).not.toContain('Sign out')
   })
 
   it('shows load failures and the empty state', async () => {

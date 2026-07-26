@@ -8,6 +8,11 @@ import {
   formatJobLocation,
   formatSalary,
 } from '../utils/jobDisplay'
+import { moveSpotlight, resetSpotlight } from '../utils/spotlightCard'
+import BorderGlow from './BorderGlow.vue'
+import CountUp from './CountUp.vue'
+import AnimatedCard from './ui/AnimatedCard.vue'
+import MessageLoading from './ui/MessageLoading.vue'
 
 const props = defineProps({
   user: { type: Object, default: null },
@@ -75,30 +80,35 @@ function hasApplied(jobId) {
 <template>
   <main class="hiring-dashboard worker-dashboard">
     <section class="hiring-metrics">
-      <div><strong>{{ jobs.length }}</strong><span>matching roles</span></div>
-      <div><strong>{{ applications.length }}</strong><span>applications</span></div>
-      <div><strong>{{ profileScore }}%</strong><span>profile score</span></div>
+      <BorderGlow><strong><CountUp :to="jobs.length" separator="" /></strong><span>matching roles</span></BorderGlow>
+      <BorderGlow><strong><CountUp :to="applications.length" separator="" /></strong><span>applications</span></BorderGlow>
+      <BorderGlow><strong><CountUp :to="profileScore" separator="" suffix="%" /></strong><span>profile score</span></BorderGlow>
     </section>
 
     <div class="hiring-side-stack">
-      <aside class="hiring-sidebar" aria-label="Profile strength">
-        <h2>Profile strength</h2>
-        <p>A complete profile helps local employers understand your experience and skills.</p>
+      <AnimatedCard
+        class="hiring-sidebar"
+        title="Profile strength"
+        description="A complete profile helps local employers understand your experience and skills."
+      >
         <div class="hiring-progress">
           <span>Profile score</span>
           <strong>{{ profileScore }}%</strong>
           <i><b :style="{ width: `${profileScore}%` }"></b></i>
         </div>
-      </aside>
+      </AnimatedCard>
 
-      <aside class="hiring-sidebar hiring-quick" aria-label="Quick actions">
-        <h2>Quick actions</h2>
-        <p>Review your applications or keep your work profile current.</p>
+      <AnimatedCard
+        class="hiring-sidebar hiring-quick"
+        title="Quick actions"
+        description="Review your applications or keep your work profile current."
+        with-arrow
+      >
         <div class="hiring-quick__actions">
           <button type="button" class="dash-btn dash-btn--primary" @click="emit('view-applications')">Applied jobs</button>
           <button type="button" class="hiring-quick__link" @click="emit('open-profile')">Update profile</button>
         </div>
-      </aside>
+      </AnimatedCard>
     </div>
 
     <section class="worker-jobs">
@@ -143,6 +153,7 @@ function hasApplied(jobId) {
       </form>
 
       <div v-if="loading" class="candidate-empty">
+        <MessageLoading label="Searching roles" />
         <strong>Searching roles...</strong>
         <p>Finding work that matches your filters.</p>
       </div>
@@ -151,7 +162,10 @@ function hasApplied(jobId) {
         <article
           v-for="job in jobs"
           :key="job.id"
-          class="worker-job-row"
+          class="worker-job-row spotlight-card spotlight-card--worker"
+          @pointermove="moveSpotlight"
+          @pointerleave="resetSpotlight"
+          @pointercancel="resetSpotlight"
         >
           <a
             class="worker-job-row__main"
@@ -192,6 +206,10 @@ function hasApplied(jobId) {
 </template>
 
 <style scoped>
+.worker-dashboard {
+  --animated-card-glow: var(--worker-role-gradient);
+}
+
 .worker-dashboard :is(.hiring-metrics strong, .hiring-kicker, .hiring-progress strong) {
   color: var(--worker-role-green-text);
 }
@@ -324,7 +342,7 @@ function hasApplied(jobId) {
   border-radius: 18px;
   background: #ffffff;
   box-shadow: 0 10px 32px rgba(18, 50, 74, 0.05);
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
 }
 
 .worker-job-row__main {
@@ -333,7 +351,7 @@ function hasApplied(jobId) {
 }
 
 .worker-job-row:hover {
-  transform: translateY(-2px);
+  transform: perspective(900px) rotateX(var(--spotlight-rx)) rotateY(var(--spotlight-ry)) translateY(-2px);
   border-color: rgba(var(--worker-role-green-rgb), 0.3);
   box-shadow: 0 16px 36px rgba(var(--worker-role-green-rgb), 0.1);
 }

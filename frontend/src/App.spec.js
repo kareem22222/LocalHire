@@ -1,9 +1,11 @@
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
 import { isAuthenticated } from './api'
 import confetti from 'canvas-confetti'
 import { createTestRouter } from './test/router'
+import { logout } from './utils/session'
 
 vi.mock('gsap', () => ({
   gsap: {
@@ -21,6 +23,7 @@ vi.mock('gsap/ScrollTrigger', () => ({
 }))
 
 vi.mock('./api', () => ({
+  default: { get: vi.fn(() => Promise.resolve({ data: { name: 'Pat', email: 'pat@example.com', role: 'Hiring' } })) },
   clearAuth: vi.fn(),
   isAuthenticated: vi.fn(),
 }))
@@ -29,10 +32,12 @@ vi.mock('canvas-confetti', () => ({
   default: vi.fn(),
 }))
 
+vi.mock('./utils/session', () => ({ logout: vi.fn() }))
+
 function mountAppWithAuthMode(mode) {
   return mount(App, {
     global: {
-      plugins: [createTestRouter()],
+      plugins: [createPinia(), createTestRouter()],
       stubs: {
         AppDashboard: { template: '<div class="fake-dashboard" />' },
         AuthModal: {
@@ -41,6 +46,11 @@ function mountAppWithAuthMode(mode) {
         },
         BrandLogo: true,
         NetworkBackground: true,
+        StaggeredMenu: {
+          props: ['items', 'account'],
+          emits: ['select'],
+          template: `<div class="fake-menu"><button class="fake-menu-profile" @click="$emit('select', { action: 'profile' })">Profile</button><button class="fake-menu-logout" @click="$emit('select', { action: 'logout' })">Sign out</button></div>`,
+        },
       },
     },
   })
@@ -56,7 +66,7 @@ describe('App signup confetti', () => {
     const wrapper = mountAppWithAuthMode('register')
 
     await flushPromises()
-    await wrapper.find('.btn--primary').trigger('click')
+    await wrapper.find('.specular-button').trigger('click')
     await wrapper.find('.fake-auth').trigger('click')
 
     expect(confetti).toHaveBeenCalledTimes(4)
@@ -71,7 +81,7 @@ describe('App signup confetti', () => {
     const wrapper = mountAppWithAuthMode('login')
 
     await flushPromises()
-    await wrapper.find('.btn--primary').trigger('click')
+    await wrapper.find('.specular-button').trigger('click')
     await wrapper.find('.fake-auth').trigger('click')
 
     expect(confetti).not.toHaveBeenCalled()
@@ -86,6 +96,26 @@ describe('App signup confetti', () => {
     await wrapper.find('.cta-form').trigger('submit')
 
     expect(wrapper.find('.fake-auth').exists()).toBe(true)
+    wrapper.unmount()
+  })
+})
+
+describe('App authenticated menu', () => {
+  beforeEach(() => {
+    isAuthenticated.mockResolvedValue(true)
+    logout.mockClear()
+  })
+
+  it('routes profile and sign out actions from StaggeredMenu', async () => {
+    const wrapper = mountAppWithAuthMode('login')
+    await flushPromises()
+
+    await wrapper.find('.fake-menu-profile').trigger('click')
+    await flushPromises()
+    expect(wrapper.vm.$route.query.tab).toBe('profile')
+
+    await wrapper.find('.fake-menu-logout').trigger('click')
+    expect(logout).toHaveBeenCalledTimes(1)
     wrapper.unmount()
   })
 })

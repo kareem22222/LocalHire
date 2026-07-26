@@ -26,7 +26,7 @@ if (renderer) {
 }
   scene = new THREE.Scene()
   
-  scene.background = new THREE.Color(0xffffff)
+  scene.background = new THREE.Color(0xf7fbfd)
 
   camera = new THREE.PerspectiveCamera(60, windowSize.w / windowSize.h, 0.1, 100)
 camera.position.z = 8

@@ -2,7 +2,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useJobsStore } from '../stores/jobs'
-import { logout } from '../utils/session'
 import BrandLogo from './BrandLogo.vue'
 
 const router = useRouter()
@@ -36,10 +35,6 @@ onMounted(async () => {
   <div class="dash-shell applied-shell">
     <header class="dash-header">
       <BrandLogo @click.prevent="router.push('/')" />
-      <div class="dash-header__right">
-        <button type="button" class="dash-btn applied-primary dash-role-badge" @click="router.push('/')">Looking for work</button>
-        <button type="button" class="dash-logout-btn" @click="logout">Sign out</button>
-      </div>
     </header>
 
     <main class="applied-page">

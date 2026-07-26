@@ -4,8 +4,13 @@ import '../hiring-dashboard.css'
 import { useOpenRoles } from '../composables/useOpenRoles'
 import { useSavedCandidates } from '../composables/useSavedCandidates'
 import { MAX_VISIBLE_CANDIDATES } from '../utils/jobDisplay'
+import AnimatedList from './AnimatedList.vue'
+import BorderGlow from './BorderGlow.vue'
 import CandidateCard from './CandidateCard.vue'
+import CountUp from './CountUp.vue'
 import RoleCard from './RoleCard.vue'
+import AnimatedCard from './ui/AnimatedCard.vue'
+import MessageLoading from './ui/MessageLoading.vue'
 
 const props = defineProps({
   myJobs: { type: Array, default: () => [] },
@@ -150,40 +155,45 @@ function openCandidate(candidate) {
 <template>
   <main class="hiring-dashboard">
       <section class="hiring-metrics">
-        <div>
-          <strong>{{ filteredCandidates.length }}</strong>
+        <BorderGlow>
+          <strong><CountUp :to="filteredCandidates.length" separator="" /></strong>
           <span>matching candidates</span>
-        </div>
-        <div>
-          <strong>{{ openRoles.length }}</strong>
+        </BorderGlow>
+        <BorderGlow>
+          <strong><CountUp :to="openRoles.length" separator="" /></strong>
           <span>open hiring roles</span>
-        </div>
-        <div>
-          <strong>24h</strong>
+        </BorderGlow>
+        <BorderGlow>
+          <strong><CountUp :to="24" separator="" suffix="h" /></strong>
           <span>avg response time</span>
-        </div>
+        </BorderGlow>
       </section>
 
       <div class="hiring-side-stack">
-        <aside class="hiring-sidebar">
-          <h2>Hiring pipeline</h2>
-          <p>Move fast: shortlist high-match candidates, schedule interviews, and keep the role status current.</p>
+        <AnimatedCard
+          class="hiring-sidebar"
+          title="Hiring pipeline"
+          description="Move fast: shortlist high-match candidates, schedule interviews, and keep the role status current."
+        >
           <div class="hiring-progress">
             <span>Pipeline health</span>
             <strong>88%</strong>
             <i><b></b></i>
           </div>
-        </aside>
+        </AnimatedCard>
 
-        <aside class="hiring-sidebar hiring-quick">
-          <h2>Quick actions</h2>
-          <p>Jump straight into the work that keeps candidates moving.</p>
+        <AnimatedCard
+          class="hiring-sidebar hiring-quick"
+          title="Quick actions"
+          description="Jump straight into the work that keeps candidates moving."
+          with-arrow
+        >
           <div class="hiring-quick__actions">
             <button type="button" class="dash-btn dash-btn--primary" @click="emit('open-create-job')">Post new role</button>
             <button type="button" class="hiring-quick__link" @click="emit('review-shortlists')">Review shortlists</button>
             <button type="button" class="hiring-quick__link">Schedule interviews</button>
           </div>
-        </aside>
+        </AnimatedCard>
       </div>
 
     <section class="hiring-roles">
@@ -267,21 +277,28 @@ function openCandidate(candidate) {
       </div>
 
       <div v-if="candidatesLoading" class="candidate-empty">
+        <MessageLoading label="Searching talent" />
         <strong>Searching talent...</strong>
         <p>Finding workers that match your search.</p>
       </div>
 
       <template v-else>
-        <CandidateCard
-          v-for="candidate in visibleCandidates"
-          :key="candidate.id"
-          :candidate="candidate"
-          :shortlisted="isSaved(candidate.id)"
-          @shortlist="shortlist"
-          @contact="contact"
+        <AnimatedList
+          v-if="visibleCandidates.length"
+          :items="visibleCandidates"
+          class="dashboard-animated-list"
           @select="openCandidate"
-        />
-
+        >
+          <template #default="{ item: candidate }">
+            <CandidateCard
+              :candidate="candidate"
+              :shortlisted="isSaved(candidate.id)"
+              @shortlist="shortlist"
+              @contact="contact"
+              @select="openCandidate"
+            />
+          </template>
+        </AnimatedList>
         <div v-if="hasMoreCandidates" class="hiring-show-more">
           <button type="button" class="hiring-show-more__btn" @click="showAllCandidates">
             Show more candidates ({{ filteredCandidates.length }} total)

@@ -3,7 +3,6 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useJobsStore } from '../stores/jobs'
 import { buildJobPayload, jobResponseToForm, mapServerErrors, validateJobFormFields } from '../utils/jobForm'
-import { logout } from '../utils/session'
 import BrandLogo from './BrandLogo.vue'
 import PostJobPage from './PostJobPage.vue'
 
@@ -92,11 +91,7 @@ async function saveJob() {
 <template>
   <div class="dash-shell">
     <header class="dash-header">
-      <BrandLogo />
-      <div class="dash-header__right">
-        <button type="button" class="dash-btn dash-btn--primary dash-role-badge" @click="goDashboard">Dashboard</button>
-        <button class="dash-logout-btn" @click="logout">Sign out</button>
-      </div>
+      <BrandLogo @click.prevent="router.push('/')" />
     </header>
 
     <PostJobPage

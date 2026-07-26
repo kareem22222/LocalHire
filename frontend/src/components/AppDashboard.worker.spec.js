@@ -2,7 +2,6 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AppDashboard from './AppDashboard.vue'
 import api from '../api'
-import { logout } from '../utils/session'
 import { createTestRouter } from '../test/router'
 
 vi.mock('../api', () => ({
@@ -11,10 +10,6 @@ vi.mock('../api', () => ({
     post: vi.fn(),
     put: vi.fn(),
   },
-}))
-
-vi.mock('../utils/session', () => ({
-  logout: vi.fn(),
 }))
 
 const fullJob = {
@@ -157,14 +152,12 @@ describe('AppDashboard worker flow', () => {
     expect(findButtonByText(wrapper, 'Applied jobs')).toBeTruthy()
   })
 
-  it('logs out via the session helper', async () => {
-    logout.mockReset()
+  it('does not duplicate account actions in the dashboard header', async () => {
     const wrapper = mountAsWorker()
     await flushPromises()
 
-    await findButtonByText(wrapper, 'Sign out').trigger('click')
-
-    expect(logout).toHaveBeenCalledTimes(1)
+    expect(wrapper.find('.dash-user-name').exists()).toBe(false)
+    expect(wrapper.find('.dash-logout-btn').exists()).toBe(false)
   })
 
   it('returns to the dashboard from the applicants view and the brand logo', async () => {

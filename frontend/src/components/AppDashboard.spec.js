@@ -254,7 +254,7 @@ describe('AppDashboard', () => {
   })
 
   describe('profile navigation', () => {
-    it('emits "profile" with the current user and shows the profile page when the name is clicked', async () => {
+    it('shows the profile page without duplicating account controls in the header', async () => {
       api.get.mockImplementation((url) => Promise.resolve({
         data: url === '/auth/me' ? { name: 'Pat', role: 'Hiring' } : [],
       }))
@@ -262,9 +262,11 @@ describe('AppDashboard', () => {
       const wrapper = mountDashboard()
       await flushPromises()
 
-      await wrapper.find('.dash-user-name').trigger('click')
+      await router.push({ path: '/', query: { tab: 'profile' } })
+      await flushPromises()
 
-      expect(wrapper.emitted('profile')).toEqual([[{ name: 'Pat', role: 'Hiring' }]])
+      expect(wrapper.find('.dash-user-name').exists()).toBe(false)
+      expect(wrapper.find('.dash-logout-btn').exists()).toBe(false)
       expect(wrapper.find('.profile-page').exists()).toBe(true)
       expect(wrapper.text()).toContain('Personal information')
     })
@@ -278,7 +280,8 @@ describe('AppDashboard', () => {
       await flushPromises()
       expect(findButtonByText(wrapper, 'Post new role')).toBeTruthy()
 
-      await wrapper.find('.dash-user-name').trigger('click')
+      wrapper.vm.handleProfileClick()
+      await flushPromises()
 
       expect(findButtonByText(wrapper, 'Post new role')).toBeFalsy()
       expect(wrapper.find('.profile-page').exists()).toBe(true)
@@ -289,7 +292,7 @@ describe('AppDashboard', () => {
       expect(findButtonByText(wrapper, 'Post new role')).toBeTruthy()
     })
 
-    it('returns from the profile page to the dashboard when the Hiring role badge is clicked', async () => {
+    it('returns a hiring user from the profile page to the dashboard', async () => {
       api.get.mockImplementation((url) => Promise.resolve({
         data: url === '/auth/me' ? { name: 'Pat', role: 'Hiring' } : [],
       }))
@@ -297,16 +300,18 @@ describe('AppDashboard', () => {
       const wrapper = mountDashboard()
       await flushPromises()
 
-      await wrapper.find('.dash-user-name').trigger('click')
+      wrapper.vm.handleProfileClick()
+      await flushPromises()
       expect(wrapper.find('.profile-page').exists()).toBe(true)
 
-      await wrapper.find('.dash-role-badge').trigger('click')
+      wrapper.vm.closeProfile()
+      await flushPromises()
 
       expect(wrapper.find('.profile-page').exists()).toBe(false)
       expect(findButtonByText(wrapper, 'Post new role')).toBeTruthy()
     })
 
-    it('returns a worker from the profile page to the dashboard when the Worker role badge is clicked', async () => {
+    it('returns a worker from the profile page to the dashboard', async () => {
       api.get.mockImplementation((url) => Promise.resolve({
         data: url === '/auth/me' ? { name: 'Pat', role: 'LookingForWork' } : [],
       }))
@@ -314,10 +319,12 @@ describe('AppDashboard', () => {
       const wrapper = mountDashboard()
       await flushPromises()
 
-      await wrapper.find('.dash-user-name').trigger('click')
+      wrapper.vm.handleProfileClick()
+      await flushPromises()
       expect(wrapper.find('.profile-page').exists()).toBe(true)
 
-      await wrapper.find('.dash-role-badge').trigger('click')
+      wrapper.vm.closeProfile()
+      await flushPromises()
 
       expect(wrapper.find('.profile-page').exists()).toBe(false)
       expect(wrapper.text()).toContain('Roles for you')
@@ -332,7 +339,8 @@ describe('AppDashboard', () => {
       await flushPromises()
       expect(wrapper.text()).toContain('Roles for you')
 
-      await wrapper.find('.dash-user-name').trigger('click')
+      wrapper.vm.handleProfileClick()
+      await flushPromises()
 
       expect(wrapper.text()).not.toContain('Roles for you')
       expect(wrapper.find('.profile-page').exists()).toBe(true)
@@ -352,7 +360,8 @@ describe('AppDashboard', () => {
       await flushPromises()
       expect(wrapper.text()).toContain('We could not identify this account type.')
 
-      await wrapper.find('.dash-user-name').trigger('click')
+      wrapper.vm.handleProfileClick()
+      await flushPromises()
 
       expect(wrapper.text()).not.toContain('We could not identify this account type.')
       expect(wrapper.find('.profile-page').exists()).toBe(true)
@@ -368,9 +377,9 @@ describe('AppDashboard', () => {
 
       const wrapper = mountDashboard()
 
-      await wrapper.find('.dash-user-name').trigger('click')
+      wrapper.vm.handleProfileClick()
+      await flushPromises()
 
-      expect(wrapper.emitted('profile')).toEqual([[null]])
       expect(wrapper.find('.profile-page .dash-welcome__name').text()).toBe('User')
     })
 
@@ -383,7 +392,8 @@ describe('AppDashboard', () => {
       const wrapper = mountDashboard()
       await flushPromises()
 
-      await wrapper.find('.dash-user-name').trigger('click')
+      wrapper.vm.handleProfileClick()
+      await flushPromises()
       await findButtonByText(wrapper, 'Edit profile').trigger('click')
       await findButtonByText(wrapper, 'Save').trigger('click')
       await flushPromises()
@@ -408,7 +418,8 @@ describe('AppDashboard', () => {
       const wrapper = mountDashboard()
       await flushPromises()
 
-      await wrapper.find('.dash-user-name').trigger('click')
+      wrapper.vm.handleProfileClick()
+      await flushPromises()
       await findButtonByText(wrapper, 'Edit profile').trigger('click')
       await wrapper.find('#profile-name').setValue('Pat Rao')
       await findButtonByText(wrapper, 'Save').trigger('click')
@@ -432,7 +443,8 @@ describe('AppDashboard', () => {
 
       const wrapper = mountDashboard()
       await flushPromises()
-      await wrapper.find('.dash-user-name').trigger('click')
+      wrapper.vm.handleProfileClick()
+      await flushPromises()
       await findButtonByText(wrapper, 'Edit profile').trigger('click')
       await findButtonByText(wrapper, 'Save').trigger('click')
       await flushPromises()

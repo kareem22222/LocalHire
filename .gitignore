@@ -1,4 +1,7 @@
 **/node_modules/
+**/.kiro/
+**/.cluade/
+**/.codex/
 .pnpm-store/
 **/dist/
 **/bin/
@@ -12,3 +15,8 @@ backend/wwwroot/
 .env
 .env.rds
 .csproj.user
+.claude
+AGENTS.md
+**/graphify-out/
+.graphify**
+**/.21st/

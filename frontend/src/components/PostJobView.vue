@@ -5,7 +5,6 @@ import { useJobsStore } from '../stores/jobs'
 import { useProfileStore } from '../stores/profile'
 import { buildJobPayload, emptyJobForm, mapServerErrors, validateJobFormFields } from '../utils/jobForm'
 import { normalizeRole } from '../utils/role'
-import { logout } from '../utils/session'
 import BrandLogo from './BrandLogo.vue'
 import PostJobPage from './PostJobPage.vue'
 
@@ -63,11 +62,7 @@ async function createJob() {
 <template>
   <div class="dash-shell">
     <header class="dash-header">
-      <BrandLogo />
-      <div class="dash-header__right">
-        <button type="button" class="dash-btn dash-btn--primary dash-role-badge" @click="goDashboard">Dashboard</button>
-        <button class="dash-logout-btn" @click="logout">Sign out</button>
-      </div>
+      <BrandLogo @click.prevent="router.push('/')" />
     </header>
 
     <PostJobPage
