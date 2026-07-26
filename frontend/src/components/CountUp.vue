@@ -4,7 +4,9 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 const props = defineProps({
   from: { type: Number, default: 0 },
   to: { type: Number, required: true },
-  duration: { type: Number, default: 1.2 },
+  duration: { type: Number, default: 0.5 },
+  delay: { type: Number, default: 0 },
+  immediate: { type: Boolean, default: false },
   separator: { type: String, default: ',' },
   suffix: { type: String, default: '' },
 })
@@ -13,6 +15,7 @@ const value = ref(props.from)
 const root = ref(null)
 let frame
 let observer
+let timer
 
 function format(number) {
   const rounded = Math.round(number)
@@ -33,18 +36,25 @@ function start() {
   frame = requestAnimationFrame(tick)
 }
 
+function scheduleStart() {
+  if (!props.delay || window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return start()
+  timer = setTimeout(start, props.delay * 1000)
+}
+
 onMounted(() => {
-  if (typeof IntersectionObserver === 'undefined') return start()
+  if (props.immediate) return scheduleStart()
+  if (typeof IntersectionObserver === 'undefined') return scheduleStart()
   observer = new IntersectionObserver(([entry]) => {
     if (!entry.isIntersecting) return
     observer.disconnect()
-    start()
+    scheduleStart()
   })
   observer.observe(root.value)
 })
 
 onBeforeUnmount(() => {
   observer?.disconnect()
+  clearTimeout(timer)
   cancelAnimationFrame(frame)
 })
 </script>

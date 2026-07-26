@@ -20,7 +20,7 @@ describe('WorkerDashboard', () => {
     const progress = wrapper.get('[role="progressbar"]')
 
     expect(progress.attributes('aria-valuenow')).toBe('95')
-    expect(progress.get('b').attributes('style')).toContain('width: 95%')
+    expect(progress.get('b').attributes('style')).toContain('--profile-score: 95%')
 
     await wrapper.findAll('button').find((item) => item.text() === 'Applied jobs').trigger('click')
     await wrapper.findAll('button').find((item) => item.text() === 'Update profile').trigger('click')

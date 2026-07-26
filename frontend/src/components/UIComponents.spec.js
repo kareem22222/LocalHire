@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import AnimatedList from './AnimatedList.vue'
+import CountUp from './CountUp.vue'
 import StaggeredMenu from './StaggeredMenu.vue'
 import Stepper from './Stepper.vue'
 import AnimatedCard from './ui/AnimatedCard.vue'
@@ -53,5 +54,35 @@ describe('shared interaction components', () => {
     card.element.dispatchEvent(new MouseEvent('pointerleave'))
     await card.vm.$nextTick()
     expect(card.get('.animated-card__glow').classes()).not.toContain('animated-card__glow--visible')
+  })
+
+  it('starts an immediate count without waiting for visibility', () => {
+    const observer = vi.fn()
+    vi.stubGlobal('IntersectionObserver', observer)
+    const frame = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1)
+    const count = mount(CountUp, { props: { from: 100, to: 95, immediate: true } })
+
+    expect(observer).not.toHaveBeenCalled()
+    expect(frame).toHaveBeenCalled()
+    count.unmount()
+    frame.mockRestore()
+    vi.unstubAllGlobals()
+  })
+
+  it('holds a delayed count at its starting value before animating', () => {
+    vi.useFakeTimers()
+    const frame = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1)
+    const count = mount(CountUp, { props: { from: 100, to: 95, delay: 0.5, immediate: true } })
+
+    expect(count.text()).toBe('100')
+    expect(frame).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(499)
+    expect(frame).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1)
+    expect(frame).toHaveBeenCalled()
+
+    count.unmount()
+    frame.mockRestore()
+    vi.useRealTimers()
   })
 })

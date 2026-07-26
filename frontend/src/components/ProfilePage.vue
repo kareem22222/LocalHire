@@ -1,6 +1,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import WorkerProfileSections from './WorkerProfileSections.vue'
+import ScrambleText from './ui/ScrambleText.vue'
 
 const props = defineProps({
   user: { type: Object, default: null },
@@ -275,7 +276,7 @@ function goBack() {
       <div class="profile-hero__avatar" aria-hidden="true">{{ initials }}</div>
       <div class="profile-hero__info">
         <h1 class="dash-welcome__title profile-hero__name">
-          <span class="dash-welcome__name">{{ form.name || props.user?.name || 'User' }}</span>
+          <ScrambleText class="dash-welcome__name" :text="form.name || props.user?.name || 'User'" />
         </h1>
         <p class="profile-hero__headline">{{ isWorker ? 'Finding work locally on LocalHire' : 'Hiring locally on LocalHire' }}</p>
         <div class="profile-hero__tags">
