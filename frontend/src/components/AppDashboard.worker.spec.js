@@ -11,6 +11,7 @@ vi.mock('../api', () => ({
     put: vi.fn(),
   },
 }))
+vi.mock('../utils/minimumDelay', () => ({ withMinimumDelay: (task) => task() }))
 
 const fullJob = {
   id: 'job-1',

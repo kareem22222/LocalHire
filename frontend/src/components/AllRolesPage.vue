@@ -4,8 +4,10 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useOpenRoles } from '../composables/useOpenRoles'
 import { useJobsStore } from '../stores/jobs'
+import { withMinimumDelay } from '../utils/minimumDelay'
 import BrandLogo from './BrandLogo.vue'
 import RoleCard from './RoleCard.vue'
+import SkeletonShimmer from './ui/SkeletonShimmer.vue'
 import '../hiring-dashboard.css'
 
 const router = useRouter()
@@ -18,7 +20,7 @@ const openRoles = useOpenRoles(() => myJobs.value)
 onMounted(async () => {
   loading.value = true
   try {
-    await jobsStore.loadMyJobs()
+    await withMinimumDelay(() => jobsStore.loadMyJobs())
   } catch (error) {
     console.error('Failed to load roles.', error)
   } finally {
@@ -45,7 +47,7 @@ function goViewJob(id) {
     </header>
 
     <main class="hiring-dashboard">
-      <section class="hiring-roles">
+      <section class="hiring-roles" :aria-busy="loading">
         <div class="hiring-roles__head">
           <div>
             <span class="hiring-kicker">Hiring desk</span>
@@ -54,10 +56,7 @@ function goViewJob(id) {
           <span>{{ openRoles.length }} roles</span>
         </div>
 
-        <div v-if="loading" class="candidate-empty">
-          <strong>Loading roles...</strong>
-          <p>Fetching every role you are currently hiring for.</p>
-        </div>
+        <SkeletonShimmer v-if="loading" variant="role" label="Loading roles" />
 
         <template v-else>
           <div class="hiring-role-grid">

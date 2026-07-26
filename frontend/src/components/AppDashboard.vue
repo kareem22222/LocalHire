@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useJobsStore } from '../stores/jobs'
 import { useProfileStore } from '../stores/profile'
 import { normalizeRole } from '../utils/role'
+import { withMinimumDelay } from '../utils/minimumDelay'
 import BrandLogo from './BrandLogo.vue'
 import HiringDashboard from './HiringDashboard.vue'
 import ProfilePage from './ProfilePage.vue'
@@ -104,6 +105,7 @@ onMounted(fetchProfile)
 //  HIRING
 // ============================================================
 const selectedJobApplications = ref(null)
+const rolesLoading = ref(false)
 
 function goCreateJob() {
   router.push('/PostNewJob')
@@ -150,9 +152,12 @@ function goAllCandidates(payload = {}) {
 }
 
 async function loadMyJobs() {
+  rolesLoading.value = true
   try {
-    await jobsStore.loadMyJobs()
+    await withMinimumDelay(() => jobsStore.loadMyJobs())
   } catch {
+  } finally {
+    rolesLoading.value = false
   }
 }
 
@@ -194,7 +199,7 @@ function candidateParams() {
 async function loadCandidates(options = {}) {
   candidatesLoading.value = true
   try {
-    await jobsStore.loadNearbyCandidates(candidateParams(), options)
+    await withMinimumDelay(() => jobsStore.loadNearbyCandidates(candidateParams(), options))
   } catch {
   } finally {
     candidatesLoading.value = false
@@ -325,7 +330,7 @@ function requestLocation() {
 async function loadNearbyJobs(options = {}) {
   workerJobsLoading.value = true
   try {
-    nearbyJobs.value = await jobsStore.loadNearbyJobs(workerJobParams(), options)
+    nearbyJobs.value = await withMinimumDelay(() => jobsStore.loadNearbyJobs(workerJobParams(), options))
   } catch {
   } finally {
     workerJobsLoading.value = false
@@ -383,6 +388,7 @@ async function applyToJob(jobId) {
     <HiringDashboard
       v-if="isHiringUser && activeTab !== 'profile'"
       :my-jobs="myJobs"
+      :roles-loading="rolesLoading"
       :candidates="candidates"
       :candidates-loading="candidatesLoading"
       :location-label="candidateLocationLabel"

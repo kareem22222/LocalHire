@@ -59,6 +59,7 @@ describe('WorkerDashboard', () => {
     expect(applied.text()).toContain('Applying...')
     await applied.setProps({ jobs: [], loading: true, locating: true })
     expect(applied.text()).toContain('Searching roles...')
+    expect(applied.find('.skeleton-list--job').exists()).toBe(true)
     expect(applied.text()).toContain('Locating...')
     await applied.setProps({ loading: false })
     expect(applied.text()).toContain('No roles found')

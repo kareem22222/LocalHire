@@ -12,7 +12,7 @@ import { moveSpotlight, resetSpotlight } from '../utils/spotlightCard'
 import BorderGlow from './BorderGlow.vue'
 import CountUp from './CountUp.vue'
 import AnimatedCard from './ui/AnimatedCard.vue'
-import MessageLoading from './ui/MessageLoading.vue'
+import SkeletonShimmer from './ui/SkeletonShimmer.vue'
 
 const props = defineProps({
   user: { type: Object, default: null },
@@ -158,11 +158,7 @@ function hasApplied(jobId) {
         </div>
       </form>
 
-      <div v-if="loading" class="candidate-empty">
-        <MessageLoading label="Searching roles" />
-        <strong>Searching roles...</strong>
-        <p>Finding work that matches your filters.</p>
-      </div>
+      <SkeletonShimmer v-if="loading" variant="job" label="Searching roles..." />
 
       <div v-else-if="jobs.length" class="worker-job-list">
         <article
@@ -350,6 +346,12 @@ function hasApplied(jobId) {
 .worker-job-list {
   display: grid;
   gap: 12px;
+  animation: worker-list-reveal 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes worker-list-reveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .worker-job-row {
@@ -467,5 +469,9 @@ function hasApplied(jobId) {
   .worker-job-row__details {
     display: none;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .worker-job-list { animation: none; }
 }
 </style>

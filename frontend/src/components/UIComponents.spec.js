@@ -6,6 +6,7 @@ import StaggeredMenu from './StaggeredMenu.vue'
 import Stepper from './Stepper.vue'
 import AnimatedCard from './ui/AnimatedCard.vue'
 import MessageLoading from './ui/MessageLoading.vue'
+import SkeletonShimmer from './ui/SkeletonShimmer.vue'
 
 describe('shared interaction components', () => {
   it('supports keyboard list selection and step navigation', async () => {
@@ -54,6 +55,15 @@ describe('shared interaction components', () => {
     card.element.dispatchEvent(new MouseEvent('pointerleave'))
     await card.vm.$nextTick()
     expect(card.get('.animated-card__glow').classes()).not.toContain('animated-card__glow--visible')
+  })
+
+  it('renders accessible shimmer placeholders for each dashboard list shape', () => {
+    for (const variant of ['candidate', 'job', 'role']) {
+      const shimmer = mount(SkeletonShimmer, { props: { variant, count: 2, label: `Loading ${variant}s` } })
+      expect(shimmer.get('[role="status"]').attributes('aria-label')).toBe(`Loading ${variant}s`)
+      expect(shimmer.findAll('.skeleton-card')).toHaveLength(2)
+      expect(shimmer.get('.skeleton-list').classes()).toContain(`skeleton-list--${variant}`)
+    }
   })
 
   it('starts an immediate count without waiting for visibility', () => {

@@ -6,8 +6,10 @@ import { useJobsStore } from '../stores/jobs'
 import { useProfileStore } from '../stores/profile'
 import { useSavedCandidates } from '../composables/useSavedCandidates'
 import { MAX_VISIBLE_CANDIDATES } from '../utils/jobDisplay'
+import { withMinimumDelay } from '../utils/minimumDelay'
 import BrandLogo from './BrandLogo.vue'
 import CandidateCard from './CandidateCard.vue'
+import SkeletonShimmer from './ui/SkeletonShimmer.vue'
 import '../hiring-dashboard.css'
 
 const route = useRoute()
@@ -47,8 +49,10 @@ function buildParams() {
 async function load() {
   loading.value = true
   try {
-    await profileStore.fetchProfile().catch(() => {})
-    await jobsStore.loadNearbyCandidates(buildParams(), { force: true })
+    await withMinimumDelay(async () => {
+      await profileStore.fetchProfile().catch(() => {})
+      await jobsStore.loadNearbyCandidates(buildParams(), { force: true })
+    })
   } catch {
   } finally {
     loading.value = false
@@ -85,7 +89,7 @@ function shortlist(candidate) {
     </header>
 
     <main class="hiring-dashboard">
-      <section class="candidate-list">
+      <section class="candidate-list" :aria-busy="loading">
         <div class="candidate-list__head">
           <div>
             <span class="hiring-kicker">Recommended</span>
@@ -94,10 +98,7 @@ function shortlist(candidate) {
           <span>{{ candidates.length }} results</span>
         </div>
 
-        <div v-if="loading" class="candidate-empty">
-          <strong>Searching talent...</strong>
-          <p>Finding every worker that matches your search.</p>
-        </div>
+        <SkeletonShimmer v-if="loading" label="Searching talent" />
 
         <template v-else>
           <CandidateCard

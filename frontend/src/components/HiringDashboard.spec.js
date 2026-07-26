@@ -25,6 +25,17 @@ describe('HiringDashboard', () => {
     expect(wrapper.text()).toContain('No talent found')
   })
 
+  it('shows shaped shimmer lists while roles and candidates load', () => {
+    const wrapper = mountHiringDashboard({ rolesLoading: true, candidatesLoading: true })
+
+    expect(wrapper.find('.hiring-roles').attributes('aria-busy')).toBe('true')
+    expect(wrapper.find('.candidate-list').attributes('aria-busy')).toBe('true')
+    expect(wrapper.find('.hiring-roles .skeleton-list--role').exists()).toBe(true)
+    expect(wrapper.find('.candidate-list .skeleton-list--candidate').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('No open roles yet')
+    expect(wrapper.text()).not.toContain('No talent found')
+  })
+
   it('renders a candidate with no name without throwing', () => {
     const wrapper = mountHiringDashboard({ candidates: [{ id: 1, name: null, matchScore: 70 }] })
 

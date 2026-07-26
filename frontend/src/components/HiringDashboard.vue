@@ -10,10 +10,11 @@ import CandidateCard from './CandidateCard.vue'
 import CountUp from './CountUp.vue'
 import RoleCard from './RoleCard.vue'
 import AnimatedCard from './ui/AnimatedCard.vue'
-import MessageLoading from './ui/MessageLoading.vue'
+import SkeletonShimmer from './ui/SkeletonShimmer.vue'
 
 const props = defineProps({
   myJobs: { type: Array, default: () => [] },
+  rolesLoading: { type: Boolean, default: false },
   candidates: { type: Array, default: () => [] },
   candidatesLoading: { type: Boolean, default: false },
   locationLabel: { type: String, default: '' },
@@ -196,7 +197,7 @@ function openCandidate(candidate) {
         </AnimatedCard>
       </div>
 
-    <section class="hiring-roles">
+    <section class="hiring-roles" :aria-busy="rolesLoading">
       <div class="hiring-roles__head">
         <div>
           <span class="hiring-kicker">Hiring desk</span>
@@ -204,31 +205,34 @@ function openCandidate(candidate) {
         </div>
       </div>
 
-      <div class="hiring-role-grid">
-        <RoleCard
-          v-for="item in visibleRoles"
-          :key="item.id || item.title"
-          :item="item"
-          action-label="View Summary"
-          counts-clickable
-          @view="emit('view-job', $event)"
-          @action="emit('view-applications', $event)"
-          @view-applicants="emit('view-applicants', $event)"
-          @view-shortlisted="emit('view-shortlisted', $event)"
-        />
-      </div>
-      <div v-if="hasMoreRoles" class="hiring-show-more">
-        <button type="button" class="hiring-show-more__btn" @click="showAllRoles">
-          Show more roles ({{ openRoles.length }} total)
-        </button>
-      </div>
-      <div v-if="!openRoles.length" class="candidate-empty">
-        <strong>No open roles yet</strong>
-        <p>Post a role to start tracking applicants and matches.</p>
-      </div>
+      <SkeletonShimmer v-if="rolesLoading" variant="role" label="Loading roles" />
+      <template v-else>
+        <div class="hiring-role-grid">
+          <RoleCard
+            v-for="item in visibleRoles"
+            :key="item.id || item.title"
+            :item="item"
+            action-label="View Summary"
+            counts-clickable
+            @view="emit('view-job', $event)"
+            @action="emit('view-applications', $event)"
+            @view-applicants="emit('view-applicants', $event)"
+            @view-shortlisted="emit('view-shortlisted', $event)"
+          />
+        </div>
+        <div v-if="hasMoreRoles" class="hiring-show-more">
+          <button type="button" class="hiring-show-more__btn" @click="showAllRoles">
+            Show more roles ({{ openRoles.length }} total)
+          </button>
+        </div>
+        <div v-if="!openRoles.length" class="candidate-empty">
+          <strong>No open roles yet</strong>
+          <p>Post a role to start tracking applicants and matches.</p>
+        </div>
+      </template>
     </section>
 
-    <section class="candidate-list">
+    <section class="candidate-list" :aria-busy="candidatesLoading">
       <div class="candidate-list__head">
         <div>
           <span class="hiring-kicker">Recommended</span>
@@ -276,11 +280,7 @@ function openCandidate(candidate) {
         </form>
       </div>
 
-      <div v-if="candidatesLoading" class="candidate-empty">
-        <MessageLoading label="Searching talent" />
-        <strong>Searching talent...</strong>
-        <p>Finding workers that match your search.</p>
-      </div>
+      <SkeletonShimmer v-if="candidatesLoading" label="Searching talent" />
 
       <template v-else>
         <AnimatedList
