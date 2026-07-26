@@ -17,6 +17,10 @@ describe('WorkerDashboard', () => {
     const wrapper = mount(WorkerDashboard, {
       props: { user: { profileCompletionPercent: 95 }, jobs: [job], locationLabel: 'Mysuru' },
     })
+    const progress = wrapper.get('[role="progressbar"]')
+
+    expect(progress.attributes('aria-valuenow')).toBe('95')
+    expect(progress.get('b').attributes('style')).toContain('width: 95%')
 
     await wrapper.findAll('button').find((item) => item.text() === 'Applied jobs').trigger('click')
     await wrapper.findAll('button').find((item) => item.text() === 'Update profile').trigger('click')
@@ -48,7 +52,7 @@ describe('WorkerDashboard', () => {
     const applied = mount(WorkerDashboard, {
       props: { user, jobs: [job], applications: [{ jobPostId: 'job-1' }] },
     })
-    expect(applied.text()).toContain('100%')
+    expect(applied.get('[role="progressbar"]').attributes('aria-valuenow')).toBe('100')
     expect(applied.findAll('button').find((item) => item.text() === 'Applied').attributes('disabled')).toBeDefined()
 
     await applied.setProps({ applications: [], applying: 'job-1' })

@@ -93,8 +93,14 @@ function hasApplied(jobId) {
       >
         <div class="hiring-progress">
           <span>Profile score</span>
-          <strong>{{ profileScore }}%</strong>
-          <i><b :style="{ width: `${profileScore}%` }"></b></i>
+          <strong><CountUp :to="profileScore" separator="" suffix="%" /></strong>
+          <i
+            role="progressbar"
+            aria-label="Profile score"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            :aria-valuenow="profileScore"
+          ><b :style="{ width: `${profileScore}%` }"></b></i>
         </div>
       </AnimatedCard>
 
@@ -222,6 +228,20 @@ function hasApplied(jobId) {
 .worker-dashboard .hiring-kicker::before,
 .worker-dashboard .hiring-progress b {
   background: linear-gradient(90deg, var(--worker-role-green-start), var(--worker-role-green-end));
+}
+
+.worker-dashboard .hiring-progress b {
+  transform-origin: left;
+  animation: profile-progress 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes profile-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .worker-dashboard .hiring-progress b { animation: none; }
 }
 
 .worker-dashboard .hiring-quick__link {

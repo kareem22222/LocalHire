@@ -442,7 +442,7 @@
   gap: 8px;
 }
 
-.hiring-progress span {
+.hiring-progress > span {
   color: #5d7482;
   font-size: 12px;
   font-weight: 800;
