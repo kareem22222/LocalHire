@@ -60,6 +60,10 @@ export function clearAuth() {
   clearSavedCandidates()
 }
 
+export function hasAuthToken() {
+  return Boolean(accessToken)
+}
+
 export async function isAuthenticated() {
   if (!accessToken) return false
   try {

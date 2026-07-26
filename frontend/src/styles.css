@@ -7,6 +7,41 @@
 
 @import "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap";
 
+.iris-curtain {
+  --iris-x: 50vw;
+  --iris-y: 50vh;
+  position: fixed;
+  z-index: 2147483647;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(135deg, #07559a 0%, #15937b 58%, #21a947 100%);
+  clip-path: circle(0 at var(--iris-x) var(--iris-y));
+  will-change: clip-path, opacity;
+}
+
+.iris-curtain--cover {
+  animation: iris-cover 480ms cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+
+.iris-curtain--reveal {
+  animation: iris-reveal 260ms ease-out both;
+}
+
+@keyframes iris-cover {
+  from { opacity: 1; clip-path: circle(0 at var(--iris-x) var(--iris-y)); }
+  to { opacity: 1; clip-path: circle(150vmax at var(--iris-x) var(--iris-y)); }
+}
+
+@keyframes iris-reveal {
+  from { opacity: 1; clip-path: circle(150vmax at var(--iris-x) var(--iris-y)); }
+  to { opacity: 0; clip-path: circle(150vmax at var(--iris-x) var(--iris-y)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iris-curtain { display: none; }
+}
+
 /* ---------- Reset & Base ---------- */
 :root {
   --worker-role-green-start: #188853;
