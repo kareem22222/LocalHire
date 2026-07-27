@@ -2,6 +2,8 @@
 // same display logic can be reused and unit-tested in isolation (SRP).
 
 export const MAX_VISIBLE_CANDIDATES = 10
+export const MAX_VISIBLE_ROLES = 6
+export const MAX_VISIBLE_JOBS = 6
 
 // Builds "City, State - Pincode" from the parts that are present.
 export function formatJobLocation(job) {

@@ -7,6 +7,7 @@ import {
   formatExperience,
   formatJobLocation,
   formatSalary,
+  MAX_VISIBLE_JOBS,
 } from '../utils/jobDisplay'
 import { moveSpotlight, resetSpotlight } from '../utils/spotlightCard'
 import BorderGlow from './BorderGlow.vue'
@@ -22,6 +23,8 @@ const props = defineProps({
   locationLabel: { type: String, default: '' },
   locating: { type: Boolean, default: false },
   applying: { type: [String, Number], default: null },
+  listOnly: { type: Boolean, default: false },
+  totalJobs: { type: Number, default: null },
 })
 
 const emit = defineEmits([
@@ -31,6 +34,7 @@ const emit = defineEmits([
   'open-profile',
   'open-job',
   'view-applications',
+  'view-all-jobs',
 ])
 const search = ref('')
 const employmentType = ref('All')
@@ -75,17 +79,20 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
 function hasApplied(jobId) {
   return props.applications.some((application) => application.jobPostId === jobId)
 }
+
+const visibleJobs = computed(() => props.listOnly ? props.jobs : props.jobs.slice(0, MAX_VISIBLE_JOBS))
+const hasMoreJobs = computed(() => !props.listOnly && props.jobs.length > MAX_VISIBLE_JOBS)
 </script>
 
 <template>
-  <main class="hiring-dashboard worker-dashboard">
-    <section class="hiring-metrics">
+  <component :is="listOnly ? 'div' : 'main'" class="hiring-dashboard worker-dashboard">
+    <section v-if="!listOnly" class="hiring-metrics">
       <BorderGlow><strong><CountUp :to="jobs.length" separator="" /></strong><span>matching roles</span></BorderGlow>
       <BorderGlow><strong><CountUp :to="applications.length" separator="" /></strong><span>applications</span></BorderGlow>
       <BorderGlow><strong><CountUp :to="profileScore" separator="" suffix="%" /></strong><span>profile score</span></BorderGlow>
     </section>
 
-    <div class="hiring-side-stack">
+    <div v-if="!listOnly" class="hiring-side-stack">
       <AnimatedCard
         class="hiring-sidebar"
         title="Profile strength"
@@ -123,10 +130,10 @@ function hasApplied(jobId) {
           <span class="hiring-kicker">Looking for work</span>
           <h2>Roles for you</h2>
         </div>
-        <span class="worker-results">{{ jobs.length }} results</span>
+        <span class="worker-results">{{ totalJobs ?? jobs.length }} results</span>
       </div>
 
-      <form class="worker-search" @submit.prevent="runSearch">
+      <form v-if="!listOnly" class="worker-search" @submit.prevent="runSearch">
         <div class="worker-search__primary">
           <div class="hiring-search">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -160,9 +167,9 @@ function hasApplied(jobId) {
 
       <SkeletonShimmer v-if="loading" variant="job" label="Searching roles..." />
 
-      <div v-else-if="jobs.length" class="worker-job-list">
+      <div v-else-if="visibleJobs.length" class="worker-job-list">
         <article
-          v-for="job in jobs"
+          v-for="job in visibleJobs"
           :key="job.id"
           class="worker-job-row spotlight-card spotlight-card--worker"
           @pointermove="moveSpotlight"
@@ -199,12 +206,20 @@ function hasApplied(jobId) {
         </article>
       </div>
 
-      <div v-else class="candidate-empty">
+      <div v-if="hasMoreJobs" class="worker-show-more">
+        <button type="button" class="worker-show-more__btn" @click="emit('view-all-jobs', searchPayload())">
+          Show more roles ({{ jobs.length }} total)
+        </button>
+      </div>
+
+      <div v-if="!loading && !visibleJobs.length" class="candidate-empty">
         <strong>No roles found</strong>
         <p>Try another role, area, employment type, or use your current location.</p>
       </div>
+
+      <slot />
     </section>
-  </main>
+  </component>
 </template>
 
 <style scoped>
@@ -348,6 +363,11 @@ function hasApplied(jobId) {
   gap: 12px;
   animation: worker-list-reveal 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+
+.worker-show-more { display: flex; justify-content: center; margin-top: 4px; }
+.worker-show-more__btn { padding: 12px 24px; color: var(--worker-role-green-text); border: 1.5px solid rgba(var(--worker-role-green-rgb),.28); border-radius: 999px; background: #fff; font-size: 14px; font-weight: 800; cursor: pointer; transition: background .15s ease,border-color .15s ease; }
+.worker-show-more__btn:hover { border-color: rgba(var(--worker-role-green-rgb),.55); background: rgba(var(--worker-role-green-rgb),.08); }
+.worker-show-more__btn:focus-visible { outline: 3px solid rgba(var(--worker-role-green-rgb),.24); outline-offset: 2px; }
 
 @keyframes worker-list-reveal {
   from { opacity: 0; transform: translateY(6px); }

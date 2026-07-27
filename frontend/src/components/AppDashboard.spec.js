@@ -222,6 +222,29 @@ describe('AppDashboard', () => {
     expect(wrapper.find('.auth-modal__close').attributes('aria-label')).toBe('Close applicants dialog')
   })
 
+  it('keeps the applicant dialog short and opens the paginated applicant page', async () => {
+    const applications = Array.from({ length: 6 }, (_, index) => ({
+      id: `application-${index}`,
+      workerName: `Worker ${index}`,
+      status: 'Applied',
+      appliedAt: '2026-07-27T00:00:00Z',
+    }))
+    api.get.mockImplementation((url) => Promise.resolve({
+      data: url === '/auth/me'
+        ? { name: 'Pat', role: 'Hiring' }
+        : url.endsWith('/applications') ? applications : [],
+    }))
+    const wrapper = mountDashboard()
+    await flushPromises()
+    const push = vi.spyOn(wrapper.vm.$router, 'push')
+    await wrapper.vm.viewApplications('job-id')
+    await flushPromises()
+
+    expect(wrapper.findAll('.applicant-row')).toHaveLength(5)
+    await wrapper.findAll('button').find((button) => button.text().includes('Show more applicants')).trigger('click')
+    expect(push).toHaveBeenCalledWith({ name: 'job-applicants', params: { id: 'job-id' } })
+  })
+
   it('navigates to the all-roles page from the roles show-more button', async () => {
     const jobs = Array.from({ length: 7 }, (_, index) => ({
       id: `job-${index}`,

@@ -1,21 +1,27 @@
 <script setup>
 import { storeToRefs } from 'pinia'
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useOpenRoles } from '../composables/useOpenRoles'
 import { useJobsStore } from '../stores/jobs'
+import { MAX_VISIBLE_ROLES } from '../utils/jobDisplay'
 import { withMinimumDelay } from '../utils/minimumDelay'
 import BrandLogo from './BrandLogo.vue'
+import ListPagination from './ListPagination.vue'
 import RoleCard from './RoleCard.vue'
 import SkeletonShimmer from './ui/SkeletonShimmer.vue'
 import '../hiring-dashboard.css'
 
+const route = useRoute()
 const router = useRouter()
 const jobsStore = useJobsStore()
 const { myJobs } = storeToRefs(jobsStore)
 const loading = ref(true)
 
 const openRoles = useOpenRoles(() => myJobs.value)
+const totalPages = computed(() => Math.ceil(openRoles.value.length / MAX_VISIBLE_ROLES))
+const currentPage = computed(() => Math.min(Math.max(Number.parseInt(route.query.page, 10) || 1, 1), totalPages.value || 1))
+const visibleRoles = computed(() => openRoles.value.slice((currentPage.value - 1) * MAX_VISIBLE_ROLES, currentPage.value * MAX_VISIBLE_ROLES))
 
 onMounted(async () => {
   loading.value = true
@@ -34,6 +40,10 @@ function goBack() {
 
 function goViewJob(id) {
   router.push(`/jobs/${id}`)
+}
+
+function changePage(page) {
+  router.push({ query: { ...route.query, page: page === 1 ? undefined : String(page) } })
 }
 </script>
 
@@ -61,7 +71,7 @@ function goViewJob(id) {
         <template v-else>
           <div class="hiring-role-grid">
             <RoleCard
-              v-for="item in openRoles"
+              v-for="item in visibleRoles"
               :key="item.id || item.title"
               :item="item"
               action-label="View role"
@@ -69,6 +79,8 @@ function goViewJob(id) {
               @action="goViewJob"
             />
           </div>
+
+          <ListPagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
 
           <div v-if="!openRoles.length" class="candidate-empty">
             <strong>No open roles yet</strong>

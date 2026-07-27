@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import '../hiring-dashboard.css'
 import { useOpenRoles } from '../composables/useOpenRoles'
 import { useSavedCandidates } from '../composables/useSavedCandidates'
-import { MAX_VISIBLE_CANDIDATES } from '../utils/jobDisplay'
+import { MAX_VISIBLE_CANDIDATES, MAX_VISIBLE_ROLES } from '../utils/jobDisplay'
 import AnimatedList from './AnimatedList.vue'
 import BorderGlow from './BorderGlow.vue'
 import CandidateCard from './CandidateCard.vue'
@@ -39,10 +39,6 @@ const emit = defineEmits([
 
 const search = ref('')
 const role = ref('All')
-
-// How many items to show on the dashboard before offering a dedicated "show all"
-// page. Kept small so the dashboard stays scannable.
-const MAX_VISIBLE_ROLES = 6
 
 // Curated roles employers commonly hire for. Kept in sync with the roles used to
 // seed worker profiles so selecting one returns real matches.

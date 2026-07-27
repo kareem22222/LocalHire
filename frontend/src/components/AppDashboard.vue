@@ -103,6 +103,8 @@ onMounted(fetchProfile)
 //  HIRING
 // ============================================================
 const selectedJobApplications = ref(null)
+const selectedJobId = ref(null)
+const visibleSelectedApplications = computed(() => selectedJobApplications.value?.slice(0, 5) || [])
 const rolesLoading = ref(true)
 
 function goCreateJob() {
@@ -240,6 +242,7 @@ function useEmployerLocation() {
 async function viewApplications(jobId) {
   try {
     selectedJobApplications.value = await jobsStore.loadJobApplications(jobId)
+    selectedJobId.value = jobId
     activeTab.value = 'applications'
   } catch {
   }
@@ -247,11 +250,13 @@ async function viewApplications(jobId) {
 
 function closeApplications() {
   selectedJobApplications.value = null
+  selectedJobId.value = null
   activeTab.value = 'dashboard'
 }
 
 function goToDashboard() {
   selectedJobApplications.value = null
+  selectedJobId.value = null
   activeTab.value = 'dashboard'
   if (route.path !== '/' || route.query.tab) router.push('/')
 }
@@ -294,6 +299,19 @@ function goWorkerJob(id) {
 
 function goWorkerApplications() {
   router.push({ name: 'worker-applications' })
+}
+
+function showAllSelectedApplications() {
+  const id = selectedJobId.value
+  closeApplications()
+  if (id) goJobApplicants(id)
+}
+
+function goAllWorkerJobs(payload = {}) {
+  const query = {}
+  if (payload.search) query.search = payload.search
+  if (payload.employmentType) query.employmentType = payload.employmentType
+  router.push({ path: '/work/jobs', query })
 }
 
 function requestLocation() {
@@ -411,13 +429,16 @@ async function applyToJob(jobId) {
         <button class="auth-modal__close" @click="closeApplications" aria-label="Close applicants dialog">&times;</button>
         <h2 id="applicants-dialog-title" class="auth-modal__title" style="margin-bottom: 20px;">Applicants</h2>
         <div v-if="selectedJobApplications.length === 0" class="dash-empty">No applications yet.</div>
-        <div v-for="app in selectedJobApplications" :key="app.id" class="applicant-row">
+        <div v-for="app in visibleSelectedApplications" :key="app.id" class="applicant-row">
           <div class="applicant-row__info">
             <strong>{{ app.workerName }}</strong>
             <span class="applicant-row__status">{{ app.status }}</span>
           </div>
           <span class="applicant-row__date">{{ new Date(app.appliedAt).toLocaleDateString() }}</span>
         </div>
+        <button v-if="selectedJobApplications.length > 5" type="button" class="dash-btn dash-btn--primary" @click="showAllSelectedApplications">
+          Show more applicants ({{ selectedJobApplications.length }} total)
+        </button>
       </div>
     </div>
 
@@ -437,6 +458,7 @@ async function applyToJob(jobId) {
       @open-profile="handleProfileClick"
       @open-job="goWorkerJob"
       @view-applications="goWorkerApplications"
+      @view-all-jobs="goAllWorkerJobs"
     />
 
     <main v-else-if="user && !isHiringUser && activeTab !== 'profile'" class="dash-main">

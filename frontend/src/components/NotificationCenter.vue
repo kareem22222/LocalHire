@@ -9,6 +9,7 @@ const root = useTemplateRef('root')
 const open = ref(false)
 const tab = ref('unread')
 const visibleItems = computed(() => tab.value === 'unread' ? store.unread : store.read)
+const previewItems = computed(() => visibleItems.value.slice(0, 5))
 let refreshTimer
 
 function toggle() {
@@ -27,6 +28,11 @@ async function selectNotification(notification) {
   if (!notification.isRead) await store.markRead(notification.id)
   open.value = false
   if (notification.link) await router.push(notification.link)
+}
+
+function showAll() {
+  open.value = false
+  router.push({ name: 'notifications', query: { status: tab.value } })
 }
 
 onMounted(() => {
@@ -90,7 +96,7 @@ onUnmounted(() => {
           {{ tab === 'unread' ? 'You are all caught up.' : 'No read notifications yet.' }}
         </p>
         <button
-          v-for="notification in visibleItems"
+          v-for="notification in previewItems"
           v-else
           :key="notification.id"
           type="button"
@@ -105,6 +111,9 @@ onUnmounted(() => {
             <time :datetime="notification.createdAt">{{ formatTime(notification.createdAt) }}</time>
           </span>
           <b aria-hidden="true">→</b>
+        </button>
+        <button v-if="visibleItems.length > 5" type="button" class="notification-center__show-more" @click="showAll">
+          Show more {{ tab }} notifications ({{ visibleItems.length }} total)
         </button>
       </div>
     </section>
@@ -139,6 +148,8 @@ onUnmounted(() => {
 .notification-center__item time { color: #80939d; font-size: 10px; }
 .notification-center__item b { margin-top: 2px; color: #168caa; }
 .notification-center__state { margin: 0; padding: 48px 20px; color: #718894; text-align: center; font-size: 13px; }
+.notification-center__show-more { width: calc(100% - 12px); margin: 6px; padding: 11px 14px; color: #07559a; border: 1px solid rgba(7,85,154,.2); border-radius: 999px; background: #fff; font-size: 12px; font-weight: 800; cursor: pointer; }
+.notification-center__show-more:hover { background: #edf6f8; border-color: rgba(7,85,154,.4); }
 @keyframes enter { from { opacity: 0; transform: translateY(-6px) scale(.98); } }
 @media (max-width: 520px) { .notification-center { right: 104px; }.notification-center__panel { position: fixed; top: 76px; right: 16px; left: 16px; width: auto; } }
 @media (prefers-reduced-motion: reduce) { .notification-center__panel { animation: none; } }

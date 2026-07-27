@@ -72,4 +72,20 @@ describe('NotificationCenter', () => {
     expect(wrapper.find('.notification-center__dot').exists()).toBe(false)
     wrapper.unmount()
   })
+
+  it('keeps the panel short and opens the full notifications page', async () => {
+    const items = Array.from({ length: 6 }, (_, index) => ({ ...unreadItem, id: `notification-${index}` }))
+    notificationsApi.getNotifications.mockResolvedValue({ data: { items, unreadCount: items.length } })
+    const router = createTestRouter()
+    await router.push('/')
+    const wrapper = mount(NotificationCenter, { global: { plugins: [createPinia(), router] } })
+    await flushPromises()
+    await wrapper.find('.notification-center__bell').trigger('click')
+
+    expect(wrapper.findAll('.notification-center__item')).toHaveLength(5)
+    await wrapper.get('.notification-center__show-more').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/notifications?status=unread')
+    wrapper.unmount()
+  })
 })

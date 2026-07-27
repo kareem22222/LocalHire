@@ -153,6 +153,16 @@ describe('AppDashboard worker flow', () => {
     expect(findButtonByText(wrapper, 'Applied jobs')).toBeTruthy()
   })
 
+  it('opens the paginated jobs page from an overflowing worker list', async () => {
+    const nearby = Array.from({ length: 7 }, (_, index) => ({ ...fullJob, id: `job-${index}` }))
+    const wrapper = mountAsWorker({ nearby })
+    await flushPromises()
+    const push = vi.spyOn(wrapper.vm.$router, 'push')
+
+    await wrapper.get('.worker-show-more__btn').trigger('click')
+    expect(push).toHaveBeenCalledWith({ path: '/work/jobs', query: {} })
+  })
+
   it('does not duplicate account actions in the dashboard header', async () => {
     const wrapper = mountAsWorker()
     await flushPromises()

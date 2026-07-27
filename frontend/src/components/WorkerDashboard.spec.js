@@ -64,4 +64,13 @@ describe('WorkerDashboard', () => {
     await applied.setProps({ loading: false })
     expect(applied.text()).toContain('No roles found')
   })
+
+  it('keeps the dashboard list short and opens the full jobs page', async () => {
+    const jobs = Array.from({ length: 7 }, (_, index) => ({ ...job, id: `job-${index}` }))
+    const wrapper = mount(WorkerDashboard, { props: { jobs } })
+
+    expect(wrapper.findAll('.worker-job-row')).toHaveLength(6)
+    await wrapper.get('.worker-show-more__btn').trigger('click')
+    expect(wrapper.emitted('view-all-jobs')[0]).toEqual([{ search: '', employmentType: '' }])
+  })
 })
