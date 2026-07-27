@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 534" width="660" height="534">
+  <title>LocalHire role icon library</title>
+  <desc>Preview sheet for the reusable hiring role icons.</desc>
+  <style>
+    .preview-card { fill: #fff; stroke: #dbe7f0; }
+    .preview-icon { fill: none; stroke: #07559a; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .preview-label { fill: #12324a; stroke: none; font: 600 10px system-ui, sans-serif; }
+  </style>
+  <symbol id="generic" viewBox="0 0 24 24">
+    <rect x="3" y="7" width="18" height="13" rx="2"/>
+    <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2"/>
+  </symbol>
+  <symbol id="store-associate" viewBox="0 0 24 24">
+    <path d="M4 10v10h16V10M3 10l2-6h14l2 6"/>
+    <path d="M3 10a3 3 0 0 0 5 2 3 3 0 0 0 4 0 3 3 0 0 0 4 0 3 3 0 0 0 5-2M9 20v-5h6v5"/>
+  </symbol>
+  <symbol id="delivery-partner" viewBox="0 0 24 24">
+    <path d="M3 7h11v10H3zM14 11h4l3 3v3h-7zM1 11h3M1 14h3"/>
+    <circle cx="7" cy="19" r="2"/><circle cx="18" cy="19" r="2"/>
+  </symbol>
+  <symbol id="cashier" viewBox="0 0 24 24">
+    <rect x="5" y="3" width="14" height="18" rx="2"/>
+    <path d="M8 7h8M8 11h2M12 11h2M16 11h.01M8 15h2M12 15h2M16 15h.01M8 19h8"/>
+  </symbol>
+  <symbol id="warehouse-picker" viewBox="0 0 24 24">
+    <path d="M3 21V8l9-5 9 5v13M3 11h18"/>
+    <rect x="6" y="14" width="5" height="4"/><rect x="13" y="14" width="5" height="4"/>
+  </symbol>
+  <symbol id="security-guard" viewBox="0 0 24 24">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    <path d="m9 12 2 2 4-4"/>
+  </symbol>
+  <symbol id="office-assistant" viewBox="0 0 24 24">
+    <rect x="3" y="7" width="18" height="13" rx="2"/>
+    <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2"/>
+  </symbol>
+  <symbol id="customer-support-executive" viewBox="0 0 24 24">
+    <path d="M4 14v-2a8 8 0 0 1 16 0v2M4 14a2 2 0 0 0 2 2h2v-6H6a2 2 0 0 0-2 2M20 14a2 2 0 0 1-2 2h-2v-6h2a2 2 0 0 1 2 2M16 20h-3"/>
+  </symbol>
+  <symbol id="housekeeping-staff" viewBox="0 0 24 24">
+    <path d="m14 4 6 6M16 2l6 6M4 21l9-9 3 3-9 9zM5 16l3 3"/>
+    <path d="M5 3v4M3 5h4M19 16v4M17 18h4"/>
+  </symbol>
+  <symbol id="kitchen-helper" viewBox="0 0 24 24">
+    <path d="M6 11a4 4 0 0 1 2-7 4.5 4.5 0 0 1 8 0 4 4 0 0 1 2 7v8H6zM6 15h12M9 19v-4M15 19v-4"/>
+  </symbol>
+  <symbol id="cafe-server" viewBox="0 0 24 24">
+    <path d="M4 8h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM17 10h2a3 3 0 0 1 0 6h-3M3 22h16M8 2v3M13 2v3"/>
+  </symbol>
+  <symbol id="driver" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9"/>
+    <circle cx="12" cy="12" r="2"/><path d="M3.5 10h17M12 14v7M7 10l5 4 5-4"/>
+  </symbol>
+  <symbol id="electrician" viewBox="0 0 24 24">
+    <path d="m13 2-7 11h6l-1 9 7-12h-6zM4 4l2 2M20 4l-2 2"/>
+  </symbol>
+  <symbol id="plumber" viewBox="0 0 24 24">
+    <path d="M4 3v6a3 3 0 0 0 3 3h3M20 3v6a3 3 0 0 1-3 3h-3M10 9h4v6h-4zM12 15v6"/>
+    <path d="M9 21h6"/>
+  </symbol>
+  <symbol id="sales-associate" viewBox="0 0 24 24">
+    <path d="M20 13 13 20a2 2 0 0 1-3 0l-6-6a2 2 0 0 1 0-3l7-7h7l2 2z"/>
+    <circle cx="15" cy="9" r="1"/>
+  </symbol>
+  <symbol id="data-entry-operator" viewBox="0 0 24 24">
+    <rect x="3" y="5" width="18" height="14" rx="2"/>
+    <path d="M7 9h.01M11 9h.01M15 9h.01M7 13h.01M11 13h.01M15 13h2M7 17h10"/>
+  </symbol>
+  <symbol id="receptionist" viewBox="0 0 24 24">
+    <path d="M4 17h16M2 21h20M6 17a6 6 0 0 1 12 0M12 8V5"/>
+    <circle cx="12" cy="4" r="1"/>
+  </symbol>
+  <symbol id="tailor" viewBox="0 0 24 24">
+    <circle cx="6" cy="7" r="3"/><circle cx="6" cy="17" r="3"/>
+    <path d="m8.5 8.5 12 8.5M8.5 15.5 20.5 7M12 12l2 2"/>
+  </symbol>
+  <symbol id="machine-operator" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z"/>
+  </symbol>
+  <symbol id="pharmacy-assistant" viewBox="0 0 24 24">
+    <path d="M7 4h10v5a5 5 0 0 1-10 0zM12 14v7M8 21h8M9 7h6M12 5v4M10 7h4"/>
+  </symbol>
+  <symbol id="field-technician" viewBox="0 0 24 24">
+    <path d="M14.7 6.3a4 4 0 0 0-5-5L12 3.6 9.6 6 7.3 3.7a4 4 0 0 0 5 5L4 17l3 3 8.3-8.3a4 4 0 0 0 5-5L18 9l-3-3z"/>
+  </symbol>
+
+  <rect width="660" height="534" fill="#f6f9fc"/>
+  <g transform="translate(20 20)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#generic" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Generic fallback</text></g>
+  <g transform="translate(230 20)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#store-associate" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Store associate</text></g>
+  <g transform="translate(440 20)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#delivery-partner" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Delivery partner</text></g>
+  <g transform="translate(20 92)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#cashier" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Cashier</text></g>
+  <g transform="translate(230 92)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#warehouse-picker" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Warehouse picker</text></g>
+  <g transform="translate(440 92)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#security-guard" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Security guard</text></g>
+  <g transform="translate(20 164)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#office-assistant" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Office assistant</text></g>
+  <g transform="translate(230 164)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#customer-support-executive" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Customer support</text></g>
+  <g transform="translate(440 164)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#housekeeping-staff" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Housekeeping staff</text></g>
+  <g transform="translate(20 236)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#kitchen-helper" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Kitchen helper</text></g>
+  <g transform="translate(230 236)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#cafe-server" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Cafe server</text></g>
+  <g transform="translate(440 236)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#driver" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Driver</text></g>
+  <g transform="translate(20 308)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#electrician" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Electrician</text></g>
+  <g transform="translate(230 308)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#plumber" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Plumber</text></g>
+  <g transform="translate(440 308)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#sales-associate" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Sales associate</text></g>
+  <g transform="translate(20 380)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#data-entry-operator" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Data entry operator</text></g>
+  <g transform="translate(230 380)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#receptionist" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Receptionist</text></g>
+  <g transform="translate(440 380)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#tailor" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Tailor</text></g>
+  <g transform="translate(20 452)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#machine-operator" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Machine operator</text></g>
+  <g transform="translate(230 452)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#pharmacy-assistant" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Pharmacy assistant</text></g>
+  <g transform="translate(440 452)"><rect class="preview-card" width="200" height="62" rx="12"/><use class="preview-icon" href="#field-technician" x="16" y="15" width="32" height="32"/><text class="preview-label" x="60" y="36">Field technician</text></g>
+</svg>

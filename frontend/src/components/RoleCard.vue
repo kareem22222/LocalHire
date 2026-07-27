@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { roleIconHref } from '../utils/roleIcon'
 
 defineProps({
   item: { type: Object, required: true },
@@ -36,7 +37,7 @@ function onFocusOut(event) {
 
         <div class="hiring-role-card__visual" aria-hidden="true">
           <span>
-            <svg viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+            <svg viewBox="0 0 24 24"><use :href="roleIconHref(item.title)" /></svg>
           </span>
         </div>
 
@@ -206,7 +207,7 @@ function onFocusOut(event) {
 
 .hiring-role-card__visual {
   position: absolute;
-  top: 55%;
+  top: 48%;
   left: 50%;
   display: flex;
   width: 200px;
@@ -223,13 +224,13 @@ function onFocusOut(event) {
   z-index: 1;
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 68px;
+  height: 68px;
   position: absolute;
   inset: 0;
   margin: auto;
   color: #fff;
-  border-radius: 12px;
+  border-radius: 17px;
   background: linear-gradient(135deg, #07559a, #0966ad 56%, #0877c9);
   box-shadow: 0 10px 15px -3px rgba(7, 85, 154, 0.25);
   transition: transform 500ms ease;
@@ -241,8 +242,8 @@ function onFocusOut(event) {
 }
 
 .hiring-role-card__visual svg {
-  width: 24px;
-  height: 24px;
+  width: 36px;
+  height: 36px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;

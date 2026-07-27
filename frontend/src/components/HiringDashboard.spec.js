@@ -283,6 +283,7 @@ describe('HiringDashboard', () => {
     const roleCard = wrapper.find('.hiring-role-card')
     expect(roleCard.find('.hiring-role-card__visual').exists()).toBe(true)
     expect(roleCard.findAll('.hiring-role-card__visual i')).toHaveLength(0)
+    expect(roleCard.find('.hiring-role-card__visual use').attributes('href')).toBe('/role-icons.svg#cashier')
     expect(roleCard.classes()).not.toContain('hiring-role-card--flipped')
     expect(roleCard.find('.hiring-role-card__back').attributes('aria-hidden')).toBe('true')
 
