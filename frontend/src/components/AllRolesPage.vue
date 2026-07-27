@@ -16,7 +16,7 @@ const router = useRouter()
 const jobsStore = useJobsStore()
 const { myJobs } = storeToRefs(jobsStore)
 const loading = ref(true)
-const ROLES_PER_PAGE = 30
+const ROLES_PER_PAGE = 15
 
 const openRoles = useOpenRoles(() => myJobs.value)
 const totalPages = computed(() => Math.ceil(openRoles.value.length / ROLES_PER_PAGE))
