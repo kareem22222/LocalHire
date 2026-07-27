@@ -46,6 +46,7 @@ function mountAppWithAuthMode(mode) {
         },
         BrandLogo: true,
         NetworkBackground: true,
+        NotificationCenter: { template: '<div class="fake-notifications" />' },
         StaggeredMenu: {
           props: ['items', 'account'],
           emits: ['select'],
@@ -109,6 +110,7 @@ describe('App authenticated menu', () => {
   it('routes profile and sign out actions from StaggeredMenu', async () => {
     const wrapper = mountAppWithAuthMode('login')
     await flushPromises()
+    expect(wrapper.find('.fake-notifications').exists()).toBe(true)
 
     await wrapper.find('.fake-menu-profile').trigger('click')
     await flushPromises()

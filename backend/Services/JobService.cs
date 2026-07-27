@@ -74,6 +74,26 @@ public sealed class JobService : IJobService
 
         JobMapper.ApplyRequest(jobPost, request);
 
+        _db.ChangeTracker.DetectChanges();
+        if (_db.Entry(jobPost).State == EntityState.Modified)
+        {
+            var workerIds = await _db.JobApplications
+                .Where(application => application.JobPostId == id)
+                .Select(application => application.WorkerId)
+                .Distinct()
+                .ToListAsync(ct);
+            _db.Notifications.AddRange(workerIds.Select(workerId => new Notification
+            {
+                Id = Guid.NewGuid(),
+                UserId = workerId,
+                Type = "JobUpdated",
+                Title = "An applied job was updated",
+                Message = $"{jobPost.Title} at {jobPost.WorkplaceName} has new details.",
+                Link = $"/work/jobs/{jobPost.Id}",
+                CreatedAt = DateTimeOffset.UtcNow
+            }));
+        }
+
         await _db.SaveChangesAsync(ct);
 
         var count = await _db.JobApplications.CountAsync(a => a.JobPostId == id, ct);
@@ -119,6 +139,16 @@ public sealed class JobService : IJobService
         if (application.Status != ApplicationStatus.Shortlisted)
         {
             application.Status = ApplicationStatus.Shortlisted;
+            _db.Notifications.Add(new Notification
+            {
+                Id = Guid.NewGuid(),
+                UserId = application.WorkerId,
+                Type = "Shortlisted",
+                Title = "You were shortlisted",
+                Message = $"{jobPost.WorkplaceName} shortlisted you for {jobPost.Title}.",
+                Link = $"/work/jobs/{jobPost.Id}",
+                CreatedAt = DateTimeOffset.UtcNow
+            });
             await _db.SaveChangesAsync(ct);
         }
 
@@ -503,7 +533,22 @@ public sealed class JobService : IJobService
             CreatedAt = DateTimeOffset.UtcNow
         };
 
+        var workerName = await _db.Users
+            .Where(worker => worker.Id == workerId)
+            .Select(worker => worker.Name)
+            .FirstAsync(ct);
+
         _db.JobApplications.Add(application);
+        _db.Notifications.Add(new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = jobPost.EmployerId,
+            Type = "NewApplication",
+            Title = "New application received",
+            Message = $"{workerName} applied for {jobPost.Title}.",
+            Link = $"/hiring/jobs/{jobPost.Id}/applicants",
+            CreatedAt = DateTimeOffset.UtcNow
+        });
         try
         {
             await _db.SaveChangesAsync(ct);

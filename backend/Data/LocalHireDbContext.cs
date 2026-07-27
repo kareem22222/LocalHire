@@ -15,6 +15,7 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
     public DbSet<User> Users => Set<User>();
     public DbSet<JobPost> JobPosts => Set<JobPost>();
     public DbSet<JobApplication> JobApplications => Set<JobApplication>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -151,6 +152,23 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
                 .WithMany(u => u.JobApplications)
                 .HasForeignKey(a => new { a.WorkerId, a.WorkerRole })
                 .HasPrincipalKey(u => new { u.Id, u.Role })
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.HasKey(notification => notification.Id);
+            entity.Property(notification => notification.Type).HasMaxLength(50).IsRequired();
+            entity.Property(notification => notification.Title).HasMaxLength(200).IsRequired();
+            entity.Property(notification => notification.Message).HasMaxLength(1000).IsRequired();
+            entity.Property(notification => notification.Link).HasMaxLength(300).IsRequired(false);
+            entity.Property(notification => notification.IsRead).HasDefaultValue(false);
+            entity.Property(notification => notification.ReadAt).IsRequired(false);
+            entity.HasIndex(notification => new { notification.UserId, notification.IsRead, notification.CreatedAt });
+
+            entity.HasOne(notification => notification.User)
+                .WithMany(user => user.Notifications)
+                .HasForeignKey(notification => notification.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

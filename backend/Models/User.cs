@@ -44,4 +44,5 @@ public sealed class User
 
     public ICollection<JobPost> JobPosts { get; set; } = new List<JobPost>();
     public ICollection<JobApplication> JobApplications { get; set; } = new List<JobApplication>();
+    public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 }

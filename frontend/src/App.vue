@@ -15,10 +15,12 @@ import CountUp from './components/CountUp.vue'
 import Dock from './components/Dock.vue'
 import LineSidebar from './components/LineSidebar.vue'
 import NetworkBackground from './components/NetworkBackground.vue'
+import NotificationCenter from './components/NotificationCenter.vue'
 import PrivacyPolicy from './components/privacypolicy.vue'
 import SpecularButton from './components/SpecularButton.vue'
 import StaggeredMenu from './components/StaggeredMenu.vue'
 import { useProfileStore } from './stores/profile'
+import { useNotificationsStore } from './stores/notifications'
 import { normalizeRole } from './utils/role'
 import { logout } from './utils/session'
 gsap.registerPlugin(ScrollTrigger)
@@ -36,6 +38,7 @@ const heroContentRef = ref(null)
 const showPrivacyPolicy = ref(false)
 const router = useRouter()
 const profileStore = useProfileStore()
+const notificationsStore = useNotificationsStore()
 const { profile: authUser } = storeToRefs(profileStore)
 
 const navItems = [
@@ -120,6 +123,7 @@ function handleAuthNav(item) {
   if (item.action === 'profile') return router.push({ path: '/', query: { tab: 'profile' } })
   if (item.action === 'logout') {
     profileStore.clear()
+    notificationsStore.clear()
     return logout()
   }
   router.push(item.path)
@@ -213,6 +217,7 @@ onUnmounted(() => {
   @cta="openModal('', 'LookingForWork', 'login')"
  />
  <StaggeredMenu v-if="isAuth === true" :items="authMenuItems" :account="authAccount" @select="handleAuthNav" />
+ <NotificationCenter v-if="isAuth === true" />
  <Dock v-if="isAuth === false && !showPrivacyPolicy" class="quick-dock" :items="quickDockItems" @select="handleNav" />
 
  <AuthModal
