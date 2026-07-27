@@ -14,8 +14,8 @@ export function updateLocation(coords) {
   return api.put('/me/location', coords)
 }
 
-export function uploadResume(file) {
+export function uploadResume(file, onUploadProgress) {
   const data = new FormData()
   data.append('resume', file)
-  return api.put('/me/resume', data)
+  return api.put('/me/resume', data, { onUploadProgress })
 }

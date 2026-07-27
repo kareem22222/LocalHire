@@ -98,7 +98,7 @@ describe('AppliedJobsPage', () => {
     await flushPromises()
 
     expect(wrapper.findAll('.applied-card')).toHaveLength(6)
-    await wrapper.findAll('.list-pagination button')[1].trigger('click')
+    await wrapper.find('[aria-label="Page 2 of 2"]').trigger('click')
     await flushPromises()
     expect(wrapper.findAll('.applied-card')).toHaveLength(1)
     expect(wrapper.text()).toContain('Page 2 of 2')

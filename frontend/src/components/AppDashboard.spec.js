@@ -500,5 +500,36 @@ describe('AppDashboard', () => {
       expect(alert).toContain('Maximum expected salary is too low.')
       expect(alert).toContain('Employer is required.')
     })
+
+    it('shows real resume upload progress and completion', async () => {
+      const profileStore = useProfileStore()
+      profileStore.profile = { name: 'Pat', role: 'LookingForWork', resumeFileName: '' }
+      profileStore.fetchedAt = Date.now()
+      localStorage.setItem('dashboard_tab', 'profile')
+      let reportProgress
+      let finishUpload
+      api.put.mockImplementation((url, _data, config) => {
+        if (url !== '/me/resume') return Promise.resolve({ data: {} })
+        reportProgress = config.onUploadProgress
+        return new Promise((resolve) => {
+          finishUpload = () => resolve({ data: { ...profileStore.profile, resumeFileName: 'pat-cv.pdf' } })
+        })
+      })
+
+      const wrapper = mountDashboard()
+      await flushPromises()
+      const input = wrapper.find('#profile-resume')
+      const file = new File(['%PDF'], 'pat-cv.pdf', { type: 'application/pdf' })
+      Object.defineProperty(input.element, 'files', { value: [file] })
+      await input.trigger('change')
+      reportProgress({ loaded: 2, total: 4 })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[role="progressbar"]').attributes('aria-valuenow')).toBe('50')
+      finishUpload()
+      await flushPromises()
+      expect(wrapper.find('.resume-upload__status').text()).toBe('Uploaded')
+      expect(wrapper.text()).toContain('pat-cv.pdf')
+    })
   })
 })

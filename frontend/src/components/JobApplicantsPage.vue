@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useJobsStore } from '../stores/jobs'
 import BrandLogo from './BrandLogo.vue'
 import CandidateCard from './CandidateCard.vue'
-import ListPagination from './ListPagination.vue'
+import Pagination from './ui/Pagination.vue'
 import { MAX_VISIBLE_CANDIDATES } from '../utils/jobDisplay'
 import '../hiring-dashboard.css'
 
@@ -162,7 +162,7 @@ async function shortlist(candidate) {
             @contact="contact"
           />
 
-          <ListPagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
+          <Pagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
 
           <div v-if="!visibleApplicants.length" class="candidate-empty">
             <strong>Nothing here yet</strong>

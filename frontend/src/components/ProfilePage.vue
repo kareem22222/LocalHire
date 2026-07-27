@@ -1,6 +1,8 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import WorkerProfileSections from './WorkerProfileSections.vue'
+import DatePicker from './ui/DatePicker.vue'
+import ResumeUpload from './ui/ResumeUpload.vue'
 import ScrambleText from './ui/ScrambleText.vue'
 
 const props = defineProps({
@@ -8,6 +10,9 @@ const props = defineProps({
   saving: { type: Boolean, default: false },
   saveVersion: { type: Number, default: 0 },
   saveErrors: { type: Array, default: () => [] },
+  resumeUploading: { type: Boolean, default: false },
+  resumeUploadProgress: { type: Number, default: 0 },
+  resumeUploadError: { type: String, default: '' },
 })
 
 const emit = defineEmits(['back', 'save', 'clear-errors', 'upload-resume'])
@@ -259,11 +264,6 @@ function save() {
   })
 }
 
-function uploadResume(event) {
-  const file = event.target.files?.[0]
-  if (file) emit('upload-resume', file)
-}
-
 function goBack() {
   emit('back')
 }
@@ -333,7 +333,7 @@ function goBack() {
         </div>
         <div class="profile-field">
           <label for="profile-dob">Date of birth</label>
-          <input v-if="editing" id="profile-dob" v-model="form.dateOfBirth" type="date" />
+          <DatePicker v-if="editing" id="profile-dob" v-model="form.dateOfBirth" aria-label="Choose date of birth" />
           <p v-else class="profile-value">{{ form.dateOfBirth || '—' }}</p>
         </div>
         <div class="profile-field">
@@ -375,8 +375,13 @@ function goBack() {
         </div>
         <div class="profile-field profile-field--full">
           <label for="profile-resume">Resume (optional, PDF/DOC/DOCX, max 5 MB)</label>
-          <input id="profile-resume" type="file" accept=".pdf,.doc,.docx" @change="uploadResume" />
-          <p v-if="user?.resumeFileName" class="profile-value">Uploaded: {{ user.resumeFileName }}</p>
+          <ResumeUpload
+            :file-name="user?.resumeFileName"
+            :uploading="resumeUploading"
+            :progress="resumeUploadProgress"
+            :error="resumeUploadError"
+            @select="$emit('upload-resume', $event)"
+          />
         </div>
       </div>
     </section>

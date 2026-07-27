@@ -7,7 +7,7 @@ import { useJobsStore } from '../stores/jobs'
 import { MAX_VISIBLE_ROLES } from '../utils/jobDisplay'
 import { withMinimumDelay } from '../utils/minimumDelay'
 import BrandLogo from './BrandLogo.vue'
-import ListPagination from './ListPagination.vue'
+import Pagination from './ui/Pagination.vue'
 import RoleCard from './RoleCard.vue'
 import SkeletonShimmer from './ui/SkeletonShimmer.vue'
 import '../hiring-dashboard.css'
@@ -80,7 +80,7 @@ function changePage(page) {
             />
           </div>
 
-          <ListPagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
+          <Pagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
 
           <div v-if="!openRoles.length" class="candidate-empty">
             <strong>No open roles yet</strong>

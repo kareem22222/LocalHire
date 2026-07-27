@@ -9,7 +9,7 @@ import { MAX_VISIBLE_CANDIDATES } from '../utils/jobDisplay'
 import { withMinimumDelay } from '../utils/minimumDelay'
 import BrandLogo from './BrandLogo.vue'
 import CandidateCard from './CandidateCard.vue'
-import ListPagination from './ListPagination.vue'
+import Pagination from './ui/Pagination.vue'
 import SkeletonShimmer from './ui/SkeletonShimmer.vue'
 import '../hiring-dashboard.css'
 
@@ -118,7 +118,7 @@ function changePage(page) {
             @contact="contact"
           />
 
-          <ListPagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
+          <Pagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
 
           <div v-if="!candidates.length" class="candidate-empty">
             <strong>No talent found</strong>

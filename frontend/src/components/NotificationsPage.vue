@@ -3,7 +3,7 @@ import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useNotificationsStore } from '../stores/notifications.js'
 import BrandLogo from './BrandLogo.vue'
-import ListPagination from './ListPagination.vue'
+import Pagination from './ui/Pagination.vue'
 import '../hiring-dashboard.css'
 
 const route = useRoute()
@@ -70,7 +70,7 @@ async function selectNotification(notification) {
           </button>
         </div>
 
-        <ListPagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
+        <Pagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
       </section>
     </main>
   </div>

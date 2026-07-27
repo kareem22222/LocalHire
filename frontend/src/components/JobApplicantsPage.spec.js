@@ -144,7 +144,7 @@ describe('JobApplicantsPage', () => {
     const callsBeforePaging = api.get.mock.calls.length
 
     expect(wrapper.findAll('.candidate-card')).toHaveLength(10)
-    await wrapper.findAll('.list-pagination button')[1].trigger('click')
+    await wrapper.find('[aria-label="Page 2 of 2"]').trigger('click')
     await flushPromises()
     expect(wrapper.findAll('.candidate-card')).toHaveLength(1)
     expect(api.get).toHaveBeenCalledTimes(callsBeforePaging)

@@ -72,7 +72,7 @@ describe('AllRolesPage', () => {
 
     expect(wrapper.findAll('.hiring-role-card')).toHaveLength(6)
     expect(wrapper.text()).toContain('Page 1 of 2')
-    await findButtonByText(wrapper, 'Next →').trigger('click')
+    await wrapper.find('[aria-label="Page 2 of 2"]').trigger('click')
     await flushPromises()
     expect(wrapper.findAll('.hiring-role-card')).toHaveLength(1)
     expect(wrapper.text()).toContain('Page 2 of 2')

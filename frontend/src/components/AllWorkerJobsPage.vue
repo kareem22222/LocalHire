@@ -7,7 +7,7 @@ import { useProfileStore } from '../stores/profile'
 import { MAX_VISIBLE_JOBS } from '../utils/jobDisplay'
 import { withMinimumDelay } from '../utils/minimumDelay'
 import BrandLogo from './BrandLogo.vue'
-import ListPagination from './ListPagination.vue'
+import Pagination from './ui/Pagination.vue'
 import WorkerDashboard from './WorkerDashboard.vue'
 import '../hiring-dashboard.css'
 
@@ -89,7 +89,7 @@ async function apply(jobId) {
       @open-job="router.push({ name: 'worker-job-detail', params: { id: $event } })"
       @apply="apply"
     >
-      <ListPagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
+      <Pagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
     </WorkerDashboard>
   </div>
 </template>

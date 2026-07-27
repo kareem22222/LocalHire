@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import DatePicker from './ui/DatePicker.vue'
 
 const form = defineModel('form', { type: Object, required: true })
 const props = defineProps({
@@ -136,8 +137,8 @@ function addCredential() {
         <label>Work or role<input v-model="entry.jobTitle" required maxlength="100" placeholder="Electrician helper" /></label>
         <label>Employer, shop, client, or self-employed<input v-model="entry.employer" required maxlength="200" placeholder="Self-employed" /></label>
         <label>Location<input v-model="entry.location" maxlength="150" /></label>
-        <label>Start date<input v-model="entry.startDate" type="date" /></label>
-        <label v-if="!entry.isCurrent">End date<input v-model="entry.endDate" type="date" /></label>
+        <label>Start date<DatePicker v-model="entry.startDate" aria-label="Choose work start date" /></label>
+        <label v-if="!entry.isCurrent">End date<DatePicker v-model="entry.endDate" aria-label="Choose work end date" /></label>
         <label class="check align-end"><input v-model="entry.isCurrent" type="checkbox" /> I currently do this work</label>
         <label class="full">What did you do?<textarea v-model="entry.description" maxlength="1000" placeholder="Main duties, tools used, or achievements"></textarea></label>
         <button type="button" class="remove" :aria-label="`Remove work history ${index + 1}`" @click="form.workHistory.splice(index, 1)">Remove</button>
@@ -211,8 +212,8 @@ function addCredential() {
       <div v-if="editing" class="worker-grid">
         <label>Licence or certificate<input v-model="entry.name" required maxlength="200" placeholder="LMV driving licence" /></label>
         <label>Issued by<input v-model="entry.issuer" required maxlength="200" placeholder="RTO / training institute" /></label>
-        <label>Issue date<input v-model="entry.issueDate" type="date" /></label>
-        <label>Expiry date<input v-model="entry.expiryDate" type="date" /></label>
+        <label>Issue date<DatePicker v-model="entry.issueDate" aria-label="Choose credential issue date" /></label>
+        <label>Expiry date<DatePicker v-model="entry.expiryDate" aria-label="Choose credential expiry date" /></label>
         <label>Licence / certificate number<input v-model="entry.credentialId" maxlength="100" /></label>
         <label>Verification link (optional)<input v-model="entry.url" type="url" maxlength="500" placeholder="https://" /></label>
         <button type="button" class="remove" :aria-label="`Remove licence or certificate ${index + 1}`" @click="form.credentials.splice(index, 1)">Remove</button>

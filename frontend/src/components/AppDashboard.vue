@@ -25,6 +25,8 @@ const profileSaveErrors = ref([])
 const profileSaving = ref(false)
 const profileSaveVersion = ref(0)
 const resumeUploadError = ref('')
+const resumeUploading = ref(false)
+const resumeUploadProgress = ref(0)
 
 // --- Shared ---
 const activeTab = ref(route.query.tab === 'profile'
@@ -90,10 +92,18 @@ async function handleProfileSave(details) {
 
 async function handleResumeUpload(file) {
   resumeUploadError.value = ''
+  resumeUploadProgress.value = 0
+  resumeUploading.value = true
   try {
-    await profileStore.uploadResume(file)
+    await profileStore.uploadResume(file, (event) => {
+      const ratio = event.progress ?? (event.total ? event.loaded / event.total : 0)
+      resumeUploadProgress.value = Math.min(Math.round(ratio * 100), 99)
+    })
+    resumeUploadProgress.value = 100
   } catch (err) {
     resumeUploadError.value = err.response?.data?.message || 'Failed to upload resume.'
+  } finally {
+    resumeUploading.value = false
   }
 }
 
@@ -394,12 +404,14 @@ async function applyToJob(jobId) {
       :saving="profileSaving"
       :save-version="profileSaveVersion"
       :save-errors="profileSaveErrors"
+      :resume-uploading="resumeUploading"
+      :resume-upload-progress="resumeUploadProgress"
+      :resume-upload-error="resumeUploadError"
       @back="closeProfile"
       @save="handleProfileSave"
       @clear-errors="clearProfileErrors"
       @upload-resume="handleResumeUpload"
     />
-    <p v-if="resumeUploadError" class="job-form__error" role="alert">{{ resumeUploadError }}</p>
 
     <HiringDashboard
       v-if="isHiringUser && activeTab !== 'profile'"

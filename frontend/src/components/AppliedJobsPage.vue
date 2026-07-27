@@ -6,7 +6,7 @@ import { MAX_VISIBLE_JOBS } from '../utils/jobDisplay'
 import { moveSpotlight, resetSpotlight } from '../utils/spotlightCard'
 import BrandLogo from './BrandLogo.vue'
 import CountUp from './CountUp.vue'
-import ListPagination from './ListPagination.vue'
+import Pagination from './ui/Pagination.vue'
 import SkeletonShimmer from './ui/SkeletonShimmer.vue'
 import '../hiring-dashboard.css'
 
@@ -126,7 +126,7 @@ function changePage(page) {
             </div>
           </a>
         </div>
-        <ListPagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
+        <Pagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
       </section>
 
       <div v-else class="applied-empty">
