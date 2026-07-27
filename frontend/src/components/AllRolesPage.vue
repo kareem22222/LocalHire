@@ -4,7 +4,6 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useOpenRoles } from '../composables/useOpenRoles'
 import { useJobsStore } from '../stores/jobs'
-import { MAX_VISIBLE_ROLES } from '../utils/jobDisplay'
 import { withMinimumDelay } from '../utils/minimumDelay'
 import BrandLogo from './BrandLogo.vue'
 import Pagination from './ui/Pagination.vue'
@@ -17,11 +16,12 @@ const router = useRouter()
 const jobsStore = useJobsStore()
 const { myJobs } = storeToRefs(jobsStore)
 const loading = ref(true)
+const ROLES_PER_PAGE = 30
 
 const openRoles = useOpenRoles(() => myJobs.value)
-const totalPages = computed(() => Math.ceil(openRoles.value.length / MAX_VISIBLE_ROLES))
+const totalPages = computed(() => Math.ceil(openRoles.value.length / ROLES_PER_PAGE))
 const currentPage = computed(() => Math.min(Math.max(Number.parseInt(route.query.page, 10) || 1, 1), totalPages.value || 1))
-const visibleRoles = computed(() => openRoles.value.slice((currentPage.value - 1) * MAX_VISIBLE_ROLES, currentPage.value * MAX_VISIBLE_ROLES))
+const visibleRoles = computed(() => openRoles.value.slice((currentPage.value - 1) * ROLES_PER_PAGE, currentPage.value * ROLES_PER_PAGE))
 
 onMounted(async () => {
   loading.value = true
@@ -40,6 +40,14 @@ function goBack() {
 
 function goViewJob(id) {
   router.push(`/jobs/${id}`)
+}
+
+function goApplicants(id) {
+  router.push({ name: 'job-applicants', params: { id } })
+}
+
+function goShortlisted(id) {
+  router.push({ name: 'job-shortlisted', params: { id } })
 }
 
 function changePage(page) {
@@ -66,7 +74,7 @@ function changePage(page) {
           <span>{{ openRoles.length }} roles</span>
         </div>
 
-        <SkeletonShimmer v-if="loading" variant="role" :count="openRoles.length || 3" label="Loading roles" />
+        <SkeletonShimmer v-if="loading" variant="role" :count="Math.min(openRoles.length || ROLES_PER_PAGE, ROLES_PER_PAGE)" label="Loading roles" />
 
         <template v-else>
           <div class="hiring-role-grid">
@@ -75,8 +83,11 @@ function changePage(page) {
               :key="item.id || item.title"
               :item="item"
               action-label="View role"
+              counts-clickable
               @view="goViewJob"
               @action="goViewJob"
+              @view-applicants="goApplicants"
+              @view-shortlisted="goShortlisted"
             />
           </div>
 

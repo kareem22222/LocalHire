@@ -113,8 +113,11 @@ defineProps({
 
 .skeleton-card--role {
   display: flex;
-  min-height: 230px;
+  width: 100%;
+  max-width: 300px;
+  min-height: 360px;
   padding: 20px;
+  justify-self: center;
   flex-direction: column;
   align-items: flex-start;
 }

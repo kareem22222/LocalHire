@@ -61,8 +61,8 @@ describe('AllRolesPage', () => {
     expect(wrapper.text()).toContain('No open roles yet')
   })
 
-  it('paginates roles on the dedicated page', async () => {
-    api.get.mockResolvedValue({ data: Array.from({ length: 7 }, (_, index) => ({
+  it('loads thirty roles per page', async () => {
+    api.get.mockResolvedValue({ data: Array.from({ length: 31 }, (_, index) => ({
       id: `j${index}`,
       title: `Role ${index}`,
       isActive: true,
@@ -70,12 +70,20 @@ describe('AllRolesPage', () => {
     const wrapper = mountPage()
     await flushPromises()
 
-    expect(wrapper.findAll('.hiring-role-card')).toHaveLength(6)
+    expect(wrapper.findAll('.hiring-role-card')).toHaveLength(30)
     expect(wrapper.text()).toContain('Page 1 of 2')
     await wrapper.find('[aria-label="Page 2 of 2"]').trigger('click')
     await flushPromises()
     expect(wrapper.findAll('.hiring-role-card')).toHaveLength(1)
     expect(wrapper.text()).toContain('Page 2 of 2')
+  })
+
+  it('shows thirty matching role skeletons while loading', () => {
+    api.get.mockReturnValue(new Promise(() => {}))
+
+    const wrapper = mountPage()
+
+    expect(wrapper.findAll('.skeleton-card--role')).toHaveLength(30)
   })
 
   it('logs failures when roles cannot be loaded', async () => {
@@ -112,10 +120,18 @@ describe('AllRolesPage', () => {
     await flushPromises()
     const push = vi.spyOn(router, 'push')
 
+    await wrapper.find('.hiring-role-card').trigger('mouseenter')
     await wrapper.find('.hiring-role-card__icon').trigger('click')
     expect(push).toHaveBeenCalledWith('/jobs/j1')
 
     await findButtonByText(wrapper, 'View role').trigger('click')
     expect(push).toHaveBeenCalledWith('/jobs/j1')
+
+    const stats = wrapper.findAll('.hiring-role-card__stat')
+    await stats[0].trigger('click')
+    expect(push).toHaveBeenCalledWith({ name: 'job-applicants', params: { id: 'j1' } })
+
+    await stats[1].trigger('click')
+    expect(push).toHaveBeenCalledWith({ name: 'job-shortlisted', params: { id: 'j1' } })
   })
 })

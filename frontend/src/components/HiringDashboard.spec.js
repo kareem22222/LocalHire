@@ -186,6 +186,7 @@ describe('HiringDashboard', () => {
     const icons = wrapper.findAll('.hiring-role-card__icon')
     expect(icons).toHaveLength(1)
 
+    await wrapper.find('.hiring-role-card').trigger('mouseenter')
     await icons[0].trigger('click')
 
     expect(wrapper.emitted('view-job')).toEqual([[7]])
@@ -278,6 +279,21 @@ describe('HiringDashboard', () => {
       }],
       candidates: [candidate],
     })
+
+    const roleCard = wrapper.find('.hiring-role-card')
+    expect(roleCard.find('.hiring-role-card__visual').exists()).toBe(true)
+    expect(roleCard.findAll('.hiring-role-card__visual i')).toHaveLength(0)
+    expect(roleCard.classes()).not.toContain('hiring-role-card--flipped')
+    expect(roleCard.find('.hiring-role-card__back').attributes('aria-hidden')).toBe('true')
+
+    await roleCard.trigger('mouseenter')
+    expect(roleCard.classes()).toContain('hiring-role-card--flipped')
+    expect(roleCard.find('.hiring-role-card__back').attributes('aria-hidden')).toBe('false')
+
+    await roleCard.trigger('mouseleave')
+    expect(roleCard.classes()).not.toContain('hiring-role-card--flipped')
+    await roleCard.trigger('focusin')
+    expect(roleCard.classes()).toContain('hiring-role-card--flipped')
 
     const stats = wrapper.findAll('.hiring-role-card__stat')
     await stats[0].trigger('click')
