@@ -34,10 +34,10 @@ vi.mock('canvas-confetti', () => ({
 
 vi.mock('./utils/session', () => ({ logout: vi.fn() }))
 
-function mountAppWithAuthMode(mode) {
+function mountAppWithAuthMode(mode, router = createTestRouter()) {
   return mount(App, {
     global: {
-      plugins: [createPinia(), createTestRouter()],
+      plugins: [createPinia(), router],
       stubs: {
         AppDashboard: { template: '<div class="fake-dashboard" />' },
         AuthModal: {
@@ -69,6 +69,7 @@ describe('App signup confetti', () => {
     await flushPromises()
     await wrapper.find('.specular-button').trigger('click')
     await wrapper.find('.fake-auth').trigger('click')
+    await flushPromises()
 
     expect(confetti).toHaveBeenCalledTimes(4)
     expect(confetti).toHaveBeenNthCalledWith(1, { particleCount: 25, spread: 70, angle: 315, origin: { x: 0, y: 0 } })
@@ -84,6 +85,7 @@ describe('App signup confetti', () => {
     await flushPromises()
     await wrapper.find('.specular-button').trigger('click')
     await wrapper.find('.fake-auth').trigger('click')
+    await flushPromises()
 
     expect(confetti).not.toHaveBeenCalled()
     wrapper.unmount()
@@ -97,6 +99,21 @@ describe('App signup confetti', () => {
     await wrapper.find('.cta-form').trigger('submit')
 
     expect(wrapper.find('.fake-auth').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('replaces a stale role page with the dashboard before login completes', async () => {
+    const router = createTestRouter()
+    await router.push('/hiring/roles?page=2')
+    const wrapper = mountAppWithAuthMode('login', router)
+    await flushPromises()
+
+    await wrapper.find('.specular-button').trigger('click')
+    await wrapper.find('.fake-auth').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/')
+    expect(wrapper.find('.fake-menu').exists()).toBe(true)
     wrapper.unmount()
   })
 })

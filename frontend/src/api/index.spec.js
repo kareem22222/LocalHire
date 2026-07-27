@@ -24,10 +24,14 @@ describe('api auth persistence', () => {
     const { add, isSaved } = useSavedCandidates()
     setAuth('token-123')
     add('candidate-1')
+    localStorage.setItem('dashboard_tab', 'profile')
+    window.history.replaceState({}, '', '/hiring/roles')
     clearAuth()
     expect(localStorage.getItem(TOKEN_STORAGE_KEY)).toBeNull()
     expect(isSaved('candidate-1')).toBe(false)
     expect(localStorage.getItem('localhire.savedCandidates')).toBeNull()
+    expect(localStorage.getItem('dashboard_tab')).toBeNull()
+    expect(window.location.pathname).toBe('/')
   })
 
   it('rehydrates the token from localStorage on module load (simulates refresh)', async () => {

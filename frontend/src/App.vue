@@ -102,7 +102,8 @@ function showSignupConfetti() {
   ].forEach((corner) => confetti({ particleCount: 25, spread: 70, ...corner }))
 }
 
-function onAuthSuccess({ mode } = {}) {
+async function onAuthSuccess({ mode } = {}) {
+  await router.replace('/')
   isAuth.value = true
   showModal.value = false
   profileStore.fetchProfile().catch(() => {})
