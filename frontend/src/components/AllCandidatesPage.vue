@@ -19,7 +19,7 @@ const profileStore = useProfileStore()
 const { candidates } = storeToRefs(jobsStore)
 const { profile } = storeToRefs(profileStore)
 const { isSaved, add: saveCandidate } = useSavedCandidates()
-const loading = ref(false)
+const loading = ref(true)
 
 const searchTerm = computed(() => (route.query.search ?? '').toString())
 const roleTerm = computed(() => (route.query.role ?? '').toString())

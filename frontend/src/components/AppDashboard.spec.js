@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AppDashboard from './AppDashboard.vue'
 import api from '../api'
 import { createTestRouter } from '../test/router'
+import { useJobsStore } from '../stores/jobs'
+import { useProfileStore } from '../stores/profile'
 
 vi.mock('../api', () => ({
   default: {
@@ -51,6 +53,27 @@ describe('AppDashboard', () => {
     await flushPromises()
 
     expect(api.get).toHaveBeenCalledWith('/hiring/jobs')
+  })
+
+  it('shows both hiring shimmers immediately and starts both requests together', async () => {
+    const profileStore = useProfileStore()
+    const jobsStore = useJobsStore()
+    profileStore.profile = { name: 'Pat', role: 'Hiring' }
+    profileStore.fetchedAt = Date.now()
+    jobsStore.myJobs = Array.from({ length: 6 }, (_, index) => ({ id: `job-${index}`, title: `Role ${index}`, isActive: true }))
+    jobsStore.candidates = [{ id: 'worker-1', name: 'Ravi', role: 'Cashier' }]
+    api.get.mockReturnValue(new Promise(() => {}))
+
+    const wrapper = mountDashboard()
+    await flushPromises()
+
+    expect(api.get).toHaveBeenCalledWith('/hiring/jobs')
+    expect(api.get).toHaveBeenCalledWith('/hiring/candidates/nearby', { params: {} })
+    expect(wrapper.findAll('.hiring-roles .skeleton-card--role')).toHaveLength(6)
+    expect(wrapper.find('.candidate-list .skeleton-list--candidate').exists()).toBe(true)
+    expect(wrapper.find('.candidate-card').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('No talent found')
+    wrapper.unmount()
   })
 
   it('routes the new hiring summary actions', async () => {

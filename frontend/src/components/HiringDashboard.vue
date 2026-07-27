@@ -205,7 +205,7 @@ function openCandidate(candidate) {
         </div>
       </div>
 
-      <SkeletonShimmer v-if="rolesLoading" variant="role" label="Loading roles" />
+      <SkeletonShimmer v-if="rolesLoading" variant="role" :count="visibleRoles.length || 3" label="Loading roles" />
       <template v-else>
         <div class="hiring-role-grid">
           <RoleCard

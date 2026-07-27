@@ -13,7 +13,7 @@ import '../hiring-dashboard.css'
 const router = useRouter()
 const jobsStore = useJobsStore()
 const { myJobs } = storeToRefs(jobsStore)
-const loading = ref(false)
+const loading = ref(true)
 
 const openRoles = useOpenRoles(() => myJobs.value)
 
@@ -56,7 +56,7 @@ function goViewJob(id) {
           <span>{{ openRoles.length }} roles</span>
         </div>
 
-        <SkeletonShimmer v-if="loading" variant="role" label="Loading roles" />
+        <SkeletonShimmer v-if="loading" variant="role" :count="openRoles.length || 3" label="Loading roles" />
 
         <template v-else>
           <div class="hiring-role-grid">

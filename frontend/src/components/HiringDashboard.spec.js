@@ -36,6 +36,17 @@ describe('HiringDashboard', () => {
     expect(wrapper.text()).not.toContain('No talent found')
   })
 
+  it.each([1, 6])('matches the role skeleton count to %i cached role(s)', (count) => {
+    const myJobs = Array.from({ length: count }, (_, index) => ({
+      id: `job-${index}`,
+      title: `Role ${index}`,
+      isActive: true,
+    }))
+    const wrapper = mountHiringDashboard({ myJobs, rolesLoading: true })
+
+    expect(wrapper.findAll('.hiring-roles .skeleton-card--role')).toHaveLength(count)
+  })
+
   it('renders a candidate with no name without throwing', () => {
     const wrapper = mountHiringDashboard({ candidates: [{ id: 1, name: null, matchScore: 70 }] })
 

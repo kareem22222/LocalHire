@@ -45,11 +45,9 @@ async function fetchProfile() {
     const data = await profileStore.fetchProfile()
     const role = normalizeRole(data.role)
     if (role === 'hiring') {
-      await loadMyJobs()
-      await loadCandidates()
+      await Promise.all([loadMyJobs(), loadCandidates()])
     } else if (role === 'worker') {
-      await loadMyApplications()
-      await loadNearbyJobs()
+      await Promise.all([loadMyApplications(), loadNearbyJobs()])
     }
   } catch {
   }
@@ -105,7 +103,7 @@ onMounted(fetchProfile)
 //  HIRING
 // ============================================================
 const selectedJobApplications = ref(null)
-const rolesLoading = ref(false)
+const rolesLoading = ref(true)
 
 function goCreateJob() {
   router.push('/PostNewJob')
@@ -162,7 +160,7 @@ async function loadMyJobs() {
 }
 
 // --- Talent search (candidates near the business) ---
-const candidatesLoading = ref(false)
+const candidatesLoading = ref(true)
 const candidateSearch = ref('')
 const candidateRole = ref('')
 const employerLocationStatus = ref('idle') // idle | prompt | denied | done
@@ -266,7 +264,7 @@ const nearbyJobs = ref([])
 const workerCoords = ref(null)
 const applying = ref(null)
 const workerApplyError = ref('')
-const workerJobsLoading = ref(false)
+const workerJobsLoading = ref(true)
 const workerSearch = ref('')
 const workerEmploymentType = ref('')
 
