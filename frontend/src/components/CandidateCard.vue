@@ -70,7 +70,7 @@ function select(candidate) {
 .candidate-card__select {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 3;
   border: 0;
   border-radius: inherit;
   background: transparent;
@@ -89,7 +89,7 @@ function select(candidate) {
 
 .candidate-actions {
   position: relative;
-  z-index: 2;
+  z-index: 4;
 }
 
 .candidate-actions button:disabled {

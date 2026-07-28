@@ -18,6 +18,7 @@ export default defineConfig({
     emptyOutDir: true,
   },
   test: {
+    include: ['src/**/*.spec.js'],
     environment: 'jsdom',
     setupFiles: './src/test/setup.js',
     coverage: {
