@@ -20,7 +20,7 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   // Retry a failing test twice before reporting it as a failure.
   retries: 3,
-  workers: 2,
+  workers: 1,
   reporter: process.env.CI
     ? [['github'], ['html', { open: 'never' }]]
     : 'list',
@@ -31,16 +31,10 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
-    command: 'docker compose up --build',
-    cwd: '..',
+    command: 'npm run dev -- --config Functional_test/vite.config.js',
     url: 'http://127.0.0.1:8080/api/health',
-    timeout: 300_000,
+    timeout: 60_000,
     reuseExistingServer: !process.env.CI,
-    env: {
-      ...process.env,
-      JWT_SECRET: process.env.JWT_SECRET
-        || 'localhire-e2e-only-secret-with-at-least-32-bytes',
-    },
   },
   projects: [
     {
