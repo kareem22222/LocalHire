@@ -6,8 +6,11 @@ import { useJobsStore } from '../stores/jobs'
 import { useProfileStore } from '../stores/profile'
 import { useSavedCandidates } from '../composables/useSavedCandidates'
 import { MAX_VISIBLE_CANDIDATES } from '../utils/jobDisplay'
+import { withMinimumDelay } from '../utils/minimumDelay'
 import BrandLogo from './BrandLogo.vue'
 import CandidateCard from './CandidateCard.vue'
+import Pagination from './ui/Pagination.vue'
+import SkeletonShimmer from './ui/SkeletonShimmer.vue'
 import '../hiring-dashboard.css'
 
 const route = useRoute()
@@ -17,11 +20,13 @@ const profileStore = useProfileStore()
 const { candidates } = storeToRefs(jobsStore)
 const { profile } = storeToRefs(profileStore)
 const { isSaved, add: saveCandidate } = useSavedCandidates()
-const loading = ref(false)
+const loading = ref(true)
 
 const searchTerm = computed(() => (route.query.search ?? '').toString())
 const roleTerm = computed(() => (route.query.role ?? '').toString())
-const visibleCandidates = computed(() => candidates.value.slice(0, MAX_VISIBLE_CANDIDATES))
+const totalPages = computed(() => Math.ceil(candidates.value.length / MAX_VISIBLE_CANDIDATES))
+const currentPage = computed(() => Math.min(Math.max(Number.parseInt(route.query.page, 10) || 1, 1), totalPages.value || 1))
+const visibleCandidates = computed(() => candidates.value.slice((currentPage.value - 1) * MAX_VISIBLE_CANDIDATES, currentPage.value * MAX_VISIBLE_CANDIDATES))
 
 const heading = computed(() => {
   const parts = []
@@ -47,8 +52,10 @@ function buildParams() {
 async function load() {
   loading.value = true
   try {
-    await profileStore.fetchProfile().catch(() => {})
-    await jobsStore.loadNearbyCandidates(buildParams(), { force: true })
+    await withMinimumDelay(async () => {
+      await profileStore.fetchProfile().catch(() => {})
+      await jobsStore.loadNearbyCandidates(buildParams(), { force: true })
+    })
   } catch {
   } finally {
     loading.value = false
@@ -56,7 +63,7 @@ async function load() {
 }
 
 onMounted(load)
-watch(() => route.fullPath, load)
+watch([searchTerm, roleTerm], load)
 
 function goBack() {
   router.push('/')
@@ -73,6 +80,10 @@ function contact(candidate) {
 function shortlist(candidate) {
   saveCandidate(candidate.id)
 }
+
+function changePage(page) {
+  router.push({ query: { ...route.query, page: page === 1 ? undefined : String(page) } })
+}
 </script>
 
 <template>
@@ -85,7 +96,7 @@ function shortlist(candidate) {
     </header>
 
     <main class="hiring-dashboard">
-      <section class="candidate-list">
+      <section class="candidate-list" :aria-busy="loading">
         <div class="candidate-list__head">
           <div>
             <span class="hiring-kicker">Recommended</span>
@@ -94,10 +105,7 @@ function shortlist(candidate) {
           <span>{{ candidates.length }} results</span>
         </div>
 
-        <div v-if="loading" class="candidate-empty">
-          <strong>Searching talent...</strong>
-          <p>Finding every worker that matches your search.</p>
-        </div>
+        <SkeletonShimmer v-if="loading" label="Searching talent" />
 
         <template v-else>
           <CandidateCard
@@ -109,6 +117,8 @@ function shortlist(candidate) {
             @shortlist="shortlist"
             @contact="contact"
           />
+
+          <Pagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
 
           <div v-if="!candidates.length" class="candidate-empty">
             <strong>No talent found</strong>

@@ -1,9 +1,13 @@
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
 import { isAuthenticated } from './api'
 import confetti from 'canvas-confetti'
+import { gsap } from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { createTestRouter } from './test/router'
+import { logout } from './utils/session'
 
 vi.mock('gsap', () => ({
   gsap: {
@@ -21,6 +25,7 @@ vi.mock('gsap/ScrollTrigger', () => ({
 }))
 
 vi.mock('./api', () => ({
+  default: { get: vi.fn(() => Promise.resolve({ data: { name: 'Pat', email: 'pat@example.com', role: 'Hiring' } })) },
   clearAuth: vi.fn(),
   isAuthenticated: vi.fn(),
 }))
@@ -29,18 +34,27 @@ vi.mock('canvas-confetti', () => ({
   default: vi.fn(),
 }))
 
-function mountAppWithAuthMode(mode) {
+vi.mock('./utils/session', () => ({ logout: vi.fn() }))
+
+function mountAppWithAuthMode(mode, router = createTestRouter()) {
   return mount(App, {
     global: {
-      plugins: [createTestRouter()],
+      plugins: [createPinia(), router],
       stubs: {
         AppDashboard: { template: '<div class="fake-dashboard" />' },
         AuthModal: {
+          props: ['initialEmail', 'initialRole', 'initialMode'],
           emits: ['close', 'success'],
-          template: `<button class="fake-auth" @click="$emit('success', { mode: '${mode}' })">auth</button>`,
+          template: `<button class="fake-auth" :data-role="initialRole" @click="$emit('success', { mode: '${mode}' })">auth</button>`,
         },
         BrandLogo: true,
         NetworkBackground: true,
+        NotificationCenter: { template: '<div class="fake-notifications" />' },
+        StaggeredMenu: {
+          props: ['items', 'account'],
+          emits: ['select'],
+          template: `<div class="fake-menu"><button class="fake-menu-profile" @click="$emit('select', { action: 'profile' })">Profile</button><button class="fake-menu-logout" @click="$emit('select', { action: 'logout' })">Sign out</button></div>`,
+        },
       },
     },
   })
@@ -50,14 +64,17 @@ describe('App signup confetti', () => {
   beforeEach(() => {
     isAuthenticated.mockResolvedValue(false)
     confetti.mockClear()
+    gsap.context.mockClear()
+    ScrollTrigger.getAll.mockClear()
   })
 
   it('runs Preline confetti after signup success', async () => {
     const wrapper = mountAppWithAuthMode('register')
 
     await flushPromises()
-    await wrapper.find('.btn--primary').trigger('click')
+    await wrapper.find('.specular-button').trigger('click')
     await wrapper.find('.fake-auth').trigger('click')
+    await flushPromises()
 
     expect(confetti).toHaveBeenCalledTimes(4)
     expect(confetti).toHaveBeenNthCalledWith(1, { particleCount: 25, spread: 70, angle: 315, origin: { x: 0, y: 0 } })
@@ -71,10 +88,14 @@ describe('App signup confetti', () => {
     const wrapper = mountAppWithAuthMode('login')
 
     await flushPromises()
-    await wrapper.find('.btn--primary').trigger('click')
+    const revert = gsap.context.mock.results.at(-1).value.revert
+    await wrapper.find('.specular-button').trigger('click')
     await wrapper.find('.fake-auth').trigger('click')
+    await flushPromises()
 
     expect(confetti).not.toHaveBeenCalled()
+    expect(revert).toHaveBeenCalledTimes(1)
+    expect(ScrollTrigger.getAll).toHaveBeenCalledTimes(1)
     wrapper.unmount()
   })
 
@@ -86,6 +107,54 @@ describe('App signup confetti', () => {
     await wrapper.find('.cta-form').trigger('submit')
 
     expect(wrapper.find('.fake-auth').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('maps navigation actions to authentication roles in one place', async () => {
+    const wrapper = mountAppWithAuthMode('register')
+    await flushPromises()
+
+    const links = wrapper.findAll('.card-nav__card button')
+    await links[0].trigger('click')
+    expect(wrapper.get('.fake-auth').attributes('data-role')).toBe('LookingForWork')
+    await links[2].trigger('click')
+    expect(wrapper.get('.fake-auth').attributes('data-role')).toBe('Hiring')
+    wrapper.unmount()
+  })
+
+  it('replaces a stale role page with the dashboard before login completes', async () => {
+    const router = createTestRouter()
+    await router.push('/hiring/roles?page=2')
+    const wrapper = mountAppWithAuthMode('login', router)
+    await flushPromises()
+
+    await wrapper.find('.specular-button').trigger('click')
+    await wrapper.find('.fake-auth').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/')
+    expect(wrapper.find('.fake-menu').exists()).toBe(true)
+    wrapper.unmount()
+  })
+})
+
+describe('App authenticated menu', () => {
+  beforeEach(() => {
+    isAuthenticated.mockResolvedValue(true)
+    logout.mockClear()
+  })
+
+  it('routes profile and sign out actions from StaggeredMenu', async () => {
+    const wrapper = mountAppWithAuthMode('login')
+    await flushPromises()
+    expect(wrapper.find('.fake-notifications').exists()).toBe(true)
+
+    await wrapper.find('.fake-menu-profile').trigger('click')
+    await flushPromises()
+    expect(wrapper.vm.$route.query.tab).toBe('profile')
+
+    await wrapper.find('.fake-menu-logout').trigger('click')
+    expect(logout).toHaveBeenCalledTimes(1)
     wrapper.unmount()
   })
 })

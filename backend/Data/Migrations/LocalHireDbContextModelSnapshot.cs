@@ -178,6 +178,52 @@ namespace LocalHire.Api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("LocalHire.Api.Models.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsRead")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Link")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "IsRead", "CreatedAt");
+
+                    b.ToTable("Notifications");
+                });
+
             modelBuilder.Entity("LocalHire.Api.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -341,6 +387,17 @@ namespace LocalHire.Api.Migrations
                     b.Navigation("Employer");
                 });
 
+            modelBuilder.Entity("LocalHire.Api.Models.Notification", b =>
+                {
+                    b.HasOne("LocalHire.Api.Models.User", "User")
+                        .WithMany("Notifications")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("LocalHire.Api.Models.JobPost", b =>
                 {
                     b.Navigation("Applications");
@@ -351,6 +408,8 @@ namespace LocalHire.Api.Migrations
                     b.Navigation("JobApplications");
 
                     b.Navigation("JobPosts");
+
+                    b.Navigation("Notifications");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,17 +1,17 @@
 <script setup>
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useJobsStore } from '../stores/jobs'
 import { useProfileStore } from '../stores/profile'
 import { normalizeRole } from '../utils/role'
-import { logout } from '../utils/session'
+import { withMinimumDelay } from '../utils/minimumDelay'
 import BrandLogo from './BrandLogo.vue'
 import HiringDashboard from './HiringDashboard.vue'
 import ProfilePage from './ProfilePage.vue'
 import WorkerDashboard from './WorkerDashboard.vue'
 
-const emit = defineEmits(['logout', 'profile'])
+const route = useRoute()
 const router = useRouter()
 const profileStore = useProfileStore()
 const jobsStore = useJobsStore()
@@ -25,12 +25,20 @@ const profileSaveErrors = ref([])
 const profileSaving = ref(false)
 const profileSaveVersion = ref(0)
 const resumeUploadError = ref('')
+const resumeUploading = ref(false)
+const resumeUploadProgress = ref(0)
 
 // --- Shared ---
-const activeTab = ref(typeof localStorage !== 'undefined' ? (localStorage.getItem('dashboard_tab') || 'dashboard') : 'dashboard')
+const savedTab = typeof localStorage === 'undefined' ? 'dashboard' : (localStorage.getItem('dashboard_tab') || 'dashboard')
+const activeTab = ref(route.query.tab === 'profile' ? 'profile' : savedTab)
 
 watch(activeTab, (tab) => {
   if (typeof localStorage !== 'undefined') localStorage.setItem('dashboard_tab', tab)
+})
+
+watch(() => route.query.tab, (tab) => {
+  if (tab === 'profile') handleProfileClick()
+  else if (activeTab.value === 'profile') activeTab.value = 'dashboard'
 })
 
 async function fetchProfile() {
@@ -38,30 +46,23 @@ async function fetchProfile() {
     const data = await profileStore.fetchProfile()
     const role = normalizeRole(data.role)
     if (role === 'hiring') {
-      await loadMyJobs()
-      await loadCandidates()
+      await Promise.all([loadMyJobs(), loadCandidates()])
     } else if (role === 'worker') {
-      await loadMyApplications()
-      await loadNearbyJobs()
+      await Promise.all([loadMyApplications(), loadNearbyJobs()])
     }
   } catch {
   }
 }
 
-function handleLogout() {
-  profileStore.clear()
-  jobsStore.clear()
-  logout()
-}
-
 function handleProfileClick() {
   profileSaveErrors.value = []
-  emit('profile', user.value)
   activeTab.value = 'profile'
+  if (route.query.tab !== 'profile') router.push({ query: { ...route.query, tab: 'profile' } })
 }
 
 function closeProfile() {
   activeTab.value = 'dashboard'
+  if (route.query.tab === 'profile') router.replace('/')
 }
 
 function clearProfileErrors() {
@@ -91,10 +92,18 @@ async function handleProfileSave(details) {
 
 async function handleResumeUpload(file) {
   resumeUploadError.value = ''
+  resumeUploadProgress.value = 0
+  resumeUploading.value = true
   try {
-    await profileStore.uploadResume(file)
+    await profileStore.uploadResume(file, (event) => {
+      const ratio = event.progress ?? (event.total ? event.loaded / event.total : 0)
+      resumeUploadProgress.value = Math.min(Math.round(ratio * 100), 99)
+    })
+    resumeUploadProgress.value = 100
   } catch (err) {
     resumeUploadError.value = err.response?.data?.message || 'Failed to upload resume.'
+  } finally {
+    resumeUploading.value = false
   }
 }
 
@@ -104,6 +113,9 @@ onMounted(fetchProfile)
 //  HIRING
 // ============================================================
 const selectedJobApplications = ref(null)
+const selectedJobId = ref(null)
+const visibleSelectedApplications = computed(() => selectedJobApplications.value?.slice(0, 5) || [])
+const rolesLoading = ref(true)
 
 function goCreateJob() {
   router.push('/PostNewJob')
@@ -150,14 +162,17 @@ function goAllCandidates(payload = {}) {
 }
 
 async function loadMyJobs() {
+  rolesLoading.value = true
   try {
-    await jobsStore.loadMyJobs()
+    await withMinimumDelay(() => jobsStore.loadMyJobs())
   } catch {
+  } finally {
+    rolesLoading.value = false
   }
 }
 
 // --- Talent search (candidates near the business) ---
-const candidatesLoading = ref(false)
+const candidatesLoading = ref(true)
 const candidateSearch = ref('')
 const candidateRole = ref('')
 const employerLocationStatus = ref('idle') // idle | prompt | denied | done
@@ -194,7 +209,7 @@ function candidateParams() {
 async function loadCandidates(options = {}) {
   candidatesLoading.value = true
   try {
-    await jobsStore.loadNearbyCandidates(candidateParams(), options)
+    await withMinimumDelay(() => jobsStore.loadNearbyCandidates(candidateParams(), options))
   } catch {
   } finally {
     candidatesLoading.value = false
@@ -237,6 +252,7 @@ function useEmployerLocation() {
 async function viewApplications(jobId) {
   try {
     selectedJobApplications.value = await jobsStore.loadJobApplications(jobId)
+    selectedJobId.value = jobId
     activeTab.value = 'applications'
   } catch {
   }
@@ -244,12 +260,15 @@ async function viewApplications(jobId) {
 
 function closeApplications() {
   selectedJobApplications.value = null
+  selectedJobId.value = null
   activeTab.value = 'dashboard'
 }
 
 function goToDashboard() {
   selectedJobApplications.value = null
+  selectedJobId.value = null
   activeTab.value = 'dashboard'
+  if (route.path !== '/' || route.query.tab) router.push('/')
 }
 
 // ============================================================
@@ -260,7 +279,7 @@ const nearbyJobs = ref([])
 const workerCoords = ref(null)
 const applying = ref(null)
 const workerApplyError = ref('')
-const workerJobsLoading = ref(false)
+const workerJobsLoading = ref(true)
 const workerSearch = ref('')
 const workerEmploymentType = ref('')
 
@@ -290,6 +309,19 @@ function goWorkerJob(id) {
 
 function goWorkerApplications() {
   router.push({ name: 'worker-applications' })
+}
+
+function showAllSelectedApplications() {
+  const id = selectedJobId.value
+  closeApplications()
+  if (id) goJobApplicants(id)
+}
+
+function goAllWorkerJobs(payload = {}) {
+  const query = {}
+  if (payload.search) query.search = payload.search
+  if (payload.employmentType) query.employmentType = payload.employmentType
+  router.push({ path: '/work/jobs', query })
 }
 
 function requestLocation() {
@@ -324,7 +356,7 @@ function requestLocation() {
 async function loadNearbyJobs(options = {}) {
   workerJobsLoading.value = true
   try {
-    nearbyJobs.value = await jobsStore.loadNearbyJobs(workerJobParams(), options)
+    nearbyJobs.value = await withMinimumDelay(() => jobsStore.loadNearbyJobs(workerJobParams(), options))
   } catch {
   } finally {
     workerJobsLoading.value = false
@@ -364,11 +396,6 @@ async function applyToJob(jobId) {
   <div class="dash-shell" :class="{ 'dash-shell--worker': isWorkerUser }">
     <header class="dash-header">
       <BrandLogo @click.prevent="goToDashboard" />
-      <div class="dash-header__right">
-        <button type="button" class="dash-btn dash-btn--primary dash-role-badge" @click="closeProfile">{{ isHiringUser ? 'Hiring' : isWorkerUser ? 'Looking for work' : 'Account' }}</button>
-        <button type="button" class="dash-user-name" @click="handleProfileClick">{{ user?.name || 'User' }}</button>
-        <button class="dash-logout-btn" @click="handleLogout">Sign out</button>
-      </div>
     </header>
 
     <ProfilePage
@@ -377,16 +404,19 @@ async function applyToJob(jobId) {
       :saving="profileSaving"
       :save-version="profileSaveVersion"
       :save-errors="profileSaveErrors"
+      :resume-uploading="resumeUploading"
+      :resume-upload-progress="resumeUploadProgress"
+      :resume-upload-error="resumeUploadError"
       @back="closeProfile"
       @save="handleProfileSave"
       @clear-errors="clearProfileErrors"
       @upload-resume="handleResumeUpload"
     />
-    <p v-if="resumeUploadError" class="job-form__error" role="alert">{{ resumeUploadError }}</p>
 
     <HiringDashboard
       v-if="isHiringUser && activeTab !== 'profile'"
       :my-jobs="myJobs"
+      :roles-loading="rolesLoading"
       :candidates="candidates"
       :candidates-loading="candidatesLoading"
       :location-label="candidateLocationLabel"
@@ -411,13 +441,16 @@ async function applyToJob(jobId) {
         <button class="auth-modal__close" @click="closeApplications" aria-label="Close applicants dialog">&times;</button>
         <h2 id="applicants-dialog-title" class="auth-modal__title" style="margin-bottom: 20px;">Applicants</h2>
         <div v-if="selectedJobApplications.length === 0" class="dash-empty">No applications yet.</div>
-        <div v-for="app in selectedJobApplications" :key="app.id" class="applicant-row">
+        <div v-for="app in visibleSelectedApplications" :key="app.id" class="applicant-row">
           <div class="applicant-row__info">
             <strong>{{ app.workerName }}</strong>
             <span class="applicant-row__status">{{ app.status }}</span>
           </div>
           <span class="applicant-row__date">{{ new Date(app.appliedAt).toLocaleDateString() }}</span>
         </div>
+        <button v-if="selectedJobApplications.length > 5" type="button" class="dash-btn dash-btn--primary" @click="showAllSelectedApplications">
+          Show more applicants ({{ selectedJobApplications.length }} total)
+        </button>
       </div>
     </div>
 
@@ -437,6 +470,7 @@ async function applyToJob(jobId) {
       @open-profile="handleProfileClick"
       @open-job="goWorkerJob"
       @view-applications="goWorkerApplications"
+      @view-all-jobs="goAllWorkerJobs"
     />
 
     <main v-else-if="user && !isHiringUser && activeTab !== 'profile'" class="dash-main">
@@ -446,10 +480,3 @@ async function applyToJob(jobId) {
     </main>
   </div>
 </template>
-
-<style scoped>
-.dash-shell--worker .dash-role-badge {
-  background: var(--worker-role-gradient);
-  box-shadow: 0 8px 24px rgba(var(--worker-role-green-rgb), 0.2);
-}
-</style>

@@ -261,6 +261,9 @@ app.MapProfileEndpoints();
 // --- Job Endpoints ---
 app.MapJobEndpoints();
 
+// --- Notification Endpoints ---
+app.MapNotificationEndpoints();
+
 app.MapFallbackToFile("index.html");
 
 app.Run();

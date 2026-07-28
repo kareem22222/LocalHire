@@ -11,6 +11,7 @@ vi.mock('../api', () => ({
     put: vi.fn(),
   },
 }))
+vi.mock('../utils/minimumDelay', () => ({ withMinimumDelay: (task) => task() }))
 
 let router
 
@@ -60,6 +61,31 @@ describe('AllRolesPage', () => {
     expect(wrapper.text()).toContain('No open roles yet')
   })
 
+  it('loads fifteen roles per page', async () => {
+    api.get.mockResolvedValue({ data: Array.from({ length: 31 }, (_, index) => ({
+      id: `j${index}`,
+      title: `Role ${index}`,
+      isActive: true,
+    })) })
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(wrapper.findAll('.hiring-role-card')).toHaveLength(15)
+    expect(wrapper.text()).toContain('Page 1 of 3')
+    await wrapper.find('[aria-label="Page 3 of 3"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('.hiring-role-card')).toHaveLength(1)
+    expect(wrapper.text()).toContain('Page 3 of 3')
+  })
+
+  it('shows fifteen matching role skeletons while loading', () => {
+    api.get.mockReturnValue(new Promise(() => {}))
+
+    const wrapper = mountPage()
+
+    expect(wrapper.findAll('.skeleton-card--role')).toHaveLength(15)
+  })
+
   it('logs failures when roles cannot be loaded', async () => {
     const error = new Error('network error')
     const log = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -94,10 +120,18 @@ describe('AllRolesPage', () => {
     await flushPromises()
     const push = vi.spyOn(router, 'push')
 
+    await wrapper.find('.hiring-role-card').trigger('mouseenter')
     await wrapper.find('.hiring-role-card__icon').trigger('click')
     expect(push).toHaveBeenCalledWith('/jobs/j1')
 
     await findButtonByText(wrapper, 'View role').trigger('click')
     expect(push).toHaveBeenCalledWith('/jobs/j1')
+
+    const stats = wrapper.findAll('.hiring-role-card__stat')
+    await stats[0].trigger('click')
+    expect(push).toHaveBeenCalledWith({ name: 'job-applicants', params: { id: 'j1' } })
+
+    await stats[1].trigger('click')
+    expect(push).toHaveBeenCalledWith({ name: 'job-shortlisted', params: { id: 'j1' } })
   })
 })

@@ -54,10 +54,20 @@ export function clearAuth() {
   accessToken = ''
   try {
     localStorage.removeItem(TOKEN_STORAGE_KEY)
+    localStorage.removeItem('dashboard_tab')
   } catch {
     // Ignore storage errors.
   }
   clearSavedCandidates()
+  try {
+    window.history.replaceState({}, '', '/')
+  } catch {
+    // The next authenticated render also resets the Vue Router route.
+  }
+}
+
+export function hasAuthToken() {
+  return Boolean(accessToken)
 }
 
 export async function isAuthenticated() {

@@ -195,7 +195,7 @@
   background: rgba(18, 50, 74, 0.08);
 }
 
-.hiring-metrics div {
+.hiring-metrics > div {
   padding: 22px;
   text-align: center;
   background: #ffffff;
@@ -206,10 +206,94 @@
   margin-bottom: 4px;
   color: #07559a;
   font-family: Manrope, sans-serif;
-  font-size: 30px;
+  font-size: clamp(40px, 5vw, 56px);
+  line-height: 1;
 }
 
-.hiring-metrics span,
+.spotlight-card {
+  --spotlight-rgb: 7, 85, 154;
+  --spotlight-x: 50%;
+  --spotlight-y: 50%;
+  --spotlight-rx: 0deg;
+  --spotlight-ry: 0deg;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  transform-style: preserve-3d;
+}
+
+.spotlight-card--worker {
+  --spotlight-rgb: var(--worker-role-green-rgb);
+}
+
+.spotlight-card:hover {
+  transform: perspective(900px) rotateX(var(--spotlight-rx)) rotateY(var(--spotlight-ry)) translateY(-2px);
+}
+
+.spotlight-card::before,
+.spotlight-card::after {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+}
+
+.spotlight-card::before {
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(var(--spotlight-rgb), 0.08), transparent 65%),
+    linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, 0.72) 48%, transparent 76%);
+  background-position: 0 0, -160% 0;
+  background-repeat: no-repeat;
+  background-size: auto, 45% 100%;
+  transition: background-position 700ms ease-out;
+}
+
+.spotlight-card::after {
+  opacity: 0;
+  background: radial-gradient(circle at var(--spotlight-x) var(--spotlight-y), rgba(var(--spotlight-rgb), 0.18), transparent 58%);
+  box-shadow: inset 0 -2px rgba(var(--spotlight-rgb), 0.42);
+  transition: opacity 220ms ease;
+}
+
+.spotlight-card:hover::before,
+.spotlight-card:focus-within::before {
+  background-position: 0 0, 260% 0;
+}
+
+.spotlight-card:hover::after,
+.spotlight-card:focus-within::after {
+  opacity: 1;
+}
+
+.spotlight-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.candidate-list:has(.candidate-card:hover) .candidate-card:not(:hover),
+.worker-job-list:has(.worker-job-row:hover) .worker-job-row:not(:hover) {
+  opacity: 0.52;
+  transform: perspective(900px) scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce), (hover: none) {
+  .spotlight-card,
+  .spotlight-card::before,
+  .spotlight-card::after {
+    transition: none !important;
+  }
+
+  .spotlight-card,
+  .spotlight-card:hover,
+  .candidate-list:has(.candidate-card:hover) .candidate-card:not(:hover),
+  .worker-job-list:has(.worker-job-row:hover) .worker-job-row:not(:hover) {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hiring-metrics .border-glow__inner > span,
 .candidate-list__head > span {
   color: #6f8794;
   font-size: 13px;
@@ -243,6 +327,17 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
+}
+
+.hiring-role-grid,
+.dashboard-animated-list,
+.candidate-list > .candidate-card {
+  animation: skeleton-content-reveal 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes skeleton-content-reveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .hiring-role-card,
@@ -362,7 +457,7 @@
   gap: 8px;
 }
 
-.hiring-progress span {
+.hiring-progress > span {
   color: #5d7482;
   font-size: 12px;
   font-weight: 800;
@@ -481,6 +576,10 @@
   text-align: center;
 }
 
+.candidate-empty .message-loading {
+  margin-bottom: 10px;
+}
+
 .candidate-empty strong {
   display: block;
   margin-bottom: 8px;
@@ -516,5 +615,13 @@
 
   .candidate-actions {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hiring-role-grid,
+  .dashboard-animated-list,
+  .candidate-list > .candidate-card {
+    animation: none;
   }
 }

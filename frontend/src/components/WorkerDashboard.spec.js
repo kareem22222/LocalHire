@@ -17,6 +17,9 @@ describe('WorkerDashboard', () => {
     const wrapper = mount(WorkerDashboard, {
       props: { user: { profileCompletionPercent: 95 }, jobs: [job], locationLabel: 'Mysuru' },
     })
+    const progress = wrapper.get('progress')
+
+    expect(progress.attributes('value')).toBe('95')
 
     await wrapper.findAll('button').find((item) => item.text() === 'Applied jobs').trigger('click')
     await wrapper.findAll('button').find((item) => item.text() === 'Update profile').trigger('click')
@@ -48,15 +51,28 @@ describe('WorkerDashboard', () => {
     const applied = mount(WorkerDashboard, {
       props: { user, jobs: [job], applications: [{ jobPostId: 'job-1' }] },
     })
-    expect(applied.text()).toContain('100%')
+    expect(applied.get('progress').attributes('value')).toBe('100')
     expect(applied.findAll('button').find((item) => item.text() === 'Applied').attributes('disabled')).toBeDefined()
 
     await applied.setProps({ applications: [], applying: 'job-1' })
     expect(applied.text()).toContain('Applying...')
     await applied.setProps({ jobs: [], loading: true, locating: true })
     expect(applied.text()).toContain('Searching roles...')
+    expect(applied.find('.skeleton-list--job').exists()).toBe(true)
     expect(applied.text()).toContain('Locating...')
     await applied.setProps({ loading: false })
     expect(applied.text()).toContain('No roles found')
+  })
+
+  it('keeps the dashboard list short and opens the full jobs page', async () => {
+    const jobs = Array.from({ length: 7 }, (_, index) => ({ ...job, id: `job-${index}` }))
+    const wrapper = mount(WorkerDashboard, { props: { jobs } })
+
+    expect(wrapper.findAll('.worker-job-row')).toHaveLength(6)
+    await wrapper.get('.worker-show-more__btn').trigger('click')
+    expect(wrapper.emitted('view-all-jobs')[0]).toEqual([{ search: '', employmentType: '' }])
+
+    await wrapper.setProps({ loading: true })
+    expect(wrapper.find('.worker-show-more__btn').exists()).toBe(false)
   })
 })

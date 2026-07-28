@@ -128,4 +128,25 @@ describe('JobApplicantsPage', () => {
     resolveShortlist({ data: { ...candidate, status: 'Shortlisted' } })
     await first
   })
+
+  it('paginates applicants without reloading the role', async () => {
+    const applicants = Array.from({ length: 11 }, (_, index) => ({
+      ...pendingApplicant,
+      id: `application-${index}`,
+      workerId: `candidate-${index}`,
+      workerName: `Worker ${index}`,
+    }))
+    api.get.mockImplementation((url) => Promise.resolve({
+      data: url.endsWith('/applications') ? applicants : { id: 'job-1', title: 'Cashier' },
+    }))
+    const wrapper = await mountPage()
+    await flushPromises()
+    const callsBeforePaging = api.get.mock.calls.length
+
+    expect(wrapper.findAll('.candidate-card')).toHaveLength(10)
+    await wrapper.find('[aria-label="Page 2 of 2"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('.candidate-card')).toHaveLength(1)
+    expect(api.get).toHaveBeenCalledTimes(callsBeforePaging)
+  })
 })

@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AppDashboard from './AppDashboard.vue'
 import api from '../api'
 import { createTestRouter } from '../test/router'
+import { useJobsStore } from '../stores/jobs'
+import { useProfileStore } from '../stores/profile'
 
 vi.mock('../api', () => ({
   default: {
@@ -11,6 +13,7 @@ vi.mock('../api', () => ({
     put: vi.fn(),
   },
 }))
+vi.mock('../utils/minimumDelay', () => ({ withMinimumDelay: (task) => task() }))
 
 let router
 
@@ -50,6 +53,27 @@ describe('AppDashboard', () => {
     await flushPromises()
 
     expect(api.get).toHaveBeenCalledWith('/hiring/jobs')
+  })
+
+  it('shows both hiring shimmers immediately and starts both requests together', async () => {
+    const profileStore = useProfileStore()
+    const jobsStore = useJobsStore()
+    profileStore.profile = { name: 'Pat', role: 'Hiring' }
+    profileStore.fetchedAt = Date.now()
+    jobsStore.myJobs = Array.from({ length: 6 }, (_, index) => ({ id: `job-${index}`, title: `Role ${index}`, isActive: true }))
+    jobsStore.candidates = [{ id: 'worker-1', name: 'Ravi', role: 'Cashier' }]
+    api.get.mockReturnValue(new Promise(() => {}))
+
+    const wrapper = mountDashboard()
+    await flushPromises()
+
+    expect(api.get).toHaveBeenCalledWith('/hiring/jobs')
+    expect(api.get).toHaveBeenCalledWith('/hiring/candidates/nearby', { params: {} })
+    expect(wrapper.findAll('.hiring-roles .skeleton-card--role')).toHaveLength(6)
+    expect(wrapper.find('.candidate-list .skeleton-list--candidate').exists()).toBe(true)
+    expect(wrapper.find('.candidate-card').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('No talent found')
+    wrapper.unmount()
   })
 
   it('routes the new hiring summary actions', async () => {
@@ -198,6 +222,29 @@ describe('AppDashboard', () => {
     expect(wrapper.find('.auth-modal__close').attributes('aria-label')).toBe('Close applicants dialog')
   })
 
+  it('keeps the applicant dialog short and opens the paginated applicant page', async () => {
+    const applications = Array.from({ length: 6 }, (_, index) => ({
+      id: `application-${index}`,
+      workerName: `Worker ${index}`,
+      status: 'Applied',
+      appliedAt: '2026-07-27T00:00:00Z',
+    }))
+    api.get.mockImplementation((url) => Promise.resolve({
+      data: url === '/auth/me'
+        ? { name: 'Pat', role: 'Hiring' }
+        : url.endsWith('/applications') ? applications : [],
+    }))
+    const wrapper = mountDashboard()
+    await flushPromises()
+    const push = vi.spyOn(wrapper.vm.$router, 'push')
+    await wrapper.vm.viewApplications('job-id')
+    await flushPromises()
+
+    expect(wrapper.findAll('.applicant-row')).toHaveLength(5)
+    await wrapper.findAll('button').find((button) => button.text().includes('Show more applicants')).trigger('click')
+    expect(push).toHaveBeenCalledWith({ name: 'job-applicants', params: { id: 'job-id' } })
+  })
+
   it('navigates to the all-roles page from the roles show-more button', async () => {
     const jobs = Array.from({ length: 7 }, (_, index) => ({
       id: `job-${index}`,
@@ -254,7 +301,7 @@ describe('AppDashboard', () => {
   })
 
   describe('profile navigation', () => {
-    it('emits "profile" with the current user and shows the profile page when the name is clicked', async () => {
+    it('shows the profile page without duplicating account controls in the header', async () => {
       api.get.mockImplementation((url) => Promise.resolve({
         data: url === '/auth/me' ? { name: 'Pat', role: 'Hiring' } : [],
       }))
@@ -262,11 +309,15 @@ describe('AppDashboard', () => {
       const wrapper = mountDashboard()
       await flushPromises()
 
-      await wrapper.find('.dash-user-name').trigger('click')
+      const push = vi.spyOn(router, 'push')
+      await router.push({ path: '/', query: { tab: 'profile' } })
+      await flushPromises()
 
-      expect(wrapper.emitted('profile')).toEqual([[{ name: 'Pat', role: 'Hiring' }]])
+      expect(wrapper.find('.dash-user-name').exists()).toBe(false)
+      expect(wrapper.find('.dash-logout-btn').exists()).toBe(false)
       expect(wrapper.find('.profile-page').exists()).toBe(true)
       expect(wrapper.text()).toContain('Personal information')
+      expect(push).toHaveBeenCalledTimes(1)
     })
 
     it('hides the hiring dashboard while the profile page is open and restores it on back', async () => {
@@ -278,8 +329,10 @@ describe('AppDashboard', () => {
       await flushPromises()
       expect(findButtonByText(wrapper, 'Post new role')).toBeTruthy()
 
-      await wrapper.find('.dash-user-name').trigger('click')
+      wrapper.vm.handleProfileClick()
+      await flushPromises()
 
+      expect(router.currentRoute.value.query.tab).toBe('profile')
       expect(findButtonByText(wrapper, 'Post new role')).toBeFalsy()
       expect(wrapper.find('.profile-page').exists()).toBe(true)
 
@@ -289,7 +342,7 @@ describe('AppDashboard', () => {
       expect(findButtonByText(wrapper, 'Post new role')).toBeTruthy()
     })
 
-    it('returns from the profile page to the dashboard when the Hiring role badge is clicked', async () => {
+    it('returns a hiring user from the profile page to the dashboard', async () => {
       api.get.mockImplementation((url) => Promise.resolve({
         data: url === '/auth/me' ? { name: 'Pat', role: 'Hiring' } : [],
       }))
@@ -297,16 +350,18 @@ describe('AppDashboard', () => {
       const wrapper = mountDashboard()
       await flushPromises()
 
-      await wrapper.find('.dash-user-name').trigger('click')
+      wrapper.vm.handleProfileClick()
+      await flushPromises()
       expect(wrapper.find('.profile-page').exists()).toBe(true)
 
-      await wrapper.find('.dash-role-badge').trigger('click')
+      wrapper.vm.closeProfile()
+      await flushPromises()
 
       expect(wrapper.find('.profile-page').exists()).toBe(false)
       expect(findButtonByText(wrapper, 'Post new role')).toBeTruthy()
     })
 
-    it('returns a worker from the profile page to the dashboard when the Worker role badge is clicked', async () => {
+    it('returns a worker from the profile page to the dashboard', async () => {
       api.get.mockImplementation((url) => Promise.resolve({
         data: url === '/auth/me' ? { name: 'Pat', role: 'LookingForWork' } : [],
       }))
@@ -314,10 +369,12 @@ describe('AppDashboard', () => {
       const wrapper = mountDashboard()
       await flushPromises()
 
-      await wrapper.find('.dash-user-name').trigger('click')
+      wrapper.vm.handleProfileClick()
+      await flushPromises()
       expect(wrapper.find('.profile-page').exists()).toBe(true)
 
-      await wrapper.find('.dash-role-badge').trigger('click')
+      wrapper.vm.closeProfile()
+      await flushPromises()
 
       expect(wrapper.find('.profile-page').exists()).toBe(false)
       expect(wrapper.text()).toContain('Roles for you')
@@ -332,7 +389,8 @@ describe('AppDashboard', () => {
       await flushPromises()
       expect(wrapper.text()).toContain('Roles for you')
 
-      await wrapper.find('.dash-user-name').trigger('click')
+      wrapper.vm.handleProfileClick()
+      await flushPromises()
 
       expect(wrapper.text()).not.toContain('Roles for you')
       expect(wrapper.find('.profile-page').exists()).toBe(true)
@@ -352,7 +410,8 @@ describe('AppDashboard', () => {
       await flushPromises()
       expect(wrapper.text()).toContain('We could not identify this account type.')
 
-      await wrapper.find('.dash-user-name').trigger('click')
+      wrapper.vm.handleProfileClick()
+      await flushPromises()
 
       expect(wrapper.text()).not.toContain('We could not identify this account type.')
       expect(wrapper.find('.profile-page').exists()).toBe(true)
@@ -368,9 +427,9 @@ describe('AppDashboard', () => {
 
       const wrapper = mountDashboard()
 
-      await wrapper.find('.dash-user-name').trigger('click')
+      wrapper.vm.handleProfileClick()
+      await flushPromises()
 
-      expect(wrapper.emitted('profile')).toEqual([[null]])
       expect(wrapper.find('.profile-page .dash-welcome__name').text()).toBe('User')
     })
 
@@ -383,7 +442,8 @@ describe('AppDashboard', () => {
       const wrapper = mountDashboard()
       await flushPromises()
 
-      await wrapper.find('.dash-user-name').trigger('click')
+      wrapper.vm.handleProfileClick()
+      await flushPromises()
       await findButtonByText(wrapper, 'Edit profile').trigger('click')
       await findButtonByText(wrapper, 'Save').trigger('click')
       await flushPromises()
@@ -408,7 +468,8 @@ describe('AppDashboard', () => {
       const wrapper = mountDashboard()
       await flushPromises()
 
-      await wrapper.find('.dash-user-name').trigger('click')
+      wrapper.vm.handleProfileClick()
+      await flushPromises()
       await findButtonByText(wrapper, 'Edit profile').trigger('click')
       await wrapper.find('#profile-name').setValue('Pat Rao')
       await findButtonByText(wrapper, 'Save').trigger('click')
@@ -432,7 +493,8 @@ describe('AppDashboard', () => {
 
       const wrapper = mountDashboard()
       await flushPromises()
-      await wrapper.find('.dash-user-name').trigger('click')
+      wrapper.vm.handleProfileClick()
+      await flushPromises()
       await findButtonByText(wrapper, 'Edit profile').trigger('click')
       await findButtonByText(wrapper, 'Save').trigger('click')
       await flushPromises()
@@ -440,6 +502,37 @@ describe('AppDashboard', () => {
       const alert = wrapper.get('[role="alert"]').text()
       expect(alert).toContain('Maximum expected salary is too low.')
       expect(alert).toContain('Employer is required.')
+    })
+
+    it('shows real resume upload progress and completion', async () => {
+      const profileStore = useProfileStore()
+      profileStore.profile = { name: 'Pat', role: 'LookingForWork', resumeFileName: '' }
+      profileStore.fetchedAt = Date.now()
+      localStorage.setItem('dashboard_tab', 'profile')
+      let reportProgress
+      let finishUpload
+      api.put.mockImplementation((url, _data, config) => {
+        if (url !== '/me/resume') return Promise.resolve({ data: {} })
+        reportProgress = config.onUploadProgress
+        return new Promise((resolve) => {
+          finishUpload = () => resolve({ data: { ...profileStore.profile, resumeFileName: 'pat-cv.pdf' } })
+        })
+      })
+
+      const wrapper = mountDashboard()
+      await flushPromises()
+      const input = wrapper.find('#profile-resume')
+      const file = new File(['%PDF'], 'pat-cv.pdf', { type: 'application/pdf' })
+      Object.defineProperty(input.element, 'files', { value: [file] })
+      await input.trigger('change')
+      reportProgress({ loaded: 2, total: 4 })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('progress[aria-label="Resume upload progress"]').attributes('value')).toBe('50')
+      finishUpload()
+      await flushPromises()
+      expect(wrapper.find('.resume-upload__status').text()).toBe('Uploaded')
+      expect(wrapper.text()).toContain('pat-cv.pdf')
     })
   })
 })

@@ -111,7 +111,8 @@ describe('ProfilePage', () => {
     await wrapper.setProps({ user: { ...user, resumeFileName: 'pat-cv.pdf' } })
 
     expect(wrapper.find('#profile-name').element.value).toBe('Pat Draft')
-    expect(wrapper.text()).toContain('Uploaded: pat-cv.pdf')
+    expect(wrapper.text()).toContain('pat-cv.pdf')
+    expect(wrapper.find('.resume-upload__status').text()).toBe('Uploaded')
     expect(wrapper.findAll('button').some((button) => button.text() === 'Save')).toBe(true)
   })
 

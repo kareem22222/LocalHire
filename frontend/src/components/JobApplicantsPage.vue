@@ -4,6 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useJobsStore } from '../stores/jobs'
 import BrandLogo from './BrandLogo.vue'
 import CandidateCard from './CandidateCard.vue'
+import Pagination from './ui/Pagination.vue'
+import { MAX_VISIBLE_CANDIDATES } from '../utils/jobDisplay'
 import '../hiring-dashboard.css'
 
 const props = defineProps({
@@ -48,6 +50,9 @@ const visibleApplicants = computed(() => {
     ? mapped.filter((a) => a.status === 'Shortlisted')
     : mapped
 })
+const totalPages = computed(() => Math.ceil(visibleApplicants.value.length / MAX_VISIBLE_CANDIDATES))
+const currentPage = computed(() => Math.min(Math.max(Number.parseInt(route.query.page, 10) || 1, 1), totalPages.value || 1))
+const paginatedApplicants = computed(() => visibleApplicants.value.slice((currentPage.value - 1) * MAX_VISIBLE_CANDIDATES, currentPage.value * MAX_VISIBLE_CANDIDATES))
 
 const heading = computed(() => {
   const roleTitle = job.value?.title ? `${job.value.title} - ` : ''
@@ -88,7 +93,11 @@ async function load() {
 }
 
 onMounted(load)
-watch(() => route.fullPath, load)
+watch([jobId, isShortlistedView], load)
+
+function changePage(page) {
+  router.push({ query: { ...route.query, page: page === 1 ? undefined : String(page) } })
+}
 
 function goBack() {
   router.push('/')
@@ -144,7 +153,7 @@ async function shortlist(candidate) {
 
         <template v-else>
           <CandidateCard
-            v-for="candidate in visibleApplicants"
+            v-for="candidate in paginatedApplicants"
             :key="candidate.applicationId"
             :candidate="candidate"
             :shortlisted="candidate.status === 'Shortlisted'"
@@ -152,6 +161,8 @@ async function shortlist(candidate) {
             @shortlist="shortlist"
             @contact="contact"
           />
+
+          <Pagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
 
           <div v-if="!visibleApplicants.length" class="candidate-empty">
             <strong>Nothing here yet</strong>

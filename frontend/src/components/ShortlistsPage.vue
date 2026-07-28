@@ -1,13 +1,16 @@
 <script setup>
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useOpenRoles } from '../composables/useOpenRoles'
 import { useJobsStore } from '../stores/jobs'
+import { MAX_VISIBLE_ROLES } from '../utils/jobDisplay'
 import BrandLogo from './BrandLogo.vue'
+import Pagination from './ui/Pagination.vue'
 import RoleCard from './RoleCard.vue'
 import '../hiring-dashboard.css'
 
+const route = useRoute()
 const router = useRouter()
 const jobsStore = useJobsStore()
 const { myJobs } = storeToRefs(jobsStore)
@@ -18,6 +21,9 @@ const openRoles = useOpenRoles(() => myJobs.value)
 
 // Only roles that actually have shortlisted candidates are worth reviewing here.
 const rolesWithShortlists = computed(() => openRoles.value.filter((role) => role.shortlisted > 0))
+const totalPages = computed(() => Math.ceil(rolesWithShortlists.value.length / MAX_VISIBLE_ROLES))
+const currentPage = computed(() => Math.min(Math.max(Number.parseInt(route.query.page, 10) || 1, 1), totalPages.value || 1))
+const visibleRoles = computed(() => rolesWithShortlists.value.slice((currentPage.value - 1) * MAX_VISIBLE_ROLES, currentPage.value * MAX_VISIBLE_ROLES))
 const totalShortlisted = computed(() =>
   rolesWithShortlists.value.reduce((sum, role) => sum + role.shortlisted, 0),
 )
@@ -48,6 +54,10 @@ function goShortlisted(id) {
 
 function goApplicants(id) {
   router.push({ name: 'job-applicants', params: { id } })
+}
+
+function changePage(page) {
+  router.push({ query: { ...route.query, page: page === 1 ? undefined : String(page) } })
 }
 </script>
 
@@ -80,7 +90,7 @@ function goApplicants(id) {
         <template v-else>
           <div class="hiring-role-grid">
             <RoleCard
-              v-for="item in rolesWithShortlists"
+              v-for="item in visibleRoles"
               :key="item.id || item.title"
               :item="item"
               action-label="View shortlisted"
@@ -91,6 +101,8 @@ function goApplicants(id) {
               @view-shortlisted="goShortlisted"
             />
           </div>
+
+          <Pagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
 
           <div v-if="!rolesWithShortlists.length" class="candidate-empty">
             <strong>No shortlists yet</strong>

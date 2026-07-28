@@ -11,6 +11,7 @@ vi.mock('../api', () => ({
     put: vi.fn(),
   },
 }))
+vi.mock('../utils/minimumDelay', () => ({ withMinimumDelay: (task) => task() }))
 
 let router
 
@@ -87,6 +88,11 @@ describe('AllCandidatesPage', () => {
 
     expect(wrapper.findAll('.candidate-card')).toHaveLength(10)
     expect(wrapper.text()).toContain('12 results')
+    expect(wrapper.text()).toContain('Page 1 of 2')
+    await wrapper.find('[aria-label="Page 2 of 2"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('.candidate-card')).toHaveLength(2)
+    expect(wrapper.text()).toContain('Page 2 of 2')
   })
 
   it('navigates back to the dashboard', async () => {

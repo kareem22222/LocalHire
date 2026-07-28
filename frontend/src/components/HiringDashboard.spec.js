@@ -25,6 +25,28 @@ describe('HiringDashboard', () => {
     expect(wrapper.text()).toContain('No talent found')
   })
 
+  it('shows shaped shimmer lists while roles and candidates load', () => {
+    const wrapper = mountHiringDashboard({ rolesLoading: true, candidatesLoading: true })
+
+    expect(wrapper.find('.hiring-roles').attributes('aria-busy')).toBe('true')
+    expect(wrapper.find('.candidate-list').attributes('aria-busy')).toBe('true')
+    expect(wrapper.find('.hiring-roles .skeleton-list--role').exists()).toBe(true)
+    expect(wrapper.find('.candidate-list .skeleton-list--candidate').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('No open roles yet')
+    expect(wrapper.text()).not.toContain('No talent found')
+  })
+
+  it.each([1, 6])('matches the role skeleton count to %i cached role(s)', (count) => {
+    const myJobs = Array.from({ length: count }, (_, index) => ({
+      id: `job-${index}`,
+      title: `Role ${index}`,
+      isActive: true,
+    }))
+    const wrapper = mountHiringDashboard({ myJobs, rolesLoading: true })
+
+    expect(wrapper.findAll('.hiring-roles .skeleton-card--role')).toHaveLength(count)
+  })
+
   it('renders a candidate with no name without throwing', () => {
     const wrapper = mountHiringDashboard({ candidates: [{ id: 1, name: null, matchScore: 70 }] })
 
@@ -164,6 +186,7 @@ describe('HiringDashboard', () => {
     const icons = wrapper.findAll('.hiring-role-card__icon')
     expect(icons).toHaveLength(1)
 
+    await wrapper.find('.hiring-role-card').trigger('mouseenter')
     await icons[0].trigger('click')
 
     expect(wrapper.emitted('view-job')).toEqual([[7]])
@@ -256,6 +279,22 @@ describe('HiringDashboard', () => {
       }],
       candidates: [candidate],
     })
+
+    const roleCard = wrapper.find('.hiring-role-card')
+    expect(roleCard.find('.hiring-role-card__visual').exists()).toBe(true)
+    expect(roleCard.findAll('.hiring-role-card__visual i')).toHaveLength(0)
+    expect(roleCard.find('.hiring-role-card__visual use').attributes('href')).toBe('/role-icons.svg#cashier')
+    expect(roleCard.classes()).not.toContain('hiring-role-card--flipped')
+    expect(roleCard.find('.hiring-role-card__back').attributes('aria-hidden')).toBe('true')
+
+    await roleCard.trigger('mouseenter')
+    expect(roleCard.classes()).toContain('hiring-role-card--flipped')
+    expect(roleCard.find('.hiring-role-card__back').attributes('aria-hidden')).toBe('false')
+
+    await roleCard.trigger('mouseleave')
+    expect(roleCard.classes()).not.toContain('hiring-role-card--flipped')
+    await roleCard.trigger('focusin')
+    expect(roleCard.classes()).toContain('hiring-role-card--flipped')
 
     const stats = wrapper.findAll('.hiring-role-card__stat')
     await stats[0].trigger('click')

@@ -43,14 +43,14 @@ describe('PostJobView', () => {
     api.post.mockResolvedValue({ data: {} })
   })
 
-  it('renders the job form with dashboard and sign out controls', async () => {
+  it('renders the job form without duplicating account controls', async () => {
     const wrapper = mountView()
     await flushPromises()
 
     expect(wrapper.find('.job-form').exists()).toBe(true)
     const labels = wrapper.findAll('button').map((button) => button.text())
-    expect(labels).toContain('Dashboard')
-    expect(labels).toContain('Sign out')
+    expect(labels).not.toContain('Dashboard')
+    expect(labels).not.toContain('Sign out')
   })
 
   it('redirects non-hiring users back to the dashboard', async () => {

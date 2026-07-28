@@ -1,24 +1,32 @@
 <script setup>
 import { storeToRefs } from 'pinia'
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useOpenRoles } from '../composables/useOpenRoles'
 import { useJobsStore } from '../stores/jobs'
+import { withMinimumDelay } from '../utils/minimumDelay'
 import BrandLogo from './BrandLogo.vue'
+import Pagination from './ui/Pagination.vue'
 import RoleCard from './RoleCard.vue'
+import SkeletonShimmer from './ui/SkeletonShimmer.vue'
 import '../hiring-dashboard.css'
 
+const route = useRoute()
 const router = useRouter()
 const jobsStore = useJobsStore()
 const { myJobs } = storeToRefs(jobsStore)
-const loading = ref(false)
+const loading = ref(true)
+const ROLES_PER_PAGE = 15
 
 const openRoles = useOpenRoles(() => myJobs.value)
+const totalPages = computed(() => Math.ceil(openRoles.value.length / ROLES_PER_PAGE))
+const currentPage = computed(() => Math.min(Math.max(Number.parseInt(route.query.page, 10) || 1, 1), totalPages.value || 1))
+const visibleRoles = computed(() => openRoles.value.slice((currentPage.value - 1) * ROLES_PER_PAGE, currentPage.value * ROLES_PER_PAGE))
 
 onMounted(async () => {
   loading.value = true
   try {
-    await jobsStore.loadMyJobs()
+    await withMinimumDelay(() => jobsStore.loadMyJobs())
   } catch (error) {
     console.error('Failed to load roles.', error)
   } finally {
@@ -33,6 +41,18 @@ function goBack() {
 function goViewJob(id) {
   router.push(`/jobs/${id}`)
 }
+
+function goApplicants(id) {
+  router.push({ name: 'job-applicants', params: { id } })
+}
+
+function goShortlisted(id) {
+  router.push({ name: 'job-shortlisted', params: { id } })
+}
+
+function changePage(page) {
+  router.push({ query: { ...route.query, page: page === 1 ? undefined : String(page) } })
+}
 </script>
 
 <template>
@@ -45,7 +65,7 @@ function goViewJob(id) {
     </header>
 
     <main class="hiring-dashboard">
-      <section class="hiring-roles">
+      <section class="hiring-roles" :aria-busy="loading">
         <div class="hiring-roles__head">
           <div>
             <span class="hiring-kicker">Hiring desk</span>
@@ -54,22 +74,24 @@ function goViewJob(id) {
           <span>{{ openRoles.length }} roles</span>
         </div>
 
-        <div v-if="loading" class="candidate-empty">
-          <strong>Loading roles...</strong>
-          <p>Fetching every role you are currently hiring for.</p>
-        </div>
+        <SkeletonShimmer v-if="loading" variant="role" :count="Math.min(openRoles.length || ROLES_PER_PAGE, ROLES_PER_PAGE)" label="Loading roles" />
 
         <template v-else>
           <div class="hiring-role-grid">
             <RoleCard
-              v-for="item in openRoles"
+              v-for="item in visibleRoles"
               :key="item.id || item.title"
               :item="item"
               action-label="View role"
+              counts-clickable
               @view="goViewJob"
               @action="goViewJob"
+              @view-applicants="goApplicants"
+              @view-shortlisted="goShortlisted"
             />
           </div>
+
+          <Pagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
 
           <div v-if="!openRoles.length" class="candidate-empty">
             <strong>No open roles yet</strong>

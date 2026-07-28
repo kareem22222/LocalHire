@@ -2,7 +2,6 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AppDashboard from './AppDashboard.vue'
 import api from '../api'
-import { logout } from '../utils/session'
 import { createTestRouter } from '../test/router'
 
 vi.mock('../api', () => ({
@@ -12,10 +11,7 @@ vi.mock('../api', () => ({
     put: vi.fn(),
   },
 }))
-
-vi.mock('../utils/session', () => ({
-  logout: vi.fn(),
-}))
+vi.mock('../utils/minimumDelay', () => ({ withMinimumDelay: (task) => task() }))
 
 const fullJob = {
   id: 'job-1',
@@ -157,14 +153,22 @@ describe('AppDashboard worker flow', () => {
     expect(findButtonByText(wrapper, 'Applied jobs')).toBeTruthy()
   })
 
-  it('logs out via the session helper', async () => {
-    logout.mockReset()
+  it('opens the paginated jobs page from an overflowing worker list', async () => {
+    const nearby = Array.from({ length: 7 }, (_, index) => ({ ...fullJob, id: `job-${index}` }))
+    const wrapper = mountAsWorker({ nearby })
+    await flushPromises()
+    const push = vi.spyOn(wrapper.vm.$router, 'push')
+
+    await wrapper.get('.worker-show-more__btn').trigger('click')
+    expect(push).toHaveBeenCalledWith({ path: '/work/jobs', query: {} })
+  })
+
+  it('does not duplicate account actions in the dashboard header', async () => {
     const wrapper = mountAsWorker()
     await flushPromises()
 
-    await findButtonByText(wrapper, 'Sign out').trigger('click')
-
-    expect(logout).toHaveBeenCalledTimes(1)
+    expect(wrapper.find('.dash-user-name').exists()).toBe(false)
+    expect(wrapper.find('.dash-logout-btn').exists()).toBe(false)
   })
 
   it('returns to the dashboard from the applicants view and the brand logo', async () => {
