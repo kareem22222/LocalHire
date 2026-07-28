@@ -49,6 +49,7 @@ const sectionItems = [
   { label: 'Momentum', target: 'network-momentum' },
   { label: 'Join', target: 'join' },
 ]
+const authRoleByAction = { candidate: 'LookingForWork', employer: 'Hiring' }
 const authMenuItems = computed(() => {
   const role = normalizeRole(authUser.value?.role)
   if (role === 'hiring') return [
@@ -82,7 +83,7 @@ function cleanupLandingAnimations() {
 
 function openModal(email = '', role = '',initialMode='register') {
   authEmail.value = typeof email === 'string' ? email : ''
-  authRole.value = role
+  authRole.value = authRoleByAction[role] ?? role
   authMode.value=initialMode
   showModal.value = true
 }
@@ -111,8 +112,7 @@ function handleCtaSubmit() {
 }
 
 function handleNav(item) {
-  if (item.action === 'candidate') return openModal('', 'LookingForWork')
-  if (item.action === 'employer') return openModal('', 'Hiring')
+  if (item.action) return openModal('', item.action)
   document.getElementById(item.target)?.scrollIntoView({ behavior: 'smooth' })
 }
 

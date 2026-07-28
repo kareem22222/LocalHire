@@ -533,11 +533,6 @@ public sealed class JobService : IJobService
             CreatedAt = DateTimeOffset.UtcNow
         };
 
-        var workerName = await _db.Users
-            .Where(worker => worker.Id == workerId)
-            .Select(worker => worker.Name)
-            .FirstAsync(ct);
-
         _db.JobApplications.Add(application);
         _db.Notifications.Add(new Notification
         {
@@ -545,7 +540,7 @@ public sealed class JobService : IJobService
             UserId = jobPost.EmployerId,
             Type = "NewApplication",
             Title = "New application received",
-            Message = $"{workerName} applied for {jobPost.Title}.",
+            Message = $"A candidate applied for {jobPost.Title}.",
             Link = $"/hiring/jobs/{jobPost.Id}/applicants",
             CreatedAt = DateTimeOffset.UtcNow
         });

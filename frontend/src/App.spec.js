@@ -43,8 +43,9 @@ function mountAppWithAuthMode(mode, router = createTestRouter()) {
       stubs: {
         AppDashboard: { template: '<div class="fake-dashboard" />' },
         AuthModal: {
+          props: ['initialEmail', 'initialRole', 'initialMode'],
           emits: ['close', 'success'],
-          template: `<button class="fake-auth" @click="$emit('success', { mode: '${mode}' })">auth</button>`,
+          template: `<button class="fake-auth" :data-role="initialRole" @click="$emit('success', { mode: '${mode}' })">auth</button>`,
         },
         BrandLogo: true,
         NetworkBackground: true,
@@ -106,6 +107,18 @@ describe('App signup confetti', () => {
     await wrapper.find('.cta-form').trigger('submit')
 
     expect(wrapper.find('.fake-auth').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('maps navigation actions to authentication roles in one place', async () => {
+    const wrapper = mountAppWithAuthMode('register')
+    await flushPromises()
+
+    const links = wrapper.findAll('.card-nav__card button')
+    await links[0].trigger('click')
+    expect(wrapper.get('.fake-auth').attributes('data-role')).toBe('LookingForWork')
+    await links[2].trigger('click')
+    expect(wrapper.get('.fake-auth').attributes('data-role')).toBe('Hiring')
     wrapper.unmount()
   })
 
