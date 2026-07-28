@@ -23,7 +23,13 @@ test('opens the shortlisted candidates for a role', async ({ page }) => {
 
 test('opens candidate detail and contact information from applicants', async ({ page }) => {
   await page.goto('/hiring/roles')
-  const role = page.locator('article.hiring-role-card').first()
+  // Roles without applicants exist (a freshly posted one sorts first), so pick a
+  // role that has some. The card back is aria-hidden until hovered, hence the
+  // attribute selector instead of a role selector.
+  const role = page.locator('article.hiring-role-card')
+    .filter({ hasNot: page.locator('[aria-label^="View 0 applicants"]') })
+    .first()
+  await expect(role).toBeVisible()
   await role.hover()
   await role.getByRole('button', { name: /View \d+ applicants for/ }).click()
   const candidate = page.locator('article.candidate-card').first()

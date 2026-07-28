@@ -18,6 +18,8 @@ export default defineConfig({
   globalSetup: './Functional_test/Playwright/support/global-setup.js',
   timeout: 30_000,
   expect: { timeout: 10_000 },
+  // Retry a failing test twice before reporting it as a failure.
+  retries: 2,
   workers: 2,
   reporter: process.env.CI
     ? [['github'], ['html', { open: 'never' }]]

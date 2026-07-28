@@ -37,3 +37,53 @@ test('handles an unavailable job and offers recovery', async ({ page }) => {
   await page.getByRole('button', { name: 'Back to jobs' }).click()
   await expect(page).toHaveURL(/\/$/)
 })
+
+
+test('shows an empty state when the search matches no role', async ({ page }) => {
+  await page.goto('/work/jobs?search=zzzzzzzznosuchrole')
+  await expect(page.getByText('No roles found')).toBeVisible()
+  await expect(page.locator('article.worker-job-row')).toHaveCount(0)
+})
+
+test('paginates six roles per page and honours a deep-linked page', async ({ page }) => {
+  // The real list is radius filtered, so its size varies; a fixed list makes the
+  // pagination maths assertable.
+  const jobs = Array.from({ length: 14 }, (_, index) => ({
+    id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+    title: `Stub Role ${String(index + 1).padStart(2, '0')}`,
+    description: 'Stubbed role used to assert pagination.',
+    workplaceName: 'Playwright Store',
+    cityArea: 'Indiranagar',
+    state: 'Karnataka',
+    pincode: '560038',
+    employmentType: 'FullTime',
+    salaryMin: 18000,
+    salaryMax: 24000,
+    salaryPeriod: 'Monthly',
+    applicationCount: 0,
+  }))
+  await page.route('**/api/work/jobs/nearby*', (route) => route.fulfill({ json: jobs }))
+
+  await page.goto('/work/jobs?page=3')
+  const rows = page.locator('article.worker-job-row')
+  await expect(rows).toHaveCount(2)
+  await expect(page.getByText('14 results')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Page 3 of 3' })).toHaveAttribute('aria-current', 'page')
+  await expect(page.getByRole('button', { name: 'Next' })).toBeDisabled()
+
+  await page.getByRole('button', { name: 'Previous' }).click()
+  await expect(page).toHaveURL(/\/work\/jobs\?page=2$/)
+  await expect(rows).toHaveCount(6)
+  await expect(rows.first()).toContainText('Stub Role 07')
+})
+
+test('keeps the employment type filter in the request', async ({ page }) => {
+  const requests = []
+  await page.route('**/api/work/jobs/nearby*', (route) => {
+    requests.push(route.request().url())
+    return route.fallback()
+  })
+  await page.goto('/work/jobs?employmentType=PartTime')
+  await expect(page.locator('article.worker-job-row').first().or(page.getByText('No roles found'))).toBeVisible()
+  expect(requests.at(-1)).toContain('employmentType=PartTime')
+})

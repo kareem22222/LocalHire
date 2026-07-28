@@ -5,6 +5,20 @@ import { fileURLToPath } from 'node:url'
 
 const directory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../.playwright')
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:8080'
+// Tokens live 60 minutes. Reusing one that is about to expire makes every later
+// test render the signed-out landing page, so only reuse a token with enough
+// life left to cover a whole run.
+const MINIMUM_TOKEN_LIFETIME_MS = 30 * 60 * 1000
+
+function expiresSoon(token) {
+  try {
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'))
+    if (!payload.exp) return true
+    return payload.exp * 1000 - Date.now() < MINIMUM_TOKEN_LIFETIME_MS
+  } catch {
+    return true
+  }
+}
 
 async function savedToken(file) {
   try {
@@ -18,6 +32,7 @@ async function savedToken(file) {
 
 async function writeRoleState(api, role, file) {
   let token = await savedToken(file)
+  if (token && expiresSoon(token)) token = null
   if (token) {
     const response = await api.get('/api/auth/me', {
       headers: { Authorization: `Bearer ${token}` },

@@ -166,8 +166,12 @@ function validatePreferences(errors) {
   if (salaryMin != null && salaryMin < 0 || salaryMax != null && salaryMax < 0) errors.push('Expected salary cannot be negative.')
   if (salaryMin != null && salaryMax != null && salaryMax < salaryMin) errors.push('Maximum expected salary cannot be less than minimum expected salary.')
   if ((salaryMin != null || salaryMax != null) && !preferences.salaryPeriod) errors.push('Select a salary period.')
-  if (preferences.travelRadiusKm !== '' && (Number(preferences.travelRadiusKm) < 1 || Number(preferences.travelRadiusKm) > 500)) errors.push('Travel distance must be between 1 and 500 km.')
-  if (preferences.noticePeriodDays !== '' && (Number(preferences.noticePeriodDays) < 0 || Number(preferences.noticePeriodDays) > 365)) errors.push('Notice period must be between 0 and 365 days.')
+  // The API returns `null` for preferences that were never set, so an unset value
+  // must be treated the same as an empty field; otherwise Number(null) === 0 and
+  // the range check rejects a profile the user never touched.
+  const isBlank = (value) => value === '' || value == null
+  if (!isBlank(preferences.travelRadiusKm) && (Number(preferences.travelRadiusKm) < 1 || Number(preferences.travelRadiusKm) > 500)) errors.push('Travel distance must be between 1 and 500 km.')
+  if (!isBlank(preferences.noticePeriodDays) && (Number(preferences.noticePeriodDays) < 0 || Number(preferences.noticePeriodDays) > 365)) errors.push('Notice period must be between 0 and 365 days.')
   if (preferences.desiredRoles.length > 10) errors.push('Add at most 10 desired roles.')
   if (preferences.preferredLocations.length > 10) errors.push('Add at most 10 preferred locations.')
 }

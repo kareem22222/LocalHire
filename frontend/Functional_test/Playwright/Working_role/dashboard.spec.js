@@ -22,7 +22,9 @@ test('searches and filters nearby roles', async ({ page }) => {
   await page.getByRole('button', { name: 'Search', exact: true }).click()
   await expect(page.getByText(/results$/).first()).toBeVisible()
   for (const row of await page.locator('article.worker-job-row').all()) {
-    await expect(row).toContainText(/Store|Full time/i)
+    // Every row has to match the typed term and the employment-type filter.
+    await expect(row.locator('.worker-job-row__main')).toContainText(/Store/i)
+    await expect(row.locator('.worker-job-row__tags')).toContainText('Full-time')
   }
 })
 

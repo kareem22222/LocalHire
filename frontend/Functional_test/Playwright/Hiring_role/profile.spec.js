@@ -29,6 +29,39 @@ test('validates profile edits and preserves the draft until cancelled', async ({
   await expect(page.getByRole('button', { name: 'Edit profile' })).toBeVisible()
 })
 
+test('saves an employer profile change and keeps it after a reload', async ({ page }) => {
+  await openProfile(page)
+  const address = `Playwright Lane ${Date.now()}`
+  await page.getByRole('button', { name: 'Edit profile' }).click()
+  await page.getByLabel('Address line').fill(address)
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+
+  // A successful save returns the page to its read-only state.
+  await expect(page.getByRole('button', { name: 'Edit profile' })).toBeVisible()
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await expect(page.getByText(address)).toBeVisible()
+
+  // The value came back from the server, not just the local form.
+  await page.reload()
+  await expect(page.getByText(address)).toBeVisible()
+})
+
+test('keeps the draft and reports the failure when a profile save is rejected', async ({ page }) => {
+  await openProfile(page)
+  await page.getByRole('button', { name: 'Edit profile' }).click()
+  await page.route('**/api/me/profile', (route) => route.fulfill({
+    status: 400,
+    json: { errors: { Name: ['Name is already taken.'] } },
+  }))
+  await page.getByLabel('Full name').fill('Rejected Name')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+
+  await expect(page.getByRole('alert')).toContainText('Name is already taken.')
+  await expect(page.getByLabel('Full name')).toHaveValue('Rejected Name')
+  await page.getByRole('button', { name: 'Cancel' }).click()
+  await expect(page.getByRole('heading', { name: 'Demo Employer' })).toBeVisible()
+})
+
 test('returns from the profile to the hiring dashboard', async ({ page }) => {
   await openProfile(page)
   await page.getByRole('button', { name: 'Back', exact: true }).click()

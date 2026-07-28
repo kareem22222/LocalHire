@@ -56,6 +56,42 @@ test('adds and removes structured work-history fields without saving', async ({ 
   await page.getByRole('button', { name: 'Cancel' }).click()
 })
 
+test('saves a worker profile change and keeps it after a reload', async ({ page }) => {
+  await openProfile(page)
+  const address = `Playwright Street ${Date.now()}`
+  await page.getByRole('button', { name: 'Edit profile' }).click()
+  await page.getByLabel('Address line').fill(address)
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+
+  await expect(page.getByRole('button', { name: 'Edit profile' })).toBeVisible()
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await expect(page.getByText(address)).toBeVisible()
+
+  await page.reload()
+  await expect(page.getByText(address)).toBeVisible()
+})
+
+test('rejects a resume that is not a PDF, DOC, or DOCX', async ({ page }) => {
+  await openProfile(page)
+  await page.setInputFiles('#profile-resume', {
+    name: 'resume.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('not a real resume'),
+  })
+  await expect(page.getByRole('alert')).toContainText('Resume must be a PDF, DOC, or DOCX file no larger than 5 MB.')
+  await expect(page.getByText('Upload failed')).toBeVisible()
+})
+
+test('rejects an empty resume file', async ({ page }) => {
+  await openProfile(page)
+  await page.setInputFiles('#profile-resume', {
+    name: 'resume.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.alloc(0),
+  })
+  await expect(page.getByRole('alert')).toContainText('Resume must be a PDF, DOC, or DOCX file no larger than 5 MB.')
+})
+
 test('returns to the worker dashboard from profile', async ({ page }) => {
   await openProfile(page)
   await page.getByRole('link', { name: 'LocalHire home' }).click()
