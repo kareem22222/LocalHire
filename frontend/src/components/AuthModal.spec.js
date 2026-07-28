@@ -59,6 +59,16 @@ describe('AuthModal', () => {
     expect(wrapper.find('#auth-role').element.value).toBe('Hiring')
   })
 
+  it('rejects an invalid email without advancing', async () => {
+    const wrapper = mount(AuthModal, { props: { initialMode: 'login' } })
+    await wrapper.find('#auth-role').setValue('LookingForWork')
+    await wrapper.find('#auth-login-email').setValue('person@@example.com')
+    await continueStep(wrapper)
+
+    expect(wrapper.find('.auth-field__error').text()).toBe('Enter a valid email address.')
+    expect(wrapper.text()).toContain('Step 1 of 2')
+  })
+
   it('uses two steps and sends role on login', async () => {
     const wrapper = mount(AuthModal, { props: { initialMode: 'login' } })
 

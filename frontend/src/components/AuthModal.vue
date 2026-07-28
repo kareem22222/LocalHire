@@ -60,6 +60,13 @@ function focusCurrentStep() {
   nextTick(() => modalRef.value?.querySelector(`[data-auth-step="${currentStep.value}"] input, [data-auth-step="${currentStep.value}"] select`)?.focus())
 }
 
+function isValidEmail(value) {
+  const email = value.trim()
+  const at = email.indexOf('@')
+  const dot = email.lastIndexOf('.')
+  return at > 0 && at === email.lastIndexOf('@') && dot > at + 1 && dot < email.length - 1 && !email.includes(' ')
+}
+
 function validateCurrentStep() {
   const errors = { ...fieldErrors.value }
   let fields = []
@@ -71,7 +78,7 @@ function validateCurrentStep() {
   if (fields.includes('name') && !form.value.name.trim()) errors.name = ['Enter your full name.']
   if (fields.includes('email')) {
     if (!form.value.email.trim()) errors.email = ['Enter your email address.']
-    else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.value.email)) errors.email = ['Enter a valid email address.']
+    else if (!isValidEmail(form.value.email)) errors.email = ['Enter a valid email address.']
   }
   fieldErrors.value = errors
   return !fields.some(field => errors[field])
