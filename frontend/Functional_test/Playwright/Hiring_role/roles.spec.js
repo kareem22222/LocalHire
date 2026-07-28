@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { activateRoleCardControl } from '../support/helpers.js'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/hiring/roles')
@@ -18,8 +19,7 @@ test('lists open roles and paginates without a reload', async ({ page }) => {
 test('opens a role detail from its keyboard-accessible card control', async ({ page }) => {
   const card = page.locator('article.hiring-role-card').first()
   const title = await card.getAttribute('aria-label')
-  await card.hover()
-  await card.getByRole('button', { name: `View details for ${title}` }).click()
+  await activateRoleCardControl(card, 'button[aria-label^="View details for"]')
   await expect(page).toHaveURL(/\/jobs\/[^/]+$/)
   await expect(page.getByRole('heading', { name: 'Job details' })).toBeVisible()
   await expect(page.getByLabel('Title')).toHaveValue(title)
@@ -30,8 +30,7 @@ test('opens a role detail from its keyboard-accessible card control', async ({ p
 test('opens applicants from the role count', async ({ page }) => {
   const card = page.locator('article.hiring-role-card').first()
   await expect(card).toBeVisible()
-  await card.hover()
-  await card.getByRole('button', { name: /View \d+ applicants for/ }).click()
+  await activateRoleCardControl(card, 'button[aria-label*="applicants for"]')
   await expect(page).toHaveURL(/\/hiring\/jobs\/[^/]+\/applicants$/)
   await expect(page.getByText(/applicants$/).first()).toBeVisible()
 })
@@ -39,8 +38,7 @@ test('opens applicants from the role count', async ({ page }) => {
 test('opens shortlisted candidates from the role count', async ({ page }) => {
   const card = page.locator('article.hiring-role-card').first()
   await expect(card).toBeVisible()
-  await card.hover()
-  await card.getByRole('button', { name: /View \d+ shortlisted for/ }).click()
+  await activateRoleCardControl(card, 'button[aria-label*="shortlisted for"]')
   await expect(page).toHaveURL(/\/hiring\/jobs\/[^/]+\/shortlisted$/)
   await expect(page.getByText(/shortlisted$/).first()).toBeVisible()
 })

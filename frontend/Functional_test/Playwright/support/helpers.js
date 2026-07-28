@@ -52,8 +52,25 @@ export async function stubNotifications(page, items) {
   })
 }
 
-export async function signIn(page, role) {
-  await page.goto('/')
+// Activates a control on the back face of a role card.
+//
+// The card flips on hover or focus with a 700ms rotateY transition, so a pointer
+// click is unreliable: the element is "not stable" during the flip, and any
+// scroll that moves the pointer off the card unflips it, leaving
+// .hiring-role-card__visual on the front face intercepting the click. Focusing
+// the control flips the card (focusin) independently of the pointer, and keyboard
+// activation needs no hit testing at all.
+//
+// `selector` is a CSS selector because the back face is aria-hidden until the
+// card flips, which keeps its buttons out of the accessibility tree.
+export async function activateRoleCardControl(card, selector) {
+  const control = card.locator(selector)
+  await control.focus()
+  await expect(card).toHaveClass(/hiring-role-card--flipped/)
+  await control.press('Enter')
+}
+
+export async function signIn(page, role) {  await page.goto('/')
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('I am').selectOption({ label: role })

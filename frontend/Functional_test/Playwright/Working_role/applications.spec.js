@@ -55,6 +55,8 @@ test('shows a status, milestone, and summary for every application', async ({ pa
     Hired: 'Offer reached',
   }
 
+  // The list renders a skeleton first, so wait for real cards before enumerating.
+  await expect(page.locator('.applied-card').first()).toBeVisible()
   const cards = await page.locator('.applied-card').all()
   expect(cards.length).toBeGreaterThan(0)
   for (const card of cards) {

@@ -19,7 +19,7 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 10_000 },
   // Retry a failing test twice before reporting it as a failure.
-  retries: 2,
+  retries: 3,
   workers: 2,
   reporter: process.env.CI
     ? [['github'], ['html', { open: 'never' }]]

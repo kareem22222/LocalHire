@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { activateRoleCardControl } from '../support/helpers.js'
 
 test('validates every required job field in the browser', async ({ page }) => {
   await page.goto('/PostNewJob')
@@ -34,8 +35,7 @@ test('edits a role, blocks invalid data, and cancels without saving', async ({ p
   await page.goto('/hiring/roles')
   const card = page.locator('article.hiring-role-card').first()
   const title = await card.getAttribute('aria-label')
-  await card.hover()
-  await card.getByRole('button', { name: `View details for ${title}` }).click()
+  await activateRoleCardControl(card, 'button[aria-label^="View details for"]')
   await page.getByRole('button', { name: 'Edit', exact: true }).click()
   await expect(page).toHaveURL(/\/jobs\/[^/]+\/edit$/)
   await page.getByLabel('Title').fill('')

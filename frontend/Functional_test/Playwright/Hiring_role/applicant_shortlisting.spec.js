@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test'
+import { activateRoleCardControl } from '../support/helpers.js'
 
 // Opens the applicants list of a role that actually has applicants. The card back
-// is aria-hidden until it is hovered, so the role is picked by the raw
+// is aria-hidden until the card flips, so the role is picked by the raw
 // aria-label attribute rather than by role.
 async function openApplicants(page) {
   await page.goto('/hiring/roles')
@@ -10,16 +11,39 @@ async function openApplicants(page) {
     .filter({ hasNot: page.locator('[aria-label^="View 0 applicants"]') })
     .first()
   await expect(card).toBeVisible()
-  await card.hover()
-  // The back face only enters the accessibility tree once the card has flipped.
-  await expect(card).toHaveClass(/hiring-role-card--flipped/)
-  await card.getByRole('button', { name: /View \d+ applicants for/ }).click()
+  await activateRoleCardControl(card, 'button[aria-label*="applicants for"]')
   await expect(page).toHaveURL(/\/hiring\/jobs\/[^/]+\/applicants$/)
   return page.url()
 }
 
+function labelCount(label) {
+  return Number(label.match(/\d+/)[0])
+}
+
+// Opens a role that still has at least one applicant who is not shortlisted yet.
+// Shortlisting is permanent, so earlier runs gradually use up a role's applicants.
+async function openApplicantsWithOpenCandidates(page) {
+  await page.goto('/hiring/roles')
+  await expect(page.getByRole('heading', { name: 'All open roles you are hiring for' })).toBeVisible()
+  const cards = page.locator('article.hiring-role-card')
+  await expect(cards.first()).toBeVisible()
+
+  const total = await cards.count()
+  for (let index = 0; index < total; index += 1) {
+    const card = cards.nth(index)
+    const applicants = labelCount(await card.locator('button[aria-label*="applicants for"]').getAttribute('aria-label'))
+    const shortlisted = labelCount(await card.locator('button[aria-label*="shortlisted for"]').getAttribute('aria-label'))
+    if (applicants > shortlisted) {
+      await activateRoleCardControl(card, 'button[aria-label*="applicants for"]')
+      await expect(page).toHaveURL(/\/hiring\/jobs\/[^/]+\/applicants$/)
+      return page.url()
+    }
+  }
+  throw new Error('No role on the first page has an applicant left to shortlist.')
+}
+
 test('shortlists an applicant and keeps the status on the server', async ({ page }) => {
-  const applicantsUrl = await openApplicants(page)
+  const applicantsUrl = await openApplicantsWithOpenCandidates(page)
   const target = page.locator('article.candidate-card')
     .filter({ hasNot: page.locator('button:disabled') })
     .first()
@@ -43,7 +67,7 @@ test('shortlists an applicant and keeps the status on the server', async ({ page
 })
 
 test('reports a failed shortlist without changing the row', async ({ page }) => {
-  await openApplicants(page)
+  await openApplicantsWithOpenCandidates(page)
   await page.route('**/api/hiring/jobs/*/applications/*/shortlist', (route) => route.fulfill({
     status: 500,
     json: { message: 'Server error.' },

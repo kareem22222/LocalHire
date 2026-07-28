@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { activateRoleCardControl } from '../support/helpers.js'
 
 // The job form resolves the state and area list from a public pincode service.
 // Stubbing it keeps the create flow deterministic and independent of the network.
@@ -49,8 +50,7 @@ test('creates a role, lists it, then edits and saves it', async ({ page }) => {
   await expect(card).toBeVisible()
   await expect(card).toContainText('Playwright Test Store')
 
-  await card.hover()
-  await card.getByRole('button', { name: `View details for ${title}` }).click()
+  await activateRoleCardControl(card, 'button[aria-label^="View details for"]')
   await expect(page).toHaveURL(/\/jobs\/[^/]+$/)
   const jobUrl = page.url()
   await expect(page.getByLabel('Title')).toHaveValue(title)
