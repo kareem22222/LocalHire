@@ -1,5 +1,5 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({
   from: { type: Number, default: 0 },
@@ -23,18 +23,23 @@ function format(number) {
 }
 
 function start() {
+  cancelAnimationFrame(frame)
+  clearTimeout(timer)
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) {
     value.value = props.to
     return
   }
+  const from = value.value
   const started = performance.now()
   const tick = (now) => {
     const progress = Math.min((now - started) / (props.duration * 1000), 1)
-    value.value = props.from + (props.to - props.from) * (1 - (1 - progress) ** 3)
+    value.value = from + (props.to - from) * (1 - (1 - progress) ** 3)
     if (progress < 1) frame = requestAnimationFrame(tick)
   }
   frame = requestAnimationFrame(tick)
 }
+
+watch(() => props.to, start)
 
 function scheduleStart() {
   if (!props.delay || window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return start()

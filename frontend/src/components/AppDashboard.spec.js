@@ -309,6 +309,7 @@ describe('AppDashboard', () => {
       const wrapper = mountDashboard()
       await flushPromises()
 
+      const push = vi.spyOn(router, 'push')
       await router.push({ path: '/', query: { tab: 'profile' } })
       await flushPromises()
 
@@ -316,6 +317,7 @@ describe('AppDashboard', () => {
       expect(wrapper.find('.dash-logout-btn').exists()).toBe(false)
       expect(wrapper.find('.profile-page').exists()).toBe(true)
       expect(wrapper.text()).toContain('Personal information')
+      expect(push).toHaveBeenCalledTimes(1)
     })
 
     it('hides the hiring dashboard while the profile page is open and restores it on back', async () => {
@@ -330,6 +332,7 @@ describe('AppDashboard', () => {
       wrapper.vm.handleProfileClick()
       await flushPromises()
 
+      expect(router.currentRoute.value.query.tab).toBe('profile')
       expect(findButtonByText(wrapper, 'Post new role')).toBeFalsy()
       expect(wrapper.find('.profile-page').exists()).toBe(true)
 

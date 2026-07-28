@@ -164,13 +164,13 @@ onBeforeUnmount(() => {
         <div aria-hidden="true" class="date-picker__weekdays">
           <span v-for="(weekday, index) in weekdayLabels" :key="index">{{ weekday }}</span>
         </div>
-        <div class="date-picker__grid" role="grid">
+        <div class="date-picker__grid">
           <button
             v-for="day in days"
             :key="dateKey(day)"
             :aria-current="dateKey(day) === dateKey(today) ? 'date' : undefined"
             :aria-label="ariaFormatter.format(day)"
-            :aria-selected="dateKey(day) === modelValue"
+            :aria-pressed="dateKey(day) === modelValue"
             :class="{
               'date-picker__day--outside': day.getMonth() !== viewMonth.getMonth(),
               'date-picker__day--selected': dateKey(day) === modelValue,
@@ -178,7 +178,6 @@ onBeforeUnmount(() => {
             }"
             :data-date="dateKey(day)"
             :disabled="isDisabled(day)"
-            role="gridcell"
             :tabindex="dateKey(day) === (focusedDate || modelValue || dateKey(today)) ? 0 : -1"
             type="button"
             @click="select(day)"

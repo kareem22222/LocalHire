@@ -6,9 +6,7 @@ import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { isAuthenticated } from './api'
-import AnimatedList from './components/AnimatedList.vue'
 import AuthModal from './components/AuthModal.vue'
-import BorderGlow from './components/BorderGlow.vue'
 import BrandLogo from './components/BrandLogo.vue'
 import CardNav from './components/CardNav.vue'
 import CountUp from './components/CountUp.vue'
@@ -49,15 +47,7 @@ const navItems = [
 const sectionItems = [
   { label: 'Start', target: 'home' },
   { label: 'Momentum', target: 'network-momentum' },
-  { label: 'Live network', target: 'live-network' },
   { label: 'Join', target: 'join' },
-]
-const networkActivity = [
-  { id: 1, label: 'A delivery partner matched 2.4 km away', meta: 'Bengaluru · just now' },
-  { id: 2, label: 'A cafe shortlisted three local candidates', meta: 'Pune · 4 min ago' },
-  { id: 3, label: 'A warehouse role opened for the night shift', meta: 'Hyderabad · 8 min ago' },
-  { id: 4, label: 'A first interview was scheduled today', meta: 'Chennai · 11 min ago' },
-  { id: 5, label: 'A store associate found work near home', meta: 'Mumbai · 16 min ago' },
 ]
 const authMenuItems = computed(() => {
   const role = normalizeRole(authUser.value?.role)
@@ -79,11 +69,16 @@ const authAccount = computed(() => ({
 }))
 const quickDockItems = [
   { label: 'Back to top', icon: '↑', target: 'home' },
-  { label: 'Live network', icon: '◎', target: 'live-network' },
   { label: 'Join LocalHire', icon: '+', target: 'join' },
 ]
 
 let ctx
+
+function cleanupLandingAnimations() {
+  ctx?.revert()
+  ctx = undefined
+  ScrollTrigger.getAll().forEach(trigger => trigger.kill())
+}
 
 function openModal(email = '', role = '',initialMode='register') {
   authEmail.value = typeof email === 'string' ? email : ''
@@ -104,6 +99,7 @@ function showSignupConfetti() {
 
 async function onAuthSuccess({ mode } = {}) {
   await router.replace('/')
+  cleanupLandingAnimations()
   isAuth.value = true
   showModal.value = false
   profileStore.fetchProfile().catch(() => {})
@@ -205,8 +201,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  ctx?.revert()
-  ScrollTrigger.getAll().forEach(t => t.kill())
+  cleanupLandingAnimations()
 })
 </script>
 
@@ -291,21 +286,6 @@ onUnmounted(() => {
         <span class="stat-card__num"><CountUp :to="15" separator="" suffix="min" /></span>
         <span class="stat-card__label">Avg. time to match</span>
       </div>
-    </section>
-
-    <section id="live-network" class="live-section">
-      <div class="live-section__copy">
-        <span>Live network</span>
-        <h2>Local hiring,<br />moving in real time.</h2>
-        <p>A calm operations view of nearby work, people, and decisions—not another endless job board.</p>
-      </div>
-      <BorderGlow class="live-card">
-        <AnimatedList :items="networkActivity">
-          <template #default="{ item }">
-            <strong>{{ item.label }}</strong><small>{{ item.meta }}</small>
-          </template>
-        </AnimatedList>
-      </BorderGlow>
     </section>
 
     <!-- CTA -->

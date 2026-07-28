@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
 import { isAuthenticated } from './api'
 import confetti from 'canvas-confetti'
+import { gsap } from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { createTestRouter } from './test/router'
 import { logout } from './utils/session'
 
@@ -61,6 +63,8 @@ describe('App signup confetti', () => {
   beforeEach(() => {
     isAuthenticated.mockResolvedValue(false)
     confetti.mockClear()
+    gsap.context.mockClear()
+    ScrollTrigger.getAll.mockClear()
   })
 
   it('runs Preline confetti after signup success', async () => {
@@ -83,11 +87,14 @@ describe('App signup confetti', () => {
     const wrapper = mountAppWithAuthMode('login')
 
     await flushPromises()
+    const revert = gsap.context.mock.results.at(-1).value.revert
     await wrapper.find('.specular-button').trigger('click')
     await wrapper.find('.fake-auth').trigger('click')
     await flushPromises()
 
     expect(confetti).not.toHaveBeenCalled()
+    expect(revert).toHaveBeenCalledTimes(1)
+    expect(ScrollTrigger.getAll).toHaveBeenCalledTimes(1)
     wrapper.unmount()
   })
 

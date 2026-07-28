@@ -46,4 +46,21 @@ describe('notifications store', () => {
     expect(store.unreadCount).toBe(0)
     expect(store.items.every((item) => item.isRead)).toBe(true)
   })
+
+  it('updates the matching current item when a read request resolves', async () => {
+    let resolveRead
+    notificationsApi.markNotificationRead.mockReturnValue(new Promise((resolve) => { resolveRead = resolve }))
+    const store = useNotificationsStore()
+    store.items = [{ ...unreadItem }, { ...readItem }]
+    store.unreadCount = 1
+
+    const pending = store.markRead(unreadItem.id)
+    store.items = [{ ...readItem }, { ...unreadItem }]
+    resolveRead({ data: { ...unreadItem, isRead: true } })
+    await pending
+
+    expect(store.items.map(({ id }) => id)).toEqual(['notification-2', 'notification-1'])
+    expect(store.items[1].isRead).toBe(true)
+    expect(store.unreadCount).toBe(0)
+  })
 })

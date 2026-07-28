@@ -21,5 +21,11 @@ describe('ScrambleText', () => {
     vi.runAllTimers()
     await wrapper.vm.$nextTick()
     expect(wrapper.text()).toBe('Pat Rao')
+
+    await wrapper.setProps({ text: 'Ravi Shah' })
+    expect(wrapper.attributes('aria-label')).toBe('Ravi Shah')
+    vi.runAllTimers()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.text()).toBe('Ravi Shah')
   })
 })

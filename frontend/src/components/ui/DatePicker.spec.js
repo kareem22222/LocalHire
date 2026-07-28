@@ -11,7 +11,8 @@ describe('DatePicker', () => {
 
     await wrapper.find('input').trigger('click')
     const selected = wrapper.find('[data-date="2026-05-06"]')
-    expect(selected.attributes('aria-selected')).toBe('true')
+    expect(selected.attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('[role="gridcell"]').exists()).toBe(false)
 
     await selected.trigger('keydown', { key: 'ArrowRight' })
     expect(document.activeElement.dataset.date).toBe('2026-05-07')

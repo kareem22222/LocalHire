@@ -81,7 +81,7 @@ function hasApplied(jobId) {
 }
 
 const visibleJobs = computed(() => props.listOnly ? props.jobs : props.jobs.slice(0, MAX_VISIBLE_JOBS))
-const hasMoreJobs = computed(() => !props.listOnly && props.jobs.length > MAX_VISIBLE_JOBS)
+const hasMoreJobs = computed(() => !props.loading && !props.listOnly && props.jobs.length > MAX_VISIBLE_JOBS)
 </script>
 
 <template>
@@ -393,7 +393,6 @@ const hasMoreJobs = computed(() => !props.listOnly && props.jobs.length > MAX_VI
 }
 
 .worker-job-row:hover {
-  transform: perspective(900px) rotateX(var(--spotlight-rx)) rotateY(var(--spotlight-ry)) translateY(-2px);
   border-color: rgba(var(--worker-role-green-rgb), 0.3);
   box-shadow: 0 16px 36px rgba(var(--worker-role-green-rgb), 0.1);
 }

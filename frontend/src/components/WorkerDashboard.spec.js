@@ -72,5 +72,8 @@ describe('WorkerDashboard', () => {
     expect(wrapper.findAll('.worker-job-row')).toHaveLength(6)
     await wrapper.get('.worker-show-more__btn').trigger('click')
     expect(wrapper.emitted('view-all-jobs')[0]).toEqual([{ search: '', employmentType: '' }])
+
+    await wrapper.setProps({ loading: true })
+    expect(wrapper.find('.worker-show-more__btn').exists()).toBe(false)
   })
 })

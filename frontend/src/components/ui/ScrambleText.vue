@@ -1,5 +1,5 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({ text: { type: String, required: true } })
 const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
@@ -21,10 +21,16 @@ function tick(step = 0) {
   timer = setTimeout(() => tick(step + 1), 34)
 }
 
-onMounted(() => {
+function restart() {
+  cancelAnimationFrame(frame)
+  clearTimeout(timer)
+  displayed.value = props.text
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return
   frame = requestAnimationFrame(() => tick())
-})
+}
+
+onMounted(restart)
+watch(() => props.text, restart)
 
 onBeforeUnmount(() => {
   cancelAnimationFrame(frame)

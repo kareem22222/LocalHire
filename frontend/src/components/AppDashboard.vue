@@ -58,6 +58,7 @@ async function fetchProfile() {
 function handleProfileClick() {
   profileSaveErrors.value = []
   activeTab.value = 'profile'
+  if (route.query.tab !== 'profile') router.push({ query: { ...route.query, tab: 'profile' } })
 }
 
 function closeProfile() {

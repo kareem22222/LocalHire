@@ -10,6 +10,7 @@
 .iris-curtain {
   --iris-x: 50vw;
   --iris-y: 50vh;
+
   position: fixed;
   z-index: 2147483647;
   inset: 0;

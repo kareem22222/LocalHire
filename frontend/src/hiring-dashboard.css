@@ -226,6 +226,10 @@
   --spotlight-rgb: var(--worker-role-green-rgb);
 }
 
+.spotlight-card:hover {
+  transform: perspective(900px) rotateX(var(--spotlight-rx)) rotateY(var(--spotlight-ry)) translateY(-2px);
+}
+
 .spotlight-card::before,
 .spotlight-card::after {
   position: absolute;

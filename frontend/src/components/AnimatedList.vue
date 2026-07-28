@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, ref } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 
 const props = defineProps({ items: { type: Array, default: () => [] } })
 const emit = defineEmits(['select'])
@@ -10,20 +10,27 @@ const bottomFade = ref(1)
 
 function choose(index, event) {
   if (event?.target.closest('button, a, input, select, textarea')) return
+  const item = props.items[index]
+  if (item === undefined) return
   selected.value = index
-  emit('select', props.items[index], index)
+  emit('select', item, index)
 }
 
 async function onKeydown(event) {
   if (!['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return
   event.preventDefault()
   if (event.key === 'Enter') return selected.value >= 0 && choose(selected.value)
+  if (!props.items.length) return
   selected.value = event.key === 'ArrowDown'
     ? Math.min(selected.value + 1, props.items.length - 1)
     : Math.max(selected.value - 1, 0)
   await nextTick()
   list.value?.querySelector(`[data-index="${selected.value}"]`)?.scrollIntoView?.({ block: 'nearest' })
 }
+
+watch(() => props.items, (items) => {
+  selected.value = items.length ? Math.min(selected.value, items.length - 1) : -1
+})
 
 function onScroll(event) {
   const { scrollTop, scrollHeight, clientHeight } = event.currentTarget
@@ -34,13 +41,13 @@ function onScroll(event) {
 
 <template>
   <div class="animated-list" tabindex="0" @keydown="onKeydown">
-    <div ref="list" class="animated-list__scroller" @scroll="onScroll">
+    <div ref="list" class="animated-list__scroller" role="list" @scroll="onScroll">
       <div
         v-for="(item, index) in items"
         :key="item.id ?? item.label ?? index"
         class="animated-list__item"
-        role="option"
-        :aria-selected="selected === index"
+        role="listitem"
+        :aria-current="selected === index ? 'true' : undefined"
         :class="{ selected: selected === index }"
         :data-index="index"
         @mouseenter="selected = index"

@@ -53,6 +53,11 @@ onMounted(() => {
     return
   }
   gl = renderer.gl
+  if (!renderer.isWebgl2) {
+    renderer = undefined
+    gl = undefined
+    return
+  }
   gl.clearColor(0, 0, 0, 0)
   const geometry = new Triangle(gl)
   if (geometry.attributes.uv) delete geometry.attributes.uv

@@ -1,9 +1,17 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 const props = defineProps({ items: { type: Array, default: () => [] }, active: { type: Number, default: 0 } })
 const emit = defineEmits(['select'])
 const nodes = ref([])
+const selected = ref(props.active)
+
+watch(() => props.active, value => { selected.value = value })
+
+function select(item, index) {
+  selected.value = index
+  emit('select', item, index)
+}
 
 function move(event) {
   nodes.value.forEach(node => {
@@ -26,8 +34,8 @@ function reset() {
       :key="item.label ?? item"
       :ref="el => nodes[index] = el"
       type="button"
-      :class="{ active: active === index }"
-      @click="emit('select', item, index)"
+      :class="{ active: selected === index }"
+      @click="select(item, index)"
     >
       <span class="line-sidebar__marker"></span>
       <span class="line-sidebar__index">{{ String(index + 1).padStart(2, '0') }}</span>

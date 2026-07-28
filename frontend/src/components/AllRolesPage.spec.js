@@ -61,7 +61,7 @@ describe('AllRolesPage', () => {
     expect(wrapper.text()).toContain('No open roles yet')
   })
 
-  it('loads thirty roles per page', async () => {
+  it('loads fifteen roles per page', async () => {
     api.get.mockResolvedValue({ data: Array.from({ length: 31 }, (_, index) => ({
       id: `j${index}`,
       title: `Role ${index}`,
@@ -70,20 +70,20 @@ describe('AllRolesPage', () => {
     const wrapper = mountPage()
     await flushPromises()
 
-    expect(wrapper.findAll('.hiring-role-card')).toHaveLength(30)
-    expect(wrapper.text()).toContain('Page 1 of 2')
-    await wrapper.find('[aria-label="Page 2 of 2"]').trigger('click')
+    expect(wrapper.findAll('.hiring-role-card')).toHaveLength(15)
+    expect(wrapper.text()).toContain('Page 1 of 3')
+    await wrapper.find('[aria-label="Page 3 of 3"]').trigger('click')
     await flushPromises()
     expect(wrapper.findAll('.hiring-role-card')).toHaveLength(1)
-    expect(wrapper.text()).toContain('Page 2 of 2')
+    expect(wrapper.text()).toContain('Page 3 of 3')
   })
 
-  it('shows thirty matching role skeletons while loading', () => {
+  it('shows fifteen matching role skeletons while loading', () => {
     api.get.mockReturnValue(new Promise(() => {}))
 
     const wrapper = mountPage()
 
-    expect(wrapper.findAll('.skeleton-card--role')).toHaveLength(30)
+    expect(wrapper.findAll('.skeleton-card--role')).toHaveLength(15)
   })
 
   it('logs failures when roles cannot be loaded', async () => {

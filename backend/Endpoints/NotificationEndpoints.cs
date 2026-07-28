@@ -15,6 +15,7 @@ public static class NotificationEndpoints
             .RequireAuthorization();
 
         group.MapGet("/", async (
+            int? skip,
             ClaimsPrincipal principal,
             LocalHireDbContext db,
             CancellationToken ct) =>
@@ -22,26 +23,33 @@ public static class NotificationEndpoints
             if (!principal.TryGetUserId(out var userId))
                 return Results.Unauthorized();
 
-            // ponytail: materialize one user's notifications for SQLite-compatible ordering;
-            // add provider-specific pagination when per-user notification volume becomes large.
-            var notifications = await db.Notifications
+            var offset = Math.Max(skip ?? 0, 0);
+            var query = db.Notifications
                 .AsNoTracking()
-                .Where(notification => notification.UserId == userId)
-                .ToListAsync(ct);
-            var items = notifications
-                .OrderByDescending(notification => notification.CreatedAt)
-                .Take(100)
-                .Select(notification => new NotificationResponse(
-                    notification.Id,
-                    notification.Type,
-                    notification.Title,
-                    notification.Message,
-                    notification.Link,
-                    notification.IsRead,
-                    notification.CreatedAt,
-                    notification.ReadAt))
-                .ToList();
-            var unreadCount = notifications.Count(notification => !notification.IsRead);
+                .Where(notification => notification.UserId == userId);
+            var items = db.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite"
+                ? (await query.ToListAsync(ct))
+                    .OrderByDescending(notification => notification.CreatedAt)
+                    .Skip(offset)
+                    .Take(100)
+                    .Select(ToResponse)
+                    .ToList()
+                : await query
+                    .OrderByDescending(notification => notification.CreatedAt)
+                    .Skip(offset)
+                    .Take(100)
+                    .Select(notification => new NotificationResponse(
+                        notification.Id,
+                        notification.Type,
+                        notification.Title,
+                        notification.Message,
+                        notification.Link,
+                        notification.IsRead,
+                        notification.CreatedAt,
+                        notification.ReadAt))
+                    .ToListAsync(ct);
+            var unreadCount = await db.Notifications
+                .CountAsync(notification => notification.UserId == userId && !notification.IsRead, ct);
 
             return Results.Ok(new NotificationListResponse(items, unreadCount));
         })
@@ -80,17 +88,12 @@ public static class NotificationEndpoints
             if (!principal.TryGetUserId(out var userId))
                 return Results.Unauthorized();
 
-            var unread = await db.Notifications
-                .Where(notification => notification.UserId == userId && !notification.IsRead)
-                .ToListAsync(ct);
             var readAt = DateTimeOffset.UtcNow;
-            foreach (var notification in unread)
-            {
-                notification.IsRead = true;
-                notification.ReadAt = readAt;
-            }
-            if (unread.Count > 0)
-                await db.SaveChangesAsync(ct);
+            await db.Notifications
+                .Where(notification => notification.UserId == userId && !notification.IsRead)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(notification => notification.IsRead, true)
+                    .SetProperty(notification => notification.ReadAt, readAt), ct);
 
             return Results.NoContent();
         })

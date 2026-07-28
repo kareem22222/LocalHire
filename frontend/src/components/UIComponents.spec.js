@@ -2,6 +2,7 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import AnimatedList from './AnimatedList.vue'
 import CountUp from './CountUp.vue'
+import LineSidebar from './LineSidebar.vue'
 import StaggeredMenu from './StaggeredMenu.vue'
 import Stepper from './Stepper.vue'
 import AnimatedCard from './ui/AnimatedCard.vue'
@@ -19,6 +20,41 @@ describe('shared interaction components', () => {
     await stepper.get('.stepper__next').trigger('click')
     expect(stepper.text()).toContain('Two')
     expect(stepper.emitted('change')?.[0]).toEqual([2])
+    expect(stepper.get('[aria-current="step"]').attributes('aria-label')).toBe('Step 2')
+  })
+
+  it('keeps list and step selection inside current bounds', async () => {
+    const list = mount(AnimatedList, { props: { items: [{ id: 1 }, { id: 2 }] } })
+    await list.trigger('keydown', { key: 'ArrowDown' })
+    await list.trigger('keydown', { key: 'ArrowDown' })
+    await list.setProps({ items: [{ id: 1 }] })
+    await list.trigger('keydown', { key: 'Enter' })
+    expect(list.emitted('select')?.[0]).toEqual([{ id: 1 }, 0])
+    expect(list.find('[role="option"]').exists()).toBe(false)
+
+    await list.setProps({ items: [] })
+    await list.trigger('keydown', { key: 'Enter' })
+    expect(list.emitted('select')).toHaveLength(1)
+
+    const stepper = mount(Stepper, { props: { steps: [{ title: 'One' }, { title: 'Two' }], initialStep: 99 } })
+    expect(stepper.text()).toContain('Two')
+    stepper.vm.back()
+    stepper.vm.back()
+    await stepper.vm.$nextTick()
+    expect(stepper.text()).toContain('One')
+    expect(stepper.emitted('change')).toEqual([[1]])
+
+    const emptyStepper = mount(Stepper, { props: { steps: [] } })
+    expect(emptyStepper.find('.stepper__content').exists()).toBe(false)
+    expect(emptyStepper.find('footer').exists()).toBe(false)
+  })
+
+  it('tracks the latest sidebar selection when active is uncontrolled', async () => {
+    const sidebar = mount(LineSidebar, { props: { items: ['Start', 'Join'] } })
+    await sidebar.findAll('button')[1].trigger('click')
+
+    expect(sidebar.findAll('button')[1].classes()).toContain('active')
+    expect(sidebar.emitted('select')?.[0]).toEqual(['Join', 1])
   })
 
   it('emits profile and sign-out actions from the account menu', async () => {
@@ -66,22 +102,27 @@ describe('shared interaction components', () => {
     }
   })
 
-  it('starts an immediate count without waiting for visibility', () => {
+  it('starts an immediate count without waiting for visibility', async () => {
     const observer = vi.fn()
     vi.stubGlobal('IntersectionObserver', observer)
-    const frame = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1)
+    let tick
+    const frame = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => { tick = callback; return 1 })
     const count = mount(CountUp, { props: { from: 100, to: 95, immediate: true } })
 
     expect(observer).not.toHaveBeenCalled()
     expect(frame).toHaveBeenCalled()
+    tick(performance.now() + 2000)
+    await count.vm.$nextTick()
+    expect(count.text()).toBe('95')
     count.unmount()
     frame.mockRestore()
     vi.unstubAllGlobals()
   })
 
-  it('holds a delayed count at its starting value before animating', () => {
+  it('holds a delayed count at its starting value before animating', async () => {
     vi.useFakeTimers()
-    const frame = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1)
+    let tick
+    const frame = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => { tick = callback; return 1 })
     const count = mount(CountUp, { props: { from: 100, to: 95, delay: 0.5, immediate: true } })
 
     expect(count.text()).toBe('100')
@@ -90,9 +131,28 @@ describe('shared interaction components', () => {
     expect(frame).not.toHaveBeenCalled()
     vi.advanceTimersByTime(1)
     expect(frame).toHaveBeenCalled()
+    tick(performance.now() + 2000)
+    await count.vm.$nextTick()
+    expect(count.text()).toBe('95')
 
     count.unmount()
     frame.mockRestore()
     vi.useRealTimers()
+  })
+
+  it('restarts a count from its displayed value when the target changes', async () => {
+    const ticks = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => { ticks.push(callback); return ticks.length })
+    const count = mount(CountUp, { props: { from: 0, to: 10, immediate: true } })
+
+    ticks.shift()(performance.now() + 500)
+    await count.vm.$nextTick()
+    await count.setProps({ to: 20 })
+    ticks.at(-1)(performance.now() + 2000)
+    await count.vm.$nextTick()
+
+    expect(count.text()).toBe('20')
+    count.unmount()
+    vi.restoreAllMocks()
   })
 })

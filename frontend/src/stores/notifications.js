@@ -41,12 +41,15 @@ export const useNotificationsStore = defineStore('notifications', () => {
   }
 
   async function markRead(id) {
-    const index = items.value.findIndex((item) => item.id === id)
-    if (index < 0 || items.value[index].isRead) return
+    const item = items.value.find((notification) => notification.id === id)
+    if (!item || item.isRead) return
 
     const { data } = await notificationsApi.markNotificationRead(id)
+    const index = items.value.findIndex((notification) => notification.id === id)
+    if (index < 0) return
+    const wasUnread = !items.value[index].isRead
     items.value[index] = data
-    unreadCount.value = Math.max(0, unreadCount.value - 1)
+    if (wasUnread) unreadCount.value = Math.max(0, unreadCount.value - 1)
   }
 
   async function markAllRead() {

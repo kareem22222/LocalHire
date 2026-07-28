@@ -80,7 +80,6 @@ function select(candidate) {
 .candidate-card--clickable:hover {
   border-color: rgba(7, 85, 154, 0.35);
   box-shadow: 0 16px 40px rgba(7, 85, 154, 0.12);
-  transform: perspective(900px) rotateX(var(--spotlight-rx)) rotateY(var(--spotlight-ry)) translateY(-2px);
 }
 
 .candidate-card__select:focus-visible {

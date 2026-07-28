@@ -8,16 +8,19 @@ const props = defineProps({
   showControls: { type: Boolean, default: true },
 })
 const emit = defineEmits(['change', 'complete'])
-const current = ref(props.initialStep)
+const initialStep = Math.trunc(props.initialStep) || 1
+const current = ref(props.steps.length ? Math.min(Math.max(initialStep, 1), props.steps.length) : 0)
 const step = computed(() => props.steps[current.value - 1])
 
 function setStep(value, force = false) {
+  if (!Number.isInteger(value) || value < 1 || value > props.steps.length) return
   if (!force && !props.interactive && value > current.value) return
   current.value = value
   emit('change', value)
 }
 
 function next() {
+  if (!props.steps.length) return
   if (current.value === props.steps.length) return emit('complete')
   setStep(current.value + 1, true)
 }
@@ -33,14 +36,14 @@ defineExpose({ next, back, setStep })
   <section class="stepper" aria-label="Steps">
     <div class="stepper__indicators">
       <template v-for="(_, index) in steps" :key="index">
-        <button type="button" :class="{ active: current === index + 1, complete: current > index + 1 }" :aria-label="`Step ${index + 1}`" :disabled="!interactive && current < index + 1" @click="setStep(index + 1)">
+        <button type="button" :class="{ active: current === index + 1, complete: current > index + 1 }" :aria-current="current === index + 1 ? 'step' : undefined" :aria-label="`Step ${index + 1}`" :disabled="!interactive && current < index + 1" @click="setStep(index + 1)">
           <span>{{ current > index + 1 ? '✓' : index + 1 }}</span>
         </button>
         <i v-if="index < steps.length - 1" :class="{ complete: current > index + 1 }"></i>
       </template>
     </div>
     <Transition name="step" mode="out-in">
-      <div :key="current" class="stepper__content">
+      <div v-if="step" :key="current" class="stepper__content">
         <slot name="content" :step="step" :current="current">
           <span>0{{ current }} / 0{{ steps.length }}</span>
           <h3>{{ step.title }}</h3>
@@ -48,7 +51,7 @@ defineExpose({ next, back, setStep })
         </slot>
       </div>
     </Transition>
-    <footer v-if="showControls || $slots.actions">
+    <footer v-if="steps.length && (showControls || $slots.actions)">
       <slot name="actions" :current="current" :back="back" :next="next">
         <template v-if="showControls">
           <button v-if="current > 1" type="button" class="stepper__back" @click="back">Previous</button>
