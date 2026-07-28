@@ -4,6 +4,14 @@ import { fileURLToPath } from 'node:url'
 
 const root = path.dirname(fileURLToPath(import.meta.url))
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:8080'
+const browser = process.env.CI
+  ? devices['Desktop Chrome']
+  : {
+      viewport: null,
+      launchOptions: {
+        args: ['--start-fullscreen', '--force-device-scale-factor=0.75'],
+      },
+    }
 
 export default defineConfig({
   testDir: './Functional_test/Playwright',
@@ -37,7 +45,7 @@ export default defineConfig({
       name: 'Hiring role',
       testMatch: /Hiring_role\/.*\.spec\.js/,
       use: {
-        ...devices['Desktop Chrome'],
+        ...browser,
         channel: process.env.CI ? undefined : 'chrome',
         storageState: path.join(root, '.playwright', 'hiring.json'),
       },
@@ -46,7 +54,7 @@ export default defineConfig({
       name: 'Working role',
       testMatch: /Working_role\/.*\.spec\.js/,
       use: {
-        ...devices['Desktop Chrome'],
+        ...browser,
         channel: process.env.CI ? undefined : 'chrome',
         storageState: path.join(root, '.playwright', 'working.json'),
       },

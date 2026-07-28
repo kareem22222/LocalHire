@@ -345,7 +345,7 @@ $env:PLAYWRIGHT_BASE_URL = "http://127.0.0.1:8080"
 # Fast default: runs browsers in the background
 npm run test:e2e
 
-# Visible browser: opens Chrome while the tests run
+# Visible browser: opens Chrome full screen at 75% scale while the tests run
 npm run test:e2e:headed
 
 # Interactive Playwright test explorer
@@ -366,7 +366,8 @@ npm run test:e2e -- Functional_test/Playwright/Hiring_role/candidates.spec.js
 npx playwright test Functional_test/Playwright/Working_role/jobs.spec.js --headed --debug
 ```
 
-The setup signs in once per role and reuses an ignored storage-state file, which
+Local headed runs use full-screen Chrome at 75% scale; GitHub Actions remains
+headless. The setup signs in once per role and reuses an ignored storage-state file, which
 keeps the suite fast and below the authentication rate limit. To add coverage,
 create a new `*.spec.js` file in the matching role folder. Failed runs retain a
 trace and screenshot; GitHub Actions uploads the HTML report and test results.
