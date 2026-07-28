@@ -23,9 +23,7 @@ function onFocusOut(event) {
   <article
     class="hiring-role-card"
     :class="{ 'hiring-role-card--flipped': flipped }"
-    :aria-label="`${item.title}. Focus to view applicant activity.`"
-    :aria-expanded="flipped"
-    tabindex="0"
+    :aria-label="item.title"
     @mouseenter="hovered = true"
     @mouseleave="hovered = false"
     @focusin="focused = true"
@@ -59,7 +57,6 @@ function onFocusOut(event) {
             class="hiring-role-card__icon"
             :aria-label="`View details for ${item.title}`"
             title="View details"
-            :tabindex="flipped ? 0 : -1"
             @click="$emit('view', item.id)"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>
@@ -74,7 +71,6 @@ function onFocusOut(event) {
             class="hiring-role-card__stat"
             :class="{ 'hiring-role-card__stat--static': !countsClickable }"
             :disabled="!countsClickable"
-            :tabindex="flipped && countsClickable ? 0 : -1"
             :aria-label="`View ${item.applicants} applicants for ${item.title}`"
             @click="$emit('view-applicants', item.id)"
           >
@@ -88,7 +84,6 @@ function onFocusOut(event) {
             class="hiring-role-card__stat"
             :class="{ 'hiring-role-card__stat--static': !countsClickable }"
             :disabled="!countsClickable"
-            :tabindex="flipped && countsClickable ? 0 : -1"
             :aria-label="`View ${item.shortlisted} shortlisted for ${item.title}`"
             @click="$emit('view-shortlisted', item.id)"
           >
@@ -102,7 +97,6 @@ function onFocusOut(event) {
         <button
           type="button"
           class="hiring-role-card__link"
-          :tabindex="flipped ? 0 : -1"
           @click="$emit('action', item.id)"
         >
           <span>{{ actionLabel }}</span>

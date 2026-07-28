@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
@@ -36,7 +36,8 @@ function addMonths(date, amount) {
 const today = new Date()
 const selectedDate = computed(() => parseDate(props.modelValue))
 const viewMonth = ref(new Date(selectedDate.value?.getFullYear() ?? today.getFullYear(), selectedDate.value?.getMonth() ?? today.getMonth(), 1))
-const panelId = `${props.id || `date-picker-${Math.random().toString(36).slice(2)}`}-panel`
+const pickerId = props.id || `date-picker-${useId()}`
+const panelId = `${pickerId}-panel`
 const monthFormatter = new Intl.DateTimeFormat(undefined, { month: 'long' })
 const dateFormatter = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 const ariaFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'full' })
@@ -147,7 +148,7 @@ onBeforeUnmount(() => {
     </div>
 
     <Transition name="date-picker">
-      <div v-if="open" :id="panelId" :aria-label="ariaLabel" class="date-picker__panel" role="dialog">
+      <dialog v-if="open" :id="panelId" :aria-label="ariaLabel" class="date-picker__panel" open>
         <div class="date-picker__header">
           <select :aria-label="`Month for ${ariaLabel}`" :value="viewMonth.getMonth()" @change="setMonth($event.target.value)">
             <option v-for="month in monthOptions" :key="month.value" :value="month.value">{{ month.label }}</option>
@@ -192,7 +193,7 @@ onBeforeUnmount(() => {
           <button :disabled="isDisabled(today)" type="button" @click="select(today)">Today</button>
           <button v-if="modelValue" type="button" @click="clear">Clear</button>
         </div>
-      </div>
+      </dialog>
     </Transition>
   </div>
 </template>
@@ -225,7 +226,7 @@ onBeforeUnmount(() => {
 }
 .date-picker__panel {
   position: absolute; top: calc(100% + 8px); right: 0; z-index: 50;
-  width: min(312px, calc(100vw - 32px)); padding: 14px; color: #12324a; background: #fff;
+  width: min(312px, calc(100vw - 32px)); margin: 0; padding: 14px; color: #12324a; background: #fff;
   border: 1px solid rgba(18, 50, 74, .12); border-radius: 14px; box-shadow: 0 18px 45px rgba(18, 50, 74, .16);
 }
 .date-picker__header { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; }

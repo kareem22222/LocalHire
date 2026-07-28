@@ -17,13 +17,13 @@ async function reachSignupPassword(wrapper, { role = 'Hiring', name = 'Person', 
   await wrapper.find('#auth-role').setValue(role)
   await continueStep(wrapper)
   await wrapper.find('#auth-name').setValue(name)
-  await wrapper.find('#auth-email').setValue(email)
+  await wrapper.find('#auth-register-email').setValue(email)
   await continueStep(wrapper)
 }
 
 async function reachLoginPassword(wrapper, { role = 'LookingForWork', email = 'person@example.com' } = {}) {
   await wrapper.find('#auth-role').setValue(role)
-  await wrapper.find('#auth-email').setValue(email)
+  await wrapper.find('#auth-login-email').setValue(email)
   await continueStep(wrapper)
 }
 
@@ -82,7 +82,7 @@ describe('AuthModal', () => {
     await wrapper.find('.auth-modal__toggle').trigger('click')
     expect(wrapper.find('.auth-modal__title').text()).toBe('Welcome back')
     expect(wrapper.text()).toContain('Step 1 of 2')
-    expect(wrapper.find('#auth-email').exists()).toBe(true)
+    expect(wrapper.find('#auth-login-email').exists()).toBe(true)
 
     await wrapper.find('.auth-modal__toggle').trigger('click')
     expect(wrapper.text()).toContain('Step 1 of 3')

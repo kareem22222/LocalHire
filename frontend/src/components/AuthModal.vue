@@ -62,16 +62,16 @@ function focusCurrentStep() {
 
 function validateCurrentStep() {
   const errors = { ...fieldErrors.value }
-  const fields = currentStep.value === 1
-    ? (isRegister.value ? ['role'] : ['role', 'email'])
-    : (isRegister.value && currentStep.value === 2 ? ['name', 'email'] : [])
+  let fields = []
+  if (currentStep.value === 1) fields = isRegister.value ? ['role'] : ['role', 'email']
+  else if (isRegister.value && currentStep.value === 2) fields = ['name', 'email']
 
   for (const field of fields) delete errors[field]
   if (fields.includes('role') && !form.value.role) errors.role = ['Choose how you will use LocalHire.']
   if (fields.includes('name') && !form.value.name.trim()) errors.name = ['Enter your full name.']
   if (fields.includes('email')) {
     if (!form.value.email.trim()) errors.email = ['Enter your email address.']
-    else if (!/^\S+@\S+\.\S+$/.test(form.value.email)) errors.email = ['Enter a valid email address.']
+    else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.value.email)) errors.email = ['Enter a valid email address.']
   }
   fieldErrors.value = errors
   return !fields.some(field => errors[field])
@@ -92,9 +92,11 @@ function onStepChange(value) {
 
 function revealFirstError(errors) {
   const keys = Object.keys(errors)
-  const target = isRegister.value
-    ? (keys.includes('role') ? 1 : keys.some(key => ['name', 'email'].includes(key)) ? 2 : 3)
-    : (keys.some(key => ['role', 'email'].includes(key)) ? 1 : 2)
+  let target = 2
+  if (isRegister.value) {
+    if (keys.includes('role')) target = 1
+    else if (!keys.some(key => ['name', 'email'].includes(key))) target = 3
+  } else if (keys.some(key => ['role', 'email'].includes(key))) target = 1
   stepperRef.value?.setStep(target, true)
 }
 
@@ -278,8 +280,8 @@ onUnmounted(() => {
               </div>
 
               <div v-if="!isRegister" class="auth-field">
-                <label class="auth-field__label" for="auth-email">Email address</label>
-                <input id="auth-email" v-model="form.email" class="auth-field__input" type="email" placeholder="you@example.com" autocomplete="email" :class="{ 'auth-field__input--error': fieldErrors.email }" />
+                <label class="auth-field__label" for="auth-login-email">Email address</label>
+                <input id="auth-login-email" v-model="form.email" class="auth-field__input" type="email" placeholder="you@example.com" autocomplete="email" :class="{ 'auth-field__input--error': fieldErrors.email }" />
                 <span v-if="fieldErrors.email" class="auth-field__error">{{ fieldErrors.email[0] }}</span>
               </div>
             </div>
@@ -291,8 +293,8 @@ onUnmounted(() => {
                 <span v-if="fieldErrors.name" class="auth-field__error">{{ fieldErrors.name[0] }}</span>
               </div>
               <div class="auth-field">
-                <label class="auth-field__label" for="auth-email">Email address</label>
-                <input id="auth-email" v-model="form.email" class="auth-field__input" type="email" placeholder="you@example.com" autocomplete="email" :class="{ 'auth-field__input--error': fieldErrors.email }" />
+                <label class="auth-field__label" for="auth-register-email">Email address</label>
+                <input id="auth-register-email" v-model="form.email" class="auth-field__input" type="email" placeholder="you@example.com" autocomplete="email" :class="{ 'auth-field__input--error': fieldErrors.email }" />
                 <span v-if="fieldErrors.email" class="auth-field__error">{{ fieldErrors.email[0] }}</span>
               </div>
             </div>

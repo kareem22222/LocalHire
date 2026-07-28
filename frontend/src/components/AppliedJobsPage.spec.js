@@ -28,8 +28,7 @@ describe('AppliedJobsPage', () => {
     expect(wrapper.find('.applied-card').element.tagName).toBe('A')
     expect(wrapper.find('.applied-card').classes()).toContain('applied-card--shortlisted')
     expect(wrapper.find('.applied-card').attributes('href')).toBe('/work/jobs/job-1')
-    expect(wrapper.find('.applied-card').attributes('style')).toContain('--status-progress: 64%')
-    expect(wrapper.get('[role="progressbar"]').attributes('aria-valuenow')).toBe('64')
+    expect(wrapper.get('progress').attributes('value')).toBe('64')
     expect(wrapper.text()).toContain('Shortlist reached')
   })
 

@@ -7,11 +7,15 @@ const displayed = ref(props.text)
 let frame
 let timer
 
+function randomCharacter() {
+  return characters[crypto.getRandomValues(new Uint32Array(1))[0] % characters.length]
+}
+
 function tick(step = 0) {
   const revealed = Math.floor(step / 2)
   displayed.value = [...props.text].map((character, index) => {
     if (character === ' ' || index < revealed) return character
-    return characters[Math.floor(Math.random() * characters.length)]
+    return randomCharacter()
   }).join('')
 
   if (revealed >= props.text.length) {

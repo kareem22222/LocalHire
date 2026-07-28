@@ -11,8 +11,8 @@ defineProps({
 </script>
 
 <template>
-  <div class="skeleton-list" :class="`skeleton-list--${variant}`" role="status" :aria-label="label">
-    <span class="skeleton-sr-only">{{ label }}</span>
+  <div class="skeleton-list" :class="`skeleton-list--${variant}`">
+    <output class="skeleton-sr-only">{{ label }}</output>
     <article
       v-for="index in count"
       :key="index"

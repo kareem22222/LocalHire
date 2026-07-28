@@ -17,7 +17,11 @@ const errorMessage = computed(() => localError.value || props.error)
 const displayName = computed(() => pendingFile.value?.name || props.fileName)
 const displaySize = computed(() => pendingFile.value ? formatBytes(pendingFile.value.size) : '')
 const progressValue = computed(() => Math.min(Math.max(Math.round(props.progress), 0), 100))
-const status = computed(() => errorMessage.value ? 'error' : props.uploading ? 'uploading' : displayName.value ? 'done' : 'empty')
+const status = computed(() => {
+  if (errorMessage.value) return 'error'
+  if (props.uploading) return 'uploading'
+  return displayName.value ? 'done' : 'empty'
+})
 
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`
@@ -58,6 +62,7 @@ watch(() => props.uploading, (uploading, wasUploading) => {
 
 <template>
   <section class="resume-upload" aria-label="Resume upload">
+    <label class="resume-upload__input-label" for="profile-resume">Resume file</label>
     <input
       id="profile-resume"
       ref="input"
@@ -101,17 +106,13 @@ watch(() => props.uploading, (uploading, wasUploading) => {
             {{ status === 'uploading' ? `${progressValue}% uploaded` : status === 'error' ? 'Upload failed' : 'Uploaded' }}
           </span>
         </div>
-        <div
+        <progress
           v-if="uploading"
           class="resume-upload__progress"
-          role="progressbar"
           aria-label="Resume upload progress"
-          :aria-valuenow="progressValue"
-          aria-valuemin="0"
-          aria-valuemax="100"
-        >
-          <span :style="{ width: `${Math.max(progressValue, 4)}%` }"></span>
-        </div>
+          max="100"
+          :value="Math.max(progressValue, 4)"
+        ></progress>
         <p v-if="errorMessage" class="resume-upload__error" role="alert">{{ errorMessage }}</p>
       </div>
     </div>
@@ -120,7 +121,7 @@ watch(() => props.uploading, (uploading, wasUploading) => {
 
 <style scoped>
 .resume-upload { display: grid; gap: 14px; }
-.resume-upload__input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+.resume-upload__input,.resume-upload__input-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 .resume-upload__dropzone {
   display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px; padding: 16px;
   background: #f8fcfa; border: 1.5px dashed rgba(20, 133, 84, .28); border-radius: 13px;
@@ -144,7 +145,7 @@ watch(() => props.uploading, (uploading, wasUploading) => {
 .resume-upload__timeline::before { position: absolute; top: 14px; bottom: 0; left: 13px; width: 2px; background: #dce9e3; content: ''; }
 .resume-upload__marker {
   z-index: 1; display: grid; width: 28px; height: 28px; place-items: center; color: #fff;
-  background: #2f80d1; border: 4px solid #eef6fc; border-radius: 50%; font-size: 11px; font-weight: 900;
+  background: #1769aa; border: 4px solid #eef6fc; border-radius: 50%; font-size: 11px; font-weight: 900;
 }
 .resume-upload__marker--uploading { animation: resume-pulse 1.2s ease-in-out infinite; }
 .resume-upload__marker--done { background: var(--worker-role-green-end, #148554); border-color: #e8f6ee; }
@@ -155,8 +156,10 @@ watch(() => props.uploading, (uploading, wasUploading) => {
 .resume-upload__status { flex: none; margin: 0 !important; color: #126c49 !important; font-weight: 800; }
 .resume-upload__status--uploading { color: #07559a !important; }
 .resume-upload__status--error { color: #a23434 !important; }
-.resume-upload__progress { height: 5px; margin-top: 10px; overflow: hidden; background: #e4edf1; border-radius: 999px; }
-.resume-upload__progress span { display: block; height: 100%; background: #2f80d1; border-radius: inherit; transition: width .18s ease; }
+.resume-upload__progress { width: 100%; height: 5px; margin-top: 10px; overflow: hidden; border: 0; border-radius: 999px; background: #e4edf1; appearance: none; }
+.resume-upload__progress::-webkit-progress-bar { background: #e4edf1; }
+.resume-upload__progress::-webkit-progress-value { border-radius: 999px; background: #1769aa; }
+.resume-upload__progress::-moz-progress-bar { border-radius: 999px; background: #1769aa; }
 .resume-upload__error { margin: 8px 0 0; color: #a23434; font-size: 12px; font-weight: 650; }
 @keyframes resume-pulse { 50% { box-shadow: 0 0 0 5px rgba(47, 128, 209, .12); } }
 @media (max-width: 620px) {
@@ -165,7 +168,7 @@ watch(() => props.uploading, (uploading, wasUploading) => {
   .resume-upload__file-head { display: grid; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .resume-upload__dropzone, .resume-upload__progress span { transition: none; }
+  .resume-upload__dropzone { transition: none; }
   .resume-upload__marker--uploading { animation: none; }
 }
 </style>

@@ -92,7 +92,7 @@ function changePage(page) {
             class="applied-card spotlight-card spotlight-card--worker"
             :class="`applied-card--${application.status.toLowerCase()}`"
             :href="`/work/jobs/${application.jobPostId}`"
-            :style="{ '--card-index': index, '--status-progress': `${statusProgress(application.status)}%` }"
+            :style="{ '--card-index': index }"
             @pointermove="moveSpotlight"
             @pointerleave="resetSpotlight"
             @pointercancel="resetSpotlight"
@@ -107,15 +107,13 @@ function changePage(page) {
               <p>{{ application.workplaceName }} · {{ application.cityArea }}</p>
             </div>
 
-            <div
-              class="applied-card__track"
-              role="progressbar"
-              :aria-label="`${application.jobTitle} application progress`"
-              aria-valuemin="0"
-              aria-valuemax="100"
-              :aria-valuenow="statusProgress(application.status)"
-            >
-              <div class="applied-card__rail"><i></i><b></b></div>
+            <div class="applied-card__track">
+              <progress
+                class="applied-card__rail"
+                :aria-label="`${application.jobTitle} application progress`"
+                max="100"
+                :value="statusProgress(application.status)"
+              ></progress>
               <div class="applied-card__milestones"><span>Applied</span><strong>{{ statusMilestone(application.status) }}</strong></div>
             </div>
 
@@ -160,11 +158,11 @@ function changePage(page) {
 .applied-card:hover { border-color: rgba(var(--status-rgb),.32); box-shadow: 0 20px 46px rgba(var(--status-rgb),.12); }.applied-card:focus-visible { outline: 3px solid rgba(var(--status-rgb),.25); outline-offset: 2px; }.applied-list:has(.applied-card:hover) .applied-card:not(:hover) { opacity: .58; transform: scale(.98); }
 .applied-card__topline { display: flex; align-items: center; gap: 9px; }.applied-card__number { color: #91a3ab; font: 800 10px ui-monospace,monospace; letter-spacing: .08em; }.applied-card h2 { margin-top: 12px; color: #0b3658; font: 800 21px/1.2 Manrope,sans-serif; letter-spacing: -.025em; }.applied-card__identity > p { margin-top: 6px; color: #526977; font-size: 13px; }
 .applied-card__status { display: inline-flex; padding: 6px 10px; color: #fff; border-radius: 999px; background: linear-gradient(135deg,var(--status-start),var(--status-end)); box-shadow: 0 7px 18px rgba(var(--status-rgb),.22); font-size: 11px; font-weight: 800; text-transform: uppercase; }
-.applied-card__track { display: grid; gap: 10px; }.applied-card__rail { position: relative; height: 8px; border-radius: 999px; background: #e4eee9; }.applied-card__rail i { display: block; width: var(--status-progress); height: 100%; border-radius: inherit; background: linear-gradient(90deg,var(--status-start),var(--status-end)); transform-origin: left; animation: status-grow .8s cubic-bezier(.22,1,.36,1) both; animation-delay: calc(180ms + var(--card-index) * 65ms); }.applied-card__rail b { position: absolute; top: 50%; left: var(--status-progress); width: 14px; height: 14px; border: 3px solid #fff; border-radius: 50%; background: var(--status-end); box-shadow: 0 0 0 4px rgba(var(--status-rgb),.12); transform: translate(-50%,-50%); }.applied-card__milestones { display: flex; justify-content: space-between; gap: 12px; color: #718894; font-size: 10px; font-weight: 800; }.applied-card__milestones strong { color: var(--status-start); text-align: right; }
+.applied-card__track { display: grid; gap: 10px; }.applied-card__rail { width: 100%; height: 8px; overflow: hidden; border: 0; border-radius: 999px; background: #e4eee9; appearance: none; }.applied-card__rail::-webkit-progress-bar { background: #e4eee9; }.applied-card__rail::-webkit-progress-value { border-radius: 999px; background: linear-gradient(90deg,var(--status-start),var(--status-end)); }.applied-card__rail::-moz-progress-bar { border-radius: 999px; background: linear-gradient(90deg,var(--status-start),var(--status-end)); }.applied-card__milestones { display: flex; justify-content: space-between; gap: 12px; color: #718894; font-size: 10px; font-weight: 800; }.applied-card__milestones strong { color: var(--status-start); text-align: right; }
 .applied-card__summary { display: grid; gap: 10px; padding-left: 24px; border-left: 1px solid rgba(18,50,74,.08); }.applied-card__summary > span { display: flex; align-items: center; justify-content: space-between; gap: 12px; }.applied-card__summary strong { color: #12324a; font-size: 12px; }.applied-card__summary small { color: #7b909b; font-size: 10px; }.applied-card__summary p { color: #526977; font-size: 12px; line-height: 1.55; }.applied-card__link { color: var(--status-start); font-size: 11px; }.applied-card__link span { display: inline-block; transition: transform .2s ease; }.applied-card:hover .applied-card__link span { transform: translateX(4px); }
 .applied-empty,.applied-error { padding: 56px 24px; text-align: center; border: 1px solid rgba(18,50,74,.08); border-radius: 20px; background: #fff; box-shadow: 0 14px 40px rgba(18,50,74,.05); animation: application-enter .45s ease both; }.applied-empty > span { display: grid; width: 58px; height: 58px; margin: 0 auto 18px; place-items: center; color: var(--worker-role-green-text); border-radius: 18px; background: rgba(var(--worker-role-green-rgb),.1); font-size: 24px; }.applied-empty h2 { color: #0b3658; }.applied-empty p { margin-top: 7px; color: #526977; }.applied-empty .dash-btn { margin-top: 22px; }.applied-error { color: #b42318; }
-@keyframes hero-enter { from { opacity: 0; transform: translateY(18px); } } @keyframes metric-enter { from { opacity: 0; transform: translateY(12px); } } @keyframes application-enter { from { opacity: 0; transform: translateY(18px) scale(.985); } } @keyframes status-grow { from { transform: scaleX(0); } }
+@keyframes hero-enter { from { opacity: 0; transform: translateY(18px); } } @keyframes metric-enter { from { opacity: 0; transform: translateY(12px); } } @keyframes application-enter { from { opacity: 0; transform: translateY(18px) scale(.985); } }
 @media (max-width: 900px) { .applied-card { grid-template-columns: minmax(200px,.8fr) 1fr; }.applied-card__summary { grid-column: 1/-1; padding: 18px 0 0; border-top: 1px solid rgba(18,50,74,.08); border-left: 0; } }
 @media (max-width: 700px) { .applied-page { padding-inline: 16px; }.applied-metrics,.applied-card { grid-template-columns: 1fr; }.applied-journey { padding: 16px; }.applied-journey__head { align-items: start; flex-direction: column; }.applied-card__summary { grid-column: auto; }.applied-hero h1 { font-size: clamp(42px,16vw,64px); } }
-@media (prefers-reduced-motion: reduce) { .applied-hero,.applied-metrics div,.applied-card,.applied-card__rail i,.applied-empty { animation: none; }.applied-card,.applied-card:hover,.applied-list:has(.applied-card:hover) .applied-card:not(:hover) { opacity: 1; transform: none; transition: none; }.applied-card__link span { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .applied-hero,.applied-metrics div,.applied-card,.applied-empty { animation: none; }.applied-card,.applied-card:hover,.applied-list:has(.applied-card:hover) .applied-card:not(:hover) { opacity: 1; transform: none; transition: none; }.applied-card__link span { transition: none; } }
 </style>

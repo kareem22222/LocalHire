@@ -17,6 +17,6 @@ describe('ResumeUpload', () => {
     await input.trigger('change')
     expect(wrapper.emitted('select')[0]).toEqual([resume])
     await wrapper.setProps({ uploading: true, progress: 42 })
-    expect(wrapper.find('[role="progressbar"]').attributes('aria-valuenow')).toBe('42')
+    expect(wrapper.find('progress').attributes('value')).toBe('42')
   })
 })

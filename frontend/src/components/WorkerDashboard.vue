@@ -101,13 +101,12 @@ const hasMoreJobs = computed(() => !props.loading && !props.listOnly && props.jo
         <div class="hiring-progress">
           <span>Profile score</span>
           <strong><CountUp :from="100" :to="profileScore" :delay="0.5" :duration="0.8" immediate separator="" suffix="%" /></strong>
-          <i
-            role="progressbar"
+          <progress
+            class="worker-profile-progress"
             aria-label="Profile score"
-            aria-valuemin="0"
-            aria-valuemax="100"
-            :aria-valuenow="profileScore"
-          ><b :style="{ '--profile-score': `${profileScore}%` }"></b></i>
+            max="100"
+            :value="profileScore"
+          ></progress>
         </div>
       </AnimatedCard>
 
@@ -236,24 +235,14 @@ const hasMoreJobs = computed(() => !props.loading && !props.listOnly && props.jo
   box-shadow: 0 10px 24px rgba(var(--worker-role-green-rgb), 0.18);
 }
 
-.worker-dashboard .hiring-kicker::before,
-.worker-dashboard .hiring-progress b {
+.worker-dashboard .hiring-kicker::before {
   background: linear-gradient(90deg, var(--worker-role-green-start), var(--worker-role-green-end));
 }
 
-.worker-dashboard .hiring-progress b {
-  width: var(--profile-score);
-  animation: profile-progress 0.8s 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes profile-progress {
-  from { width: 100%; }
-  to { width: var(--profile-score); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .worker-dashboard .hiring-progress b { animation: none; }
-}
+.worker-profile-progress { width: 100%; height: 9px; overflow: hidden; border: 0; border-radius: 999px; background: rgba(18, 50, 74, 0.08); appearance: none; }
+.worker-profile-progress::-webkit-progress-bar { background: rgba(18, 50, 74, 0.08); }
+.worker-profile-progress::-webkit-progress-value { border-radius: 999px; background: var(--worker-role-gradient); }
+.worker-profile-progress::-moz-progress-bar { border-radius: 999px; background: var(--worker-role-gradient); }
 
 .worker-dashboard .hiring-quick__link {
   color: var(--worker-role-green-text);

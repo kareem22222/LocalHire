@@ -19,7 +19,7 @@ describe('DatePicker', () => {
 
     await wrapper.find('[data-date="2026-05-10"]').trigger('click')
     expect(wrapper.emitted('update:modelValue')[0]).toEqual(['2026-05-10'])
-    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+    expect(wrapper.find('dialog').exists()).toBe(false)
     wrapper.unmount()
   })
 })

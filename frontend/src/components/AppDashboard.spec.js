@@ -528,7 +528,7 @@ describe('AppDashboard', () => {
       reportProgress({ loaded: 2, total: 4 })
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.find('[role="progressbar"]').attributes('aria-valuenow')).toBe('50')
+      expect(wrapper.find('progress[aria-label="Resume upload progress"]').attributes('value')).toBe('50')
       finishUpload()
       await flushPromises()
       expect(wrapper.find('.resume-upload__status').text()).toBe('Uploaded')

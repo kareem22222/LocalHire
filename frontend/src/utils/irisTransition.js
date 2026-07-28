@@ -1,3 +1,7 @@
+function prefersReducedMotion() {
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+}
+
 export function installIrisTransition(router, isEnabled) {
   const curtain = document.createElement('div')
   curtain.className = 'iris-curtain'
@@ -8,10 +12,6 @@ export function installIrisTransition(router, isEnabled) {
   let pendingTimer
   let coverTimer
   let resolveCover
-
-  function prefersReducedMotion() {
-    return window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
-  }
 
   function rememberOrigin(event) {
     const button = event.target.closest?.('button')
@@ -48,7 +48,7 @@ export function installIrisTransition(router, isEnabled) {
     curtain.style.setProperty('--iris-y', `${pendingOrigin.y}px`)
     pendingOrigin = null
     curtain.classList.remove('iris-curtain--reveal')
-    void curtain.offsetWidth
+    curtain.getBoundingClientRect()
     curtain.classList.add('iris-curtain--cover')
 
     return new Promise((resolve) => {
@@ -61,7 +61,7 @@ export function installIrisTransition(router, isEnabled) {
     if (!curtain.classList.contains('iris-curtain--cover')) return
     requestAnimationFrame(() => {
       curtain.classList.remove('iris-curtain--cover')
-      void curtain.offsetWidth
+      curtain.getBoundingClientRect()
       curtain.classList.add('iris-curtain--reveal')
     })
   }

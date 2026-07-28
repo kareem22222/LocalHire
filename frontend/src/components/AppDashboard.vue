@@ -29,9 +29,8 @@ const resumeUploading = ref(false)
 const resumeUploadProgress = ref(0)
 
 // --- Shared ---
-const activeTab = ref(route.query.tab === 'profile'
-  ? 'profile'
-  : typeof localStorage !== 'undefined' ? (localStorage.getItem('dashboard_tab') || 'dashboard') : 'dashboard')
+const savedTab = typeof localStorage === 'undefined' ? 'dashboard' : (localStorage.getItem('dashboard_tab') || 'dashboard')
+const activeTab = ref(route.query.tab === 'profile' ? 'profile' : savedTab)
 
 watch(activeTab, (tab) => {
   if (typeof localStorage !== 'undefined') localStorage.setItem('dashboard_tab', tab)

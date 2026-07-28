@@ -5,15 +5,8 @@ defineProps({
 </script>
 
 <template>
-  <svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-    class="message-loading"
-    role="status"
-    :aria-label="label"
-  >
+  <output class="message-loading" :aria-label="label">
+    <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <circle cx="4" cy="12" r="2" fill="currentColor">
       <animate
         id="message-spinner-start"
@@ -46,7 +39,8 @@ defineProps({
         keySplines=".33,.66,.66,1;.33,0,.66,.33"
       />
     </circle>
-  </svg>
+    </svg>
+  </output>
 </template>
 
 <style scoped>

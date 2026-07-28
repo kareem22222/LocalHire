@@ -11,10 +11,15 @@ import SkeletonShimmer from './ui/SkeletonShimmer.vue'
 
 describe('shared interaction components', () => {
   it('supports keyboard list selection and step navigation', async () => {
-    const list = mount(AnimatedList, { props: { items: [{ id: 1, label: 'Nearby role' }] } })
-    await list.trigger('keydown', { key: 'ArrowDown' })
-    await list.trigger('keydown', { key: 'Enter' })
+    const list = mount(AnimatedList, {
+      props: { items: [{ id: 1, label: 'Nearby role' }] },
+      slots: { default: '<button class="list-focus">Details</button>' },
+    })
+    await list.get('.list-focus').trigger('keydown', { key: 'ArrowDown' })
+    await list.get('.animated-list__scroller').trigger('keydown', { key: 'Enter' })
     expect(list.emitted('select')?.[0][0]).toEqual({ id: 1, label: 'Nearby role' })
+    expect(list.get('.animated-list__scroller').element.tagName).toBe('UL')
+    expect(list.get('.animated-list__item').element.tagName).toBe('LI')
 
     const stepper = mount(Stepper, { props: { steps: [{ title: 'One' }, { title: 'Two' }] } })
     await stepper.get('.stepper__next').trigger('click')
@@ -25,15 +30,15 @@ describe('shared interaction components', () => {
 
   it('keeps list and step selection inside current bounds', async () => {
     const list = mount(AnimatedList, { props: { items: [{ id: 1 }, { id: 2 }] } })
-    await list.trigger('keydown', { key: 'ArrowDown' })
-    await list.trigger('keydown', { key: 'ArrowDown' })
+    await list.get('.animated-list__scroller').trigger('keydown', { key: 'ArrowDown' })
+    await list.get('.animated-list__scroller').trigger('keydown', { key: 'ArrowDown' })
     await list.setProps({ items: [{ id: 1 }] })
-    await list.trigger('keydown', { key: 'Enter' })
+    await list.get('.animated-list__scroller').trigger('keydown', { key: 'Enter' })
     expect(list.emitted('select')?.[0]).toEqual([{ id: 1 }, 0])
     expect(list.find('[role="option"]').exists()).toBe(false)
 
     await list.setProps({ items: [] })
-    await list.trigger('keydown', { key: 'Enter' })
+    await list.get('.animated-list__scroller').trigger('keydown', { key: 'Enter' })
     expect(list.emitted('select')).toHaveLength(1)
 
     const stepper = mount(Stepper, { props: { steps: [{ title: 'One' }, { title: 'Two' }], initialStep: 99 } })
@@ -76,7 +81,7 @@ describe('shared interaction components', () => {
 
   it('renders dashboard loading and animated card primitives', async () => {
     const loading = mount(MessageLoading, { props: { label: 'Searching roles' } })
-    expect(loading.get('[role="status"]').attributes('aria-label')).toBe('Searching roles')
+    expect(loading.get('output').attributes('aria-label')).toBe('Searching roles')
 
     const card = mount(AnimatedCard, {
       props: { title: 'Quick actions', description: 'Keep work moving.', withArrow: true },
@@ -96,7 +101,7 @@ describe('shared interaction components', () => {
   it('renders accessible shimmer placeholders for each dashboard list shape', () => {
     for (const variant of ['candidate', 'job', 'role']) {
       const shimmer = mount(SkeletonShimmer, { props: { variant, count: 2, label: `Loading ${variant}s` } })
-      expect(shimmer.get('[role="status"]').attributes('aria-label')).toBe(`Loading ${variant}s`)
+      expect(shimmer.get('output').text()).toBe(`Loading ${variant}s`)
       expect(shimmer.findAll('.skeleton-card')).toHaveLength(2)
       expect(shimmer.get('.skeleton-list').classes()).toContain(`skeleton-list--${variant}`)
     }

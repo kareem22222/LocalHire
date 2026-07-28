@@ -14,8 +14,10 @@ async function toggle() {
   await nextTick()
   timeline?.kill()
   const cards = nav.value.querySelectorAll('.card-nav__card')
+  let height = 64
+  if (open.value) height = window.innerWidth <= 720 ? nav.value.scrollHeight : 270
   timeline = gsap.timeline()
-    .to(nav.value, { height: open.value ? (window.innerWidth <= 720 ? nav.value.scrollHeight : 270) : 64, duration: .42, ease: 'power3.out' })
+    .to(nav.value, { height, duration: .42, ease: 'power3.out' })
   if (open.value) timeline.fromTo(cards, { y: 35, opacity: 0 }, { y: 0, opacity: 1, duration: .35, stagger: .07, ease: 'power3.out' }, '-=.2')
 }
 

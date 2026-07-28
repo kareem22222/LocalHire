@@ -11,7 +11,10 @@ describe('ScrambleText', () => {
   it('scrambles visually, then resolves to the accessible text', async () => {
     vi.useFakeTimers()
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => { callback(); return 1 })
-    vi.spyOn(Math, 'random').mockReturnValue(0)
+    vi.spyOn(crypto, 'getRandomValues').mockImplementation((values) => {
+      values[0] = 0
+      return values
+    })
 
     const wrapper = mount(ScrambleText, { props: { text: 'Pat Rao' } })
     await wrapper.vm.$nextTick()
