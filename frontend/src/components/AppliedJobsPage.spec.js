@@ -72,14 +72,19 @@ describe('AppliedJobsPage', () => {
     }, {
       id: 'app-3', jobPostId: 'job-3', jobTitle: 'Driver', workplaceName: 'Courier',
       cityArea: 'Mysuru', status: 'Interview', createdAt: '2026-07-24T00:00:00Z',
+    }, {
+      id: 'app-4', jobPostId: 'job-4', jobTitle: 'Cashier', workplaceName: 'Market',
+      cityArea: 'Mysuru', status: 'Rejected', createdAt: '2026-07-24T00:00:00Z',
     }] })
     const wrapper = mount(AppliedJobsPage, {
       global: { plugins: [createTestRouter()], stubs: { BrandLogo: true } },
     })
     await flushPromises()
     expect(wrapper.text()).toContain('You were selected for this role.')
+    expect(wrapper.text()).toContain('The employer did not select you for this role.')
     expect(wrapper.text()).toContain('Your application status was updated.')
     expect(wrapper.find('.applied-card').classes()).toContain('applied-card--hired')
+    expect(wrapper.findAll('.applied-card')[2].classes()).toContain('applied-card--rejected')
   })
 
   it('paginates the application journey', async () => {

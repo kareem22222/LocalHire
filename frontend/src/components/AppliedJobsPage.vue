@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useJobsStore } from '../stores/jobs'
-import { MAX_VISIBLE_JOBS } from '../utils/jobDisplay'
+import { applicationStatusDisplay, MAX_VISIBLE_JOBS } from '../utils/jobDisplay'
 import { moveSpotlight, resetSpotlight } from '../utils/spotlightCard'
 import BrandLogo from './BrandLogo.vue'
 import CountUp from './CountUp.vue'
@@ -22,21 +22,6 @@ const currentPage = computed(() => Math.min(Math.max(Number.parseInt(route.query
 const visibleApplications = computed(() => applications.value.slice((currentPage.value - 1) * MAX_VISIBLE_JOBS, currentPage.value * MAX_VISIBLE_JOBS))
 const shortlisted = computed(() => applications.value.filter((item) => item.status === 'Shortlisted').length)
 const hired = computed(() => applications.value.filter((item) => item.status === 'Hired').length)
-
-const statusSummary = {
-  Applied: 'Application sent. The employer has not reviewed it yet.',
-  Shortlisted: 'You were shortlisted. The employer may contact you next.',
-  Rejected: 'The employer did not select you for this role.',
-  Hired: 'You were selected for this role.',
-}
-
-const statusProgress = (status) => ({ Applied: 28, Shortlisted: 64, Rejected: 100, Hired: 100 })[status] ?? 50
-const statusMilestone = (status) => ({
-  Applied: 'Waiting for review',
-  Shortlisted: 'Shortlist reached',
-  Rejected: 'Application closed',
-  Hired: 'Offer reached',
-})[status] ?? 'Status updated'
 
 onMounted(async () => {
   try {
@@ -112,14 +97,14 @@ function changePage(page) {
                 class="applied-card__rail"
                 :aria-label="`${application.jobTitle} application progress`"
                 max="100"
-                :value="statusProgress(application.status)"
+                :value="applicationStatusDisplay(application.status).progress"
               ></progress>
-              <div class="applied-card__milestones"><span>Applied</span><strong>{{ statusMilestone(application.status) }}</strong></div>
+              <div class="applied-card__milestones"><span>Applied</span><strong>{{ applicationStatusDisplay(application.status).milestone }}</strong></div>
             </div>
 
             <div class="applied-card__summary">
               <span><strong>Latest update</strong><small>Applied {{ new Date(application.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' }) }}</small></span>
-              <p>{{ statusSummary[application.status] || 'Your application status was updated.' }}</p>
+              <p>{{ applicationStatusDisplay(application.status).summary }}</p>
               <b class="applied-card__link">View job <span aria-hidden="true">→</span></b>
             </div>
           </a>

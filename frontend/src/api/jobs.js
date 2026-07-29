@@ -27,6 +27,14 @@ export function shortlistApplicant(jobId, applicationId) {
   return api.post(`/hiring/jobs/${jobId}/applications/${applicationId}/shortlist`)
 }
 
+export function rejectApplicant(jobId, applicationId) {
+  return api.post(`/hiring/jobs/${jobId}/applications/${applicationId}/reject`)
+}
+
+export function hireApplicant(jobId, applicationId) {
+  return api.post(`/hiring/jobs/${jobId}/applications/${applicationId}/hire`)
+}
+
 export function getCandidate(id) {
   return api.get(`/hiring/candidates/${id}`)
 }

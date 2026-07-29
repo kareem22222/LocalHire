@@ -15,11 +15,16 @@ public sealed class JobService : IJobService
 
     private readonly LocalHireDbContext _db;
     private readonly ICandidateAccessPolicy _candidateAccess;
+    private readonly INotificationService _notifications;
 
-    public JobService(LocalHireDbContext db, ICandidateAccessPolicy candidateAccess)
+    public JobService(
+        LocalHireDbContext db,
+        ICandidateAccessPolicy candidateAccess,
+        INotificationService notifications)
     {
         _db = db;
         _candidateAccess = candidateAccess;
+        _notifications = notifications;
     }
 
     public async Task<JobPostResponse> CreateJobAsync(CreateJobPostRequest request, Guid employerId, CancellationToken ct)
@@ -84,16 +89,7 @@ public sealed class JobService : IJobService
                 .Select(application => application.WorkerId)
                 .Distinct()
                 .ToListAsync(ct);
-            _db.Notifications.AddRange(workerIds.Select(workerId => new Notification
-            {
-                Id = Guid.NewGuid(),
-                UserId = workerId,
-                Type = "JobUpdated",
-                Title = "An applied job was updated",
-                Message = $"{jobPost.Title} at {jobPost.WorkplaceName} has new details.",
-                Link = $"/work/jobs/{jobPost.Id}",
-                CreatedAt = DateTimeOffset.UtcNow
-            }));
+            _notifications.NotifyJobUpdated(workerIds, jobPost);
         }
 
         await _db.SaveChangesAsync(ct);
@@ -127,7 +123,16 @@ public sealed class JobService : IJobService
         return applications.OrderByDescending(a => a.AppliedAt).ToList();
     }
 
-    public async Task<ApplicantResponse> ShortlistApplicantAsync(Guid jobId, Guid applicationId, Guid employerId, CancellationToken ct)
+    public Task<ApplicantResponse> ShortlistApplicantAsync(Guid jobId, Guid applicationId, Guid employerId, CancellationToken ct)
+        => SetApplicationStatusAsync(
+            jobId, applicationId, ApplicationStatus.Shortlisted, employerId, ct);
+
+    public async Task<ApplicantResponse> SetApplicationStatusAsync(
+        Guid jobId,
+        Guid applicationId,
+        ApplicationStatus target,
+        Guid employerId,
+        CancellationToken ct)
     {
         var jobPost = await _db.JobPosts.FirstOrDefaultAsync(j => j.Id == jobId && j.EmployerId == employerId, ct);
         if (jobPost is null)
@@ -138,21 +143,16 @@ public sealed class JobService : IJobService
         if (application is null)
             throw new NotFoundException("Application not found.");
 
-        if (application.Status != ApplicationStatus.Shortlisted)
-        {
-            application.Status = ApplicationStatus.Shortlisted;
-            _db.Notifications.Add(new Notification
-            {
-                Id = Guid.NewGuid(),
-                UserId = application.WorkerId,
-                Type = "Shortlisted",
-                Title = "You were shortlisted",
-                Message = $"{jobPost.WorkplaceName} shortlisted you for {jobPost.Title}.",
-                Link = $"/work/jobs/{jobPost.Id}",
-                CreatedAt = DateTimeOffset.UtcNow
-            });
-            await _db.SaveChangesAsync(ct);
-        }
+        if (!CanTransition(application.Status, target))
+            throw new ConflictException(
+                $"Application cannot move from {application.Status} to {target}.");
+
+        application.Status = target;
+        if (target == ApplicationStatus.Shortlisted)
+            _notifications.NotifyShortlisted(application.WorkerId, jobPost);
+        else
+            _notifications.NotifyApplicationOutcome(application.WorkerId, jobPost, target);
+        await _db.SaveChangesAsync(ct);
 
         var worker = await _db.Users.FirstAsync(u => u.Id == application.WorkerId, ct);
 
@@ -167,6 +167,13 @@ public sealed class JobService : IJobService
             application.Status.ToString(),
             application.CreatedAt);
     }
+
+    private static bool CanTransition(ApplicationStatus current, ApplicationStatus target) =>
+        (current, target) is
+            (ApplicationStatus.Applied, ApplicationStatus.Shortlisted) or
+            (ApplicationStatus.Applied, ApplicationStatus.Rejected) or
+            (ApplicationStatus.Shortlisted, ApplicationStatus.Hired) or
+            (ApplicationStatus.Shortlisted, ApplicationStatus.Rejected);
 
     public async Task<CandidateDetailResponse> GetCandidateDetailAsync(
         Guid workerId, Guid employerId, CancellationToken ct)
@@ -557,16 +564,7 @@ public sealed class JobService : IJobService
         };
 
         _db.JobApplications.Add(application);
-        _db.Notifications.Add(new Notification
-        {
-            Id = Guid.NewGuid(),
-            UserId = jobPost.EmployerId,
-            Type = "NewApplication",
-            Title = "New application received",
-            Message = $"A candidate applied for {jobPost.Title}.",
-            Link = $"/hiring/jobs/{jobPost.Id}/applicants",
-            CreatedAt = DateTimeOffset.UtcNow
-        });
+        _notifications.NotifyNewApplication(jobPost.EmployerId, jobPost);
         try
         {
             await _db.SaveChangesAsync(ct);

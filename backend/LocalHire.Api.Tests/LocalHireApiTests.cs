@@ -306,6 +306,60 @@ public sealed class LocalHireApiTests
     }
 
     [Fact]
+    public async Task Employers_can_reject_or_hire_only_through_legal_owned_transitions()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+
+        await Register(client, "Owner", "owner-decisions@example.com", "Hiring");
+        await Register(client, "Other", "other-decisions@example.com", "Hiring");
+        await Register(client, "Applied Worker", "applied-decisions@example.com", "LookingForWork");
+        await Register(client, "Shortlisted Worker", "shortlisted-decisions@example.com", "LookingForWork");
+        var ownerToken = await Login(client, "owner-decisions@example.com", "Hiring");
+        var otherToken = await Login(client, "other-decisions@example.com", "Hiring");
+        var appliedWorkerToken = await Login(client, "applied-decisions@example.com", "LookingForWork");
+        var shortlistedWorkerToken = await Login(client, "shortlisted-decisions@example.com", "LookingForWork");
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", ownerToken);
+        var job = (await (await client.PostAsJsonAsync("/api/hiring/jobs",
+            new CreateJobPostRequest("Cashier", "Front desk", "Corner Shop", "Bandra")))
+            .Content.ReadFromJsonAsync<JobPostResponse>())!;
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", appliedWorkerToken);
+        var applied = (await (await client.PostAsync($"/api/work/jobs/{job.Id}/apply", null))
+            .Content.ReadFromJsonAsync<JobApplicationResponse>())!;
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await client.PostAsync(
+                $"/api/hiring/jobs/{job.Id}/applications/{applied.Id}/reject", null)).StatusCode);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", shortlistedWorkerToken);
+        var shortlisted = (await (await client.PostAsync($"/api/work/jobs/{job.Id}/apply", null))
+            .Content.ReadFromJsonAsync<JobApplicationResponse>())!;
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", otherToken);
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await client.PostAsync(
+                $"/api/hiring/jobs/{job.Id}/applications/{applied.Id}/reject", null)).StatusCode);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", ownerToken);
+        var rejected = await client.PostAsync(
+            $"/api/hiring/jobs/{job.Id}/applications/{applied.Id}/reject", null);
+        Assert.Equal(HttpStatusCode.OK, rejected.StatusCode);
+        Assert.Equal("Rejected", (await rejected.Content.ReadFromJsonAsync<ApplicantResponse>())!.Status);
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await client.PostAsync(
+                $"/api/hiring/jobs/{job.Id}/applications/{applied.Id}/hire", null)).StatusCode);
+
+        Assert.Equal(HttpStatusCode.OK,
+            (await client.PostAsync(
+                $"/api/hiring/jobs/{job.Id}/applications/{shortlisted.Id}/shortlist", null)).StatusCode);
+        var hired = await client.PostAsync(
+            $"/api/hiring/jobs/{job.Id}/applications/{shortlisted.Id}/hire", null);
+        Assert.Equal(HttpStatusCode.OK, hired.StatusCode);
+        Assert.Equal("Hired", (await hired.Content.ReadFromJsonAsync<ApplicantResponse>())!.Status);
+    }
+
+    [Fact]
     public async Task Database_rejects_cross_role_job_links()
     {
         using var factory = new ApiFactory(useMigrations: true);
@@ -513,10 +567,23 @@ public sealed class LocalHireApiTests
         client.PostAsJsonAsync("/api/auth/register",
             new RegisterRequest("Person", "person@example.com", Password, role));
 
+    private static Task<HttpResponseMessage> Register(
+        HttpClient client, string name, string email, string role) =>
+        client.PostAsJsonAsync("/api/auth/register",
+            new RegisterRequest(name, email, Password, role));
+
     private static async Task<string> Login(HttpClient client, string role)
     {
         var response = await client.PostAsJsonAsync("/api/auth/login",
             new LoginRequest("person@example.com", Password, role));
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.Token;
+    }
+
+    private static async Task<string> Login(HttpClient client, string email, string role)
+    {
+        var response = await client.PostAsJsonAsync("/api/auth/login",
+            new LoginRequest(email, Password, role));
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!.Token;
     }

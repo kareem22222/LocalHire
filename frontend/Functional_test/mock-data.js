@@ -150,5 +150,6 @@ export function createMockData() {
     notifications: { Hiring: [], LookingForWork: [] },
     nextJob: jobs.length + 1,
     nextApplication: workerApplications.length + 1,
+    nextNotification: 1,
   }
 }

@@ -193,12 +193,44 @@ export default function functionalTestApi() {
               return json(response, 200, detail)
             }
 
-            const shortlistMatch = path.match(/^\/hiring\/jobs\/([0-9a-f-]+)\/applications\/([0-9a-f-]+)\/shortlist$/)
-            if (shortlistMatch && method === 'POST') {
+            const decisionMatch = path.match(/^\/hiring\/jobs\/([0-9a-f-]+)\/applications\/([0-9a-f-]+)\/(shortlist|reject|hire)$/)
+            if (decisionMatch && method === 'POST') {
+              const job = data.jobs.find((item) =>
+                item.id === decisionMatch[1] && item.employerId === employerId)
+              if (!job) return json(response, 404, { title: 'Not Found' })
               const application = data.applications.find((item) =>
-                item.jobId === shortlistMatch[1] && item.id === shortlistMatch[2])
+                item.jobId === decisionMatch[1] && item.id === decisionMatch[2])
               if (!application) return json(response, 404, { title: 'Not Found' })
-              application.status = 'Shortlisted'
+              const target = {
+                shortlist: 'Shortlisted',
+                reject: 'Rejected',
+                hire: 'Hired',
+              }[decisionMatch[3]]
+              const legal = (
+                application.status === 'Applied' && ['Shortlisted', 'Rejected'].includes(target)
+              ) || (
+                application.status === 'Shortlisted' && ['Hired', 'Rejected'].includes(target)
+              )
+              if (!legal) return json(response, 409, { title: 'Conflict' })
+              application.status = target
+              const workerApplication = data.workerApplications.find((item) =>
+                item.jobPostId === application.jobId
+                && application.workerId === data.profiles.LookingForWork.id)
+              if (workerApplication) workerApplication.status = target
+              if (target === 'Hired' || target === 'Rejected') {
+                data.notifications.LookingForWork.unshift({
+                  id: idFor('f', data.nextNotification++),
+                  type: target,
+                  title: target === 'Hired' ? 'You were hired' : 'Application update',
+                  message: target === 'Hired'
+                    ? `${job.workplaceName} hired you for ${job.title}.`
+                    : `${job.workplaceName} decided not to move forward with your application for ${job.title}.`,
+                  link: '/work/applications',
+                  isRead: false,
+                  createdAt: new Date().toISOString(),
+                  readAt: null,
+                })
+              }
               return json(response, 200, applicantResponse(data, application))
             }
 

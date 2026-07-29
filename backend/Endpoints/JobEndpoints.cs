@@ -123,6 +123,46 @@ public static class JobEndpoints
         })
         .WithName("ShortlistApplicant");
 
+        hiringGroup.MapPost("/jobs/{jobId:guid}/applications/{applicationId:guid}/reject", async (
+            Guid jobId,
+            Guid applicationId,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            var applicant = await jobService.SetApplicationStatusAsync(
+                jobId, applicationId, ApplicationStatus.Rejected, userId, ct);
+            return Results.Ok(applicant);
+        })
+        .WithName("RejectApplicant")
+        .Produces<ApplicantResponse>()
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
+        hiringGroup.MapPost("/jobs/{jobId:guid}/applications/{applicationId:guid}/hire", async (
+            Guid jobId,
+            Guid applicationId,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            var applicant = await jobService.SetApplicationStatusAsync(
+                jobId, applicationId, ApplicationStatus.Hired, userId, ct);
+            return Results.Ok(applicant);
+        })
+        .WithName("HireApplicant")
+        .Produces<ApplicantResponse>()
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
         hiringGroup.MapGet("/candidates/{id:guid}", async (
             Guid id,
             ClaimsPrincipal user,

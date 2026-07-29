@@ -16,7 +16,7 @@ const pendingApplicant = {
   area: 'Bandra',
   state: 'Maharashtra',
   pincode: '400050',
-  status: 'Pending',
+  status: 'Applied',
 }
 
 let router
@@ -33,6 +33,7 @@ async function mountPage(filter = 'all') {
 
 describe('JobApplicantsPage', () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
     api.get.mockReset()
     api.post.mockReset()
     api.post.mockResolvedValue({ data: { ...pendingApplicant, status: 'Shortlisted' } })
@@ -127,6 +128,61 @@ describe('JobApplicantsPage', () => {
 
     resolveShortlist({ data: { ...candidate, status: 'Shortlisted' } })
     await first
+  })
+
+  it('hires shortlisted applicants and confirms terminal rejections without refetching', async () => {
+    api.get.mockImplementation((url) => Promise.resolve({
+      data: url.endsWith('/applications')
+        ? [
+            pendingApplicant,
+            {
+              ...pendingApplicant,
+              id: 'application-2',
+              workerId: 'candidate-2',
+              workerName: 'Asha Singh',
+              status: 'Shortlisted',
+            },
+          ]
+        : { id: 'job-1', title: 'Cashier' },
+    }))
+    api.post.mockImplementation((url) => Promise.resolve({
+      data: {
+        ...(url.includes('application-2')
+          ? { ...pendingApplicant, id: 'application-2', workerId: 'candidate-2', workerName: 'Asha Singh' }
+          : pendingApplicant),
+        status: url.endsWith('/hire') ? 'Hired' : 'Rejected',
+      },
+    }))
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const wrapper = await mountPage()
+    await flushPromises()
+    const applicationCallsBefore = api.get.mock.calls
+      .filter(([url]) => url.endsWith('/applications')).length
+
+    await wrapper.findAll('.candidate-card').find((card) => card.text().includes('Asha Singh'))
+      .findAll('button').find((button) => button.text() === 'Hire').trigger('click')
+    await flushPromises()
+    await wrapper.findAll('.candidate-card').find((card) => card.text().includes('Ravi Kumar'))
+      .findAll('button').find((button) => button.text() === 'Reject').trigger('click')
+    await flushPromises()
+
+    expect(api.post).toHaveBeenCalledWith('/hiring/jobs/job-1/applications/application-2/hire')
+    expect(api.post).toHaveBeenCalledWith('/hiring/jobs/job-1/applications/application-1/reject')
+    expect(window.confirm).toHaveBeenCalledWith('Reject Ravi Kumar? This decision cannot be undone.')
+    expect(wrapper.text()).toContain('Hired')
+    expect(wrapper.text()).toContain('Rejected')
+    expect(api.get.mock.calls.filter(([url]) => url.endsWith('/applications')))
+      .toHaveLength(applicationCallsBefore)
+  })
+
+  it('does not reject when confirmation is cancelled', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const wrapper = await mountPage()
+    await flushPromises()
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Reject').trigger('click')
+
+    expect(api.post).not.toHaveBeenCalled()
   })
 
   it('paginates applicants without reloading the role', async () => {

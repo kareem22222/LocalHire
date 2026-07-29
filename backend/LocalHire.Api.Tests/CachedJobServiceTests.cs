@@ -25,7 +25,10 @@ public sealed class CachedJobServiceTests : IDisposable
         _db = new LocalHireDbContext(options);
         _db.Database.EnsureCreated();
         _service = new CachedJobService(
-            new JobService(_db, new CandidateAccessPolicy(_db)),
+            new JobService(
+                _db,
+                new CandidateAccessPolicy(_db),
+                new NotificationService(_db)),
             new MemoryCache(new MemoryCacheOptions()),
             new JobCacheVersion());
     }
@@ -62,6 +65,38 @@ public sealed class CachedJobServiceTests : IDisposable
         Assert.Single(first);
         Assert.Equal(2, refreshed.Count);
         Assert.Contains(refreshed, job => job.Title == "Stock Clerk");
+    }
+
+    [Fact]
+    public async Task Status_transition_invalidates_cached_applications()
+    {
+        var (employerId, jobId) = await SeedEmployerAndJobAsync();
+        var worker = Worker("worker", "Karnataka");
+        var application = new JobApplication
+        {
+            Id = Guid.NewGuid(),
+            JobPostId = jobId,
+            WorkerId = worker.Id,
+            Status = ApplicationStatus.Applied,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _db.AddRange(worker, application);
+        await _db.SaveChangesAsync();
+
+        Assert.Equal("Applied", Assert.Single(
+            await _service.GetApplicationsAsync(
+                jobId, employerId, CancellationToken.None)).Status);
+
+        await _service.SetApplicationStatusAsync(
+            jobId,
+            application.Id,
+            ApplicationStatus.Rejected,
+            employerId,
+            CancellationToken.None);
+
+        Assert.Equal("Rejected", Assert.Single(
+            await _service.GetApplicationsAsync(
+                jobId, employerId, CancellationToken.None)).Status);
     }
 
     [Fact]

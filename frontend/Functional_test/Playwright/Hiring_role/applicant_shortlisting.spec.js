@@ -45,20 +45,23 @@ async function openApplicantsWithOpenCandidates(page) {
 test('shortlists an applicant and keeps the status on the server', async ({ page }) => {
   const applicantsUrl = await openApplicantsWithOpenCandidates(page)
   const target = page.locator('article.candidate-card')
-    .filter({ hasNot: page.locator('button:disabled') })
+    .filter({ has: page.getByRole('button', { name: 'Shortlist', exact: true }) })
     .first()
   await expect(target).toBeVisible()
   const name = (await target.locator('h3').innerText()).trim()
 
   await target.getByRole('button', { name: 'Shortlist', exact: true }).click()
 
-  // The page reloads the applicants from the API after the status change.
+  // The row updates immediately from the decision response.
   const updated = page.locator('article.candidate-card').filter({ hasText: name }).first()
-  await expect(updated.getByRole('button', { name: 'Shortlisted', exact: true })).toBeDisabled()
+  await expect(updated).toContainText('Shortlisted')
+  await expect(updated.getByRole('button', { name: 'Hire', exact: true })).toBeVisible()
+  await expect(updated.getByRole('button', { name: 'Reject', exact: true })).toBeVisible()
 
   await page.reload()
-  await expect(page.locator('article.candidate-card').filter({ hasText: name }).first()
-    .getByRole('button', { name: 'Shortlisted', exact: true })).toBeDisabled()
+  const persisted = page.locator('article.candidate-card').filter({ hasText: name }).first()
+  await expect(persisted).toContainText('Shortlisted')
+  await expect(persisted.getByRole('button', { name: 'Hire', exact: true })).toBeVisible()
 
   // The same applicant now shows up in the shortlisted view of that role.
   await page.goto(applicantsUrl.replace('/applicants', '/shortlisted'))
@@ -74,7 +77,7 @@ test('reports a failed shortlist without changing the row', async ({ page }) => 
   }))
 
   const target = page.locator('article.candidate-card')
-    .filter({ hasNot: page.locator('button:disabled') })
+    .filter({ has: page.getByRole('button', { name: 'Shortlist', exact: true }) })
     .first()
   const name = (await target.locator('h3').innerText()).trim()
   await target.getByRole('button', { name: 'Shortlist', exact: true }).click()
@@ -82,6 +85,46 @@ test('reports a failed shortlist without changing the row', async ({ page }) => 
   await expect(page.getByRole('alert')).toContainText('Could not shortlist this candidate. Please try again.')
   await expect(page.locator('article.candidate-card').filter({ hasText: name }).first()
     .getByRole('button', { name: 'Shortlist', exact: true })).toBeEnabled()
+})
+
+test('hires a shortlisted applicant and keeps the terminal status', async ({ page }) => {
+  await openApplicants(page)
+  const target = page.locator('article.candidate-card')
+    .filter({ has: page.getByRole('button', { name: 'Hire', exact: true }) })
+    .first()
+  await expect(target).toBeVisible()
+  const name = (await target.locator('h3').innerText()).trim()
+
+  await target.getByRole('button', { name: 'Hire', exact: true }).click()
+
+  const updated = page.locator('article.candidate-card').filter({ hasText: name }).first()
+  await expect(updated).toContainText('Hired')
+  await expect(updated.locator('.candidate-actions')).toHaveCount(0)
+  await page.reload()
+  await expect(page.locator('article.candidate-card').filter({ hasText: name }).first())
+    .toContainText('Hired')
+})
+
+test('confirms and persists rejecting an applied applicant', async ({ page }) => {
+  await openApplicantsWithOpenCandidates(page)
+  const target = page.locator('article.candidate-card')
+    .filter({ has: page.getByRole('button', { name: 'Shortlist', exact: true }) })
+    .first()
+  await expect(target).toBeVisible()
+  const name = (await target.locator('h3').innerText()).trim()
+  page.once('dialog', async (dialog) => {
+    expect(dialog.message()).toContain('cannot be undone')
+    await dialog.accept()
+  })
+
+  await target.getByRole('button', { name: 'Reject', exact: true }).click()
+
+  const updated = page.locator('article.candidate-card').filter({ hasText: name }).first()
+  await expect(updated).toContainText('Rejected')
+  await expect(updated.locator('.candidate-actions')).toHaveCount(0)
+  await page.reload()
+  await expect(page.locator('article.candidate-card').filter({ hasText: name }).first())
+    .toContainText('Rejected')
 })
 
 test('shows the applicants count and paginates long applicant lists', async ({ page }) => {
