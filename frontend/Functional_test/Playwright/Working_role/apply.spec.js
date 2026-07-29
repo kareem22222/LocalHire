@@ -28,8 +28,9 @@ async function findOpenRole(page, maxPages = 12) {
 
     const next = page.getByRole('button', { name: 'Next' })
     if (!(await next.isEnabled().catch(() => false))) break
+    const firstHref = await rows.first().locator('a.worker-job-row__details').getAttribute('href')
     await next.click()
-    await expect(page.locator('article.worker-job-row').first()).toBeVisible()
+    await expect(page.locator('a.worker-job-row__details').first()).not.toHaveAttribute('href', firstHref)
   }
   throw new Error('No role without an existing application was found in the nearby list.')
 }
