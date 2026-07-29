@@ -141,13 +141,18 @@ function contact() {
 
         <section v-if="showContact" class="candidate-detail__card candidate-detail__contact">
           <h2>Contact</h2>
-          <p class="candidate-detail__hint">Reach out to {{ candidate.name }} directly.</p>
-          <div class="candidate-detail__grid">
-            <div class="candidate-detail__field">
-              <span class="candidate-detail__label">Email</span>
-              <a :href="`mailto:${candidate.email}`" class="candidate-detail__value candidate-detail__link">{{ candidate.email }}</a>
+          <p v-if="!candidate.hasApplied" class="candidate-detail__hint">
+            Contact details unlock once this candidate applies to one of your roles.
+          </p>
+          <template v-else>
+            <p class="candidate-detail__hint">Reach out to {{ candidate.name }} directly.</p>
+            <div class="candidate-detail__grid">
+              <div class="candidate-detail__field">
+                <span class="candidate-detail__label">Email</span>
+                <a :href="`mailto:${candidate.email}`" class="candidate-detail__value candidate-detail__link">{{ candidate.email }}</a>
+              </div>
             </div>
-          </div>
+          </template>
         </section>
 
         <section class="candidate-detail__card">
@@ -173,7 +178,7 @@ function contact() {
                 <p v-if="!candidate.languageDetails?.length && !candidate.languages?.length" class="candidate-detail__value">Not added</p>
               </div>
             </div>
-            <div class="candidate-detail__field"><span class="candidate-detail__label">Resume</span><p class="candidate-detail__value">{{ candidate.hasResume ? 'Available' : 'Not uploaded' }}</p></div>
+            <div v-if="candidate.hasApplied" class="candidate-detail__field"><span class="candidate-detail__label">Resume</span><p class="candidate-detail__value">{{ candidate.hasResume ? 'Available' : 'Not uploaded' }}</p></div>
           </div>
         </section>
 
@@ -201,16 +206,18 @@ function contact() {
           </article>
         </section>
 
-        <section v-if="candidate.educationHistory?.length || candidate.credentials?.length" class="candidate-detail__card">
+        <section v-if="candidate.educationHistory?.length || (candidate.hasApplied && candidate.credentials?.length)" class="candidate-detail__card">
           <h2>Education, training, and licences</h2>
           <article v-for="(entry, index) in candidate.educationHistory" :key="`education-${index}`" class="candidate-timeline">
             <h3>{{ entry.qualification }} · {{ entry.institution }}</h3>
             <p>{{ [entry.fieldOfStudy, entry.startYear, entry.endYear].filter(Boolean).join(' · ') }}</p>
           </article>
-          <article v-for="(entry, index) in candidate.credentials" :key="`credential-${index}`" class="candidate-timeline">
-            <h3>{{ entry.name }} · {{ entry.issuer }}</h3>
-            <p>{{ [entry.credentialId, entry.issueDate, entry.expiryDate && `Expires ${entry.expiryDate}`].filter(Boolean).join(' · ') }}</p>
-          </article>
+          <template v-if="candidate.hasApplied">
+            <article v-for="(entry, index) in candidate.credentials" :key="`credential-${index}`" class="candidate-timeline">
+              <h3>{{ entry.name }} · {{ entry.issuer }}</h3>
+              <p>{{ [entry.credentialId, entry.issueDate, entry.expiryDate && `Expires ${entry.expiryDate}`].filter(Boolean).join(' · ') }}</p>
+            </article>
+          </template>
         </section>
 
         <section class="candidate-detail__card">

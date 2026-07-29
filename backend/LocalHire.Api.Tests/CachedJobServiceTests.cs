@@ -25,7 +25,7 @@ public sealed class CachedJobServiceTests : IDisposable
         _db = new LocalHireDbContext(options);
         _db.Database.EnsureCreated();
         _service = new CachedJobService(
-            new JobService(_db),
+            new JobService(_db, new CandidateAccessPolicy(_db)),
             new MemoryCache(new MemoryCacheOptions()),
             new JobCacheVersion());
     }
@@ -106,6 +106,36 @@ public sealed class CachedJobServiceTests : IDisposable
         Assert.Equal("Karnataka", first[0].State);
         Assert.Single(second);
         Assert.Equal("Telangana", second[0].State);
+    }
+
+    [Fact]
+    public async Task Candidate_detail_cache_is_scoped_to_the_employer()
+    {
+        var owner = Employer("owner", "Karnataka");
+        var other = Employer("other", "Karnataka");
+        var worker = Worker("worker", "Karnataka");
+        var job = new JobPost
+        {
+            Id = Guid.NewGuid(), EmployerId = owner.Id, Title = "Cashier",
+            Description = "Front desk", WorkplaceName = "Corner Shop",
+            CityArea = "Bandra", CreatedAt = DateTimeOffset.UtcNow,
+        };
+        _db.AddRange(owner, other, worker, job, new JobApplication
+        {
+            Id = Guid.NewGuid(), JobPostId = job.Id, WorkerId = worker.Id,
+            CreatedAt = DateTimeOffset.UtcNow,
+        });
+        await _db.SaveChangesAsync();
+
+        var full = await _service.GetCandidateDetailAsync(
+            worker.Id, owner.Id, CancellationToken.None);
+        var reduced = await _service.GetCandidateDetailAsync(
+            worker.Id, other.Id, CancellationToken.None);
+
+        Assert.Equal(worker.Email, full.Email);
+        Assert.True(full.HasApplied);
+        Assert.Null(reduced.Email);
+        Assert.False(reduced.HasApplied);
     }
 
     private async Task<(Guid EmployerId, Guid JobId)> SeedEmployerAndJobAsync()

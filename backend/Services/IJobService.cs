@@ -29,11 +29,13 @@ public interface IJobService
     Task<ApplicantResponse> ShortlistApplicantAsync(Guid jobId, Guid applicationId, Guid employerId, CancellationToken ct);
 
     /// <summary>
-    /// Returns the full profile detail for a single worker so an employer can
-    /// review them on the candidate detail page. The phone number is never
-    /// included. Throws when the id does not resolve to a worker account.
+    /// Returns profile detail for a single worker. Employers who have received
+    /// an application from the worker get the full detail; other employers get
+    /// a reduced detail without contact, resume, or credential data. The phone
+    /// number is never included. Throws when the id does not resolve to a worker.
     /// </summary>
-    Task<CandidateDetailResponse> GetCandidateDetailAsync(Guid workerId, CancellationToken ct);
+    Task<CandidateDetailResponse> GetCandidateDetailAsync(
+        Guid workerId, Guid employerId, CancellationToken ct);
 
     /// <summary>
     /// Returns active jobs for a worker. Typed searches can match jobs anywhere;

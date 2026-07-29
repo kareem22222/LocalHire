@@ -139,6 +139,7 @@ builder.Services.AddSingleton<IAmazonS3>(_ =>
         : new AmazonS3Client(new BasicAWSCredentials(accessKey, secretKey), config);
 });
 builder.Services.AddSingleton<JobCacheVersion>();
+builder.Services.AddScoped<ICandidateAccessPolicy, CandidateAccessPolicy>();
 builder.Services.AddScoped<JobService>();
 builder.Services.AddScoped<IJobService, CachedJobService>();
 

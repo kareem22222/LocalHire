@@ -3,16 +3,15 @@ using LocalHire.Api.Models;
 namespace LocalHire.Api.DTOs;
 
 /// <summary>
-/// Full detail for a single worker, shown on the employer-facing candidate detail
-/// page. Includes every profile field an employer may need to make a decision
-/// EXCEPT the worker's phone number, which is intentionally withheld from the
-/// default view. The <see cref="Email"/> is only used to power the explicit
-/// "Contact" action on the detail page.
+/// Detail for a single worker on the employer-facing candidate page. Contact,
+/// resume, and credential data are available only when <see cref="HasApplied"/>
+/// is true. The worker's phone number is never included.
 /// </summary>
 public sealed record CandidateDetailResponse(
     Guid Id,
     string Name,
-    string Email,
+    string? Email,
+    bool HasApplied,
     string? Role,
     string? Gender,
     DateOnly? DateOfBirth,

@@ -30,6 +30,7 @@ describe('CandidateDetailPage', () => {
         id: 'candidate-1',
         name: 'Ananya Rao',
         email: 'ananya@example.com',
+        hasApplied: true,
         role: 'Cashier',
         gender: 'Female',
         dateOfBirth: '1990-01-02',
@@ -79,7 +80,7 @@ describe('CandidateDetailPage', () => {
 
   it('reloads on route changes, reports failures, and navigates back', async () => {
     api.get.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({
-      data: { id: 'candidate-2', name: '', email: 'worker@example.com', dateOfBirth: 'unknown' },
+      data: { id: 'candidate-2', name: '', email: 'worker@example.com', hasApplied: true, dateOfBirth: 'unknown' },
     })
     const wrapper = await mountPage()
     await flushPromises()
@@ -122,5 +123,20 @@ describe('CandidateDetailPage', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('Latest Candidate')
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  })
+
+  it('explains why contact and private profile data are locked before an application', async () => {
+    api.get.mockResolvedValue({
+      data: {
+        id: 'candidate-1', name: 'Ananya Rao', email: null, hasApplied: false,
+        hasResume: false, credentials: null,
+      },
+    })
+    const wrapper = await mountPage('/hiring/candidates/candidate-1?contact=1')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Contact details unlock once this candidate applies to one of your roles.')
+    expect(wrapper.find('a[href^="mailto:"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Resume')
   })
 })

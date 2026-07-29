@@ -145,7 +145,12 @@ export default function functionalTestApi() {
             const candidateMatch = path.match(/^\/hiring\/candidates\/([0-9a-f-]+)$/)
             if (candidateMatch && method === 'GET') {
               const candidate = data.candidates.find((item) => item.id === candidateMatch[1])
-              return json(response, candidate ? 200 : 404, candidate || { title: 'Not Found' })
+              if (!candidate) return json(response, 404, { title: 'Not Found' })
+              const hasApplied = data.applications.some((item) => item.workerId === candidate.id)
+              const detail = hasApplied
+                ? { ...candidate, hasApplied }
+                : { ...candidate, email: null, hasResume: false, credentials: null, hasApplied }
+              return json(response, 200, detail)
             }
 
             const shortlistMatch = path.match(/^\/hiring\/jobs\/([0-9a-f-]+)\/applications\/([0-9a-f-]+)\/shortlist$/)

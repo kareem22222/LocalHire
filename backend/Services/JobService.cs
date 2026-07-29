@@ -14,10 +14,12 @@ public sealed class JobService : IJobService
     private const string JobPostNotFoundMessage = "Job post not found.";
 
     private readonly LocalHireDbContext _db;
+    private readonly ICandidateAccessPolicy _candidateAccess;
 
-    public JobService(LocalHireDbContext db)
+    public JobService(LocalHireDbContext db, ICandidateAccessPolicy candidateAccess)
     {
         _db = db;
+        _candidateAccess = candidateAccess;
     }
 
     public async Task<JobPostResponse> CreateJobAsync(CreateJobPostRequest request, Guid employerId, CancellationToken ct)
@@ -166,17 +168,21 @@ public sealed class JobService : IJobService
             application.CreatedAt);
     }
 
-    public async Task<CandidateDetailResponse> GetCandidateDetailAsync(Guid workerId, CancellationToken ct)
+    public async Task<CandidateDetailResponse> GetCandidateDetailAsync(
+        Guid workerId, Guid employerId, CancellationToken ct)
     {
         var worker = await _db.Users
             .FirstOrDefaultAsync(u => u.Id == workerId && u.Role == UserRole.LookingForWork, ct);
         if (worker is null)
             throw new NotFoundException("Candidate not found.");
 
+        var hasApplied = await _candidateAccess.CanViewAsync(employerId, workerId, ct);
+
         return new CandidateDetailResponse(
             worker.Id,
             worker.Name,
-            worker.Email,
+            hasApplied ? worker.Email : null,
+            hasApplied,
             worker.JobTitle,
             worker.Gender,
             worker.DateOfBirth,
@@ -192,13 +198,13 @@ public sealed class JobService : IJobService
             worker.Education,
             worker.Skills,
             worker.Languages,
-            worker.ResumeKey is not null,
+            hasApplied && worker.ResumeKey is not null,
             worker.WorkPreferences,
             worker.WorkHistory,
             worker.EducationHistory,
             worker.SkillDetails,
             worker.LanguageDetails,
-            worker.Credentials);
+            hasApplied ? worker.Credentials : null);
     }
 
     public async Task<IReadOnlyList<JobPostResponse>> GetNearbyJobsAsync(
