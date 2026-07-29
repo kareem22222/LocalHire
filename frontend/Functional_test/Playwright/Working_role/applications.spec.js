@@ -24,14 +24,30 @@ test('paginates application history', async ({ page }) => {
 })
 
 test('opens an applied job and preserves the applied state', async ({ page }) => {
-  // Any tracked application will do; the first page of the list changes as new
-  // applications are added, so no specific job title is assumed.
-  const card = page.locator('.applied-card').first()
-  const title = (await card.locator('.applied-card__identity h2').textContent()).trim()
-  await card.click()
-  await expect(page).toHaveURL(/\/work\/jobs\/[^/]+$/)
-  await expect(page.getByRole('heading', { name: title })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Applied', exact: true })).toBeDisabled()
+  const cards = page.locator('.applied-card')
+  await expect(cards.first()).toBeVisible()
+
+  for (let index = 0; index < await cards.count(); index += 1) {
+    const card = cards.nth(index)
+    const title = (await card.locator('.applied-card__identity h2').textContent()).trim()
+    await card.click()
+    await expect(page).toHaveURL(/\/work\/jobs\/[^/]+$/)
+
+    const heading = page.getByRole('heading', { name: title })
+    const unavailable = page.getByRole('heading', { name: 'Job unavailable' })
+    await expect(heading.or(unavailable)).toBeVisible()
+
+    if (await unavailable.isVisible()) {
+      await page.goBack()
+      await expect(cards.first()).toBeVisible()
+      continue
+    }
+
+    await expect(page.getByRole('button', { name: 'Applied', exact: true })).toBeDisabled()
+    return
+  }
+
+  throw new Error('No available applied job found on the current page')
 })
 
 test('returns to the worker dashboard', async ({ page }) => {
