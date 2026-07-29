@@ -186,7 +186,7 @@ public sealed class JobService : IJobService
             worker.JobTitle,
             worker.Gender,
             worker.DateOfBirth,
-            worker.AddressLine,
+            hasApplied ? worker.AddressLine : null,
             worker.CityArea,
             worker.State,
             worker.Pincode,

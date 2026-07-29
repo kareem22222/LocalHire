@@ -43,6 +43,23 @@ test('explains that contact details are locked for a browsed-only candidate', as
   await expect(page.locator('a[href^="mailto:"]')).toHaveCount(0)
 })
 
+test('does not unlock a candidate who applied to another employer', async ({ page }) => {
+  const payload = Buffer.from(JSON.stringify({
+    role: 'Hiring',
+    userId: 'e0000000-0000-4000-8000-000000000002',
+    exp: Math.floor(Date.now() / 1000) + 60 * 60,
+  })).toString('base64url')
+  await page.addInitScript((token) => {
+    localStorage.setItem('localhire.accessToken', token)
+  }, `mock.${payload}.localhire`)
+
+  await openFirstCandidate(page)
+  await page.getByRole('button', { name: 'Contact', exact: true }).click()
+
+  await expect(page.getByText('Contact details unlock once this candidate applies to one of your roles.')).toBeVisible()
+  await expect(page.locator('a[href^="mailto:"]')).toHaveCount(0)
+})
+
 test('returns to the candidate list from the detail page', async ({ page }) => {
   await openFirstCandidate(page)
   await page.getByRole('button', { name: 'Back', exact: true }).press('Enter')

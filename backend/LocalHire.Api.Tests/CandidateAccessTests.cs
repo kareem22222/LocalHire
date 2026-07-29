@@ -33,6 +33,7 @@ public sealed class CandidateAccessTests
         {
             var db = scope.ServiceProvider.GetRequiredService<LocalHireDbContext>();
             var worker = db.Users.Single(user => user.Email == "worker@example.com");
+            worker.AddressLine = "12 Private Road";
             worker.ResumeKey = "resumes/worker.pdf";
             worker.Credentials = [new CredentialEntry { Name = "Retail Basics", Issuer = "Skills Centre" }];
             db.SaveChanges();
@@ -47,6 +48,7 @@ public sealed class CandidateAccessTests
         var full = await client.GetFromJsonAsync<CandidateDetailResponse>($"/api/hiring/candidates/{workerId}");
         Assert.True(full!.HasApplied);
         Assert.Equal("worker@example.com", full.Email);
+        Assert.Equal("12 Private Road", full.AddressLine);
         Assert.True(full.HasResume);
         Assert.Single(full.Credentials!);
 
@@ -56,6 +58,7 @@ public sealed class CandidateAccessTests
         var reduced = (await reducedResponse.Content.ReadFromJsonAsync<CandidateDetailResponse>())!;
         Assert.False(reduced.HasApplied);
         Assert.Null(reduced.Email);
+        Assert.Null(reduced.AddressLine);
         Assert.False(reduced.HasResume);
         Assert.Null(reduced.Credentials);
 

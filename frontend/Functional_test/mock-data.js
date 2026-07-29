@@ -114,6 +114,7 @@ function job(index) {
   const [title, employmentType] = roles[index % roles.length]
   return {
     id: id('c', index + 1),
+    employerId: id('e', 1),
     title,
     description: `Help our local team as a ${title.toLowerCase()}.`,
     workplaceName: `LocalHire Test Store ${String(index + 1).padStart(2, '0')}`,

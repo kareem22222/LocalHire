@@ -129,7 +129,7 @@ describe('CandidateDetailPage', () => {
     api.get.mockResolvedValue({
       data: {
         id: 'candidate-1', name: 'Ananya Rao', email: null, hasApplied: false,
-        hasResume: false, credentials: null,
+        hasResume: false, credentials: [{ name: 'Private Forklift Licence', issuer: 'Skills Centre' }],
       },
     })
     const wrapper = await mountPage('/hiring/candidates/candidate-1?contact=1')
@@ -138,5 +138,6 @@ describe('CandidateDetailPage', () => {
     expect(wrapper.text()).toContain('Contact details unlock once this candidate applies to one of your roles.')
     expect(wrapper.find('a[href^="mailto:"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Resume')
+    expect(wrapper.text()).not.toContain('Private Forklift Licence')
   })
 })
