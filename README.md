@@ -184,21 +184,22 @@ resumes/{user-id}/current
 
 Use a private bucket with S3 Block Public Access enabled. No browser CORS setup
 is needed — the API uploads the file server-side, not the browser. Grant the IAM
-identity only what the upload needs:
+identity only what upload and download need:
 
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [{
     "Effect": "Allow",
-    "Action": "s3:PutObject",
+    "Action": ["s3:PutObject", "s3:GetObject"],
     "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME/resumes/*"
   }]
 }
 ```
 
-To verify: sign in with a `LookingForWork` account, upload a resume from the
-profile, and confirm `resumes/{user-id}/current` exists in the bucket.
+To verify by hand, start LocalStack Pro with `docker compose --profile localstack up`,
+sign in with a `LookingForWork` account, upload a resume from the profile, and
+download it again. Confirm `resumes/{user-id}/current` exists in the bucket.
 
 ### Docker Compose
 
@@ -216,6 +217,7 @@ AWS_REGION=ap-south-2
 AWS_ACCESS_KEY_ID=YOUR_IAM_ACCESS_KEY
 AWS_SECRET_ACCESS_KEY=YOUR_IAM_SECRET_KEY
 AWS_SERVICE_URL=
+AWS_PUBLIC_SERVICE_URL=
 ```
 
 ```powershell
@@ -232,12 +234,14 @@ https://app.localstack.cloud) and point the API at LocalStack:
 ```env
 LOCALSTACK_AUTH_TOKEN=YOUR_LOCALSTACK_PRO_TOKEN
 AWS_SERVICE_URL=http://localstack:4566
+AWS_PUBLIC_SERVICE_URL=http://localhost:4566
 AWS_ACCESS_KEY_ID=test
 AWS_SECRET_ACCESS_KEY=test
 ```
 
 LocalStack accepts any non-empty credentials, so the dummy `test` values above
-are enough. Start with the profile enabled:
+are enough. The API uses Docker's `localstack` hostname while presigned download
+links use the browser-reachable `localhost` hostname. Start with the profile enabled:
 
 ```powershell
 docker rm -f localhire-localstack
@@ -290,7 +294,7 @@ the IAM policy and the actual bucket.
 | --- | --- |
 | `503 AWS:S3Bucket is not configured` | Set the bucket and restart the API. |
 | `The provided token is malformed` | Remove an invalid `AWS_SESSION_TOKEN`, or set matching access/secret keys. |
-| `AccessDenied` | Ensure the IAM identity has `s3:PutObject` on the bucket's `resumes/*` prefix. |
+| `AccessDenied` | Ensure the IAM identity has `s3:PutObject` and `s3:GetObject` on the bucket's `resumes/*` prefix. |
 
 ## Testing
 

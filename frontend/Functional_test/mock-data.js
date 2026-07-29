@@ -70,7 +70,7 @@ function profile(role) {
     skillDetails: worker ? [{ name: 'Customer service', proficiency: 'Advanced', yearsExperience: 3 }] : [],
     languageDetails: worker ? [{ name: 'Kannada', proficiency: 'Native', canSpeak: true, canRead: true, canWrite: true }] : [],
     credentials: worker ? [{ name: 'Retail Basics', issuer: 'Local Skills Centre', issueDate: '2025-01-10' }] : [],
-    resumeFileName: null,
+    resumeFileName: worker ? 'demo-worker-resume.pdf' : null,
     isProfileComplete: worker,
     profileCompletionPercent: worker ? 90 : 75,
   }

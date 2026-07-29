@@ -19,3 +19,7 @@ export function uploadResume(file, onUploadProgress) {
   data.append('resume', file)
   return api.put('/me/resume', data, { onUploadProgress })
 }
+
+export function getMyResume() {
+  return api.get('/me/resume')
+}

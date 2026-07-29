@@ -1,5 +1,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
+import { getMyResume } from '../api/profile.js'
+import { safeDownloadUrl } from '../utils/downloadUrl.js'
 import WorkerProfileSections from './WorkerProfileSections.vue'
 import DatePicker from './ui/DatePicker.vue'
 import ResumeUpload from './ui/ResumeUpload.vue'
@@ -145,6 +147,16 @@ function cancelEdit() {
   clientErrors.value = []
   emit('clear-errors')
   editing.value = false
+}
+
+async function downloadResume() {
+  clientErrors.value = []
+  try {
+    const { data } = await getMyResume()
+    if (data.url) window.location.assign(safeDownloadUrl(data.url))
+  } catch {
+    clientErrors.value = ['Failed to download resume.']
+  }
 }
 
 function numberOrNull(value) {
@@ -385,6 +397,7 @@ function goBack() {
             :progress="resumeUploadProgress"
             :error="resumeUploadError"
             @select="$emit('upload-resume', $event)"
+            @download="downloadResume"
           />
         </div>
       </div>

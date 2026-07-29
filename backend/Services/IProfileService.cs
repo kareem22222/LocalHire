@@ -11,6 +11,9 @@ namespace LocalHire.Api.Services;
 public interface IProfileService
 {
     Task<UserProfile> GetProfileAsync(Guid userId, CancellationToken ct);
+    Task<ResumeFileReference> GetResumeAsync(Guid userId, CancellationToken ct);
     Task<UserProfile> UpdateProfileAsync(Guid userId, UpdateProfileRequest request, CancellationToken ct);
     Task<UserProfile> UpdateLocationAsync(Guid userId, UpdateLocationRequest request, CancellationToken ct);
 }
+
+public sealed record ResumeFileReference(string Key, string FileName);

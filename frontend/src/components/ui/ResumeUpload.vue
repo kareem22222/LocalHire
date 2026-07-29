@@ -7,7 +7,7 @@ const props = defineProps({
   progress: { type: Number, default: 0 },
   error: { type: String, default: '' },
 })
-const emit = defineEmits(['select'])
+const emit = defineEmits(['select', 'download'])
 const input = ref(null)
 const dragging = ref(false)
 const pendingFile = ref(null)
@@ -105,6 +105,12 @@ watch(() => props.uploading, (uploading, wasUploading) => {
           <span :class="`resume-upload__status resume-upload__status--${status}`">
             {{ status === 'uploading' ? `${progressValue}% uploaded` : status === 'error' ? 'Upload failed' : 'Uploaded' }}
           </span>
+          <button
+            v-if="fileName && !pendingFile && !uploading"
+            type="button"
+            class="resume-upload__download"
+            @click="emit('download')"
+          >Download</button>
         </div>
         <progress
           v-if="uploading"
@@ -156,6 +162,7 @@ watch(() => props.uploading, (uploading, wasUploading) => {
 .resume-upload__status { flex: none; margin: 0 !important; color: #126c49 !important; font-weight: 800; }
 .resume-upload__status--uploading { color: #07559a !important; }
 .resume-upload__status--error { color: #a23434 !important; }
+.resume-upload__download { flex: none; padding: 7px 10px; color: #07559a; background: #eef6fc; border: 0; border-radius: 8px; font: 800 12px inherit; cursor: pointer; }
 .resume-upload__progress { width: 100%; height: 5px; margin-top: 10px; overflow: hidden; border: 0; border-radius: 999px; background: #e4edf1; appearance: none; }
 .resume-upload__progress::-webkit-progress-bar { background: #e4edf1; }
 .resume-upload__progress::-webkit-progress-value { border-radius: 999px; background: #1769aa; }

@@ -122,7 +122,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
-builder.Services.AddSingleton<IAmazonS3>(_ =>
+IAmazonS3 CreateS3Client(string? serviceUrl)
 {
     var accessKey = builder.Configuration["AWS:AccessKey"];
     var secretKey = builder.Configuration["AWS:SecretKey"];
@@ -130,13 +130,21 @@ builder.Services.AddSingleton<IAmazonS3>(_ =>
     if (string.IsNullOrWhiteSpace(accessKey) != string.IsNullOrWhiteSpace(secretKey))
         throw new InvalidOperationException("Configure both AWS:AccessKey and AWS:SecretKey, or neither.");
 
-    var config = S3ConfigFactory.Build(
-        builder.Configuration["AWS:ServiceUrl"],
-        builder.Configuration["AWS:Region"]);
+    var config = S3ConfigFactory.Build(serviceUrl, builder.Configuration["AWS:Region"]);
 
     return string.IsNullOrWhiteSpace(accessKey)
         ? new AmazonS3Client(config)
         : new AmazonS3Client(new BasicAWSCredentials(accessKey, secretKey), config);
+}
+
+builder.Services.AddSingleton<IAmazonS3>(_ =>
+    CreateS3Client(builder.Configuration["AWS:ServiceUrl"]));
+builder.Services.AddKeyedSingleton<IAmazonS3>("ResumeDownload", (services, _) =>
+{
+    var publicServiceUrl = builder.Configuration["AWS:PublicServiceUrl"];
+    return string.IsNullOrWhiteSpace(publicServiceUrl)
+        ? services.GetRequiredService<IAmazonS3>()
+        : CreateS3Client(publicServiceUrl);
 });
 builder.Services.AddSingleton<JobCacheVersion>();
 builder.Services.AddScoped<ICandidateAccessPolicy, CandidateAccessPolicy>();

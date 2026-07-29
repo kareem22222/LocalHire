@@ -30,6 +30,16 @@ test('reveals contact details on request and hides them by default', async ({ pa
   await expect(page.getByRole('link', { name: /@/ })).toHaveAttribute('href', /^mailto:/)
 })
 
+test('downloads an applicants resume from candidate detail', async ({ page }) => {
+  await openFirstCandidate(page)
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Download resume', exact: true }).click()
+  const download = await downloadPromise
+
+  expect(download.suggestedFilename()).toBe('candidate-resume.pdf')
+})
+
 test('explains that contact details are locked for a browsed-only candidate', async ({ page }) => {
   await page.goto('/hiring/candidates')
   const card = page.locator('article.candidate-card').nth(8)
