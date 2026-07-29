@@ -64,6 +64,30 @@ public static class ProfileEndpoints
         })
         .WithName("UpdateLocation");
 
+        group.MapGet("/resume", async (
+            ClaimsPrincipal principal,
+            IProfileService profileService,
+            [FromKeyedServices("ResumeDownload")] IAmazonS3 s3,
+            IConfiguration configuration,
+            CancellationToken ct) =>
+        {
+            if (!principal.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            var resume = await profileService.GetResumeAsync(userId, ct);
+            var bucket = configuration["AWS:S3Bucket"];
+            if (string.IsNullOrWhiteSpace(bucket))
+                return Results.Problem("AWS:S3Bucket is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
+
+            return Results.Ok(await EndpointHelpers.CreateResumeDownloadAsync(s3, bucket, resume));
+        })
+        .WithName("DownloadMyResume")
+        .RequireAuthorization("LookingForWorkOnly")
+        .Produces<ResumeDownloadResponse>()
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
+
         group.MapPut("/resume", async (
             IFormFile resume,
             ClaimsPrincipal principal,
@@ -106,12 +130,7 @@ public static class ProfileEndpoints
                 BucketName = bucket,
                 Key = key,
                 InputStream = stream,
-                ContentType = extension switch
-                {
-                    ".pdf" => "application/pdf",
-                    ".doc" => "application/msword",
-                    _ => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                },
+                ContentType = EndpointHelpers.ResumeContentType(fileName),
                 AutoCloseStream = false,
             }, ct);
 

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Amazon.S3;
 using FluentValidation;
 using LocalHire.Api.DTOs;
 using LocalHire.Api.Models;
@@ -135,6 +136,29 @@ public static class JobEndpoints
             return Results.Ok(candidate);
         })
         .WithName("GetCandidateDetail");
+
+        hiringGroup.MapGet("/candidates/{id:guid}/resume", async (
+            Guid id,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            [FromKeyedServices("ResumeDownload")] IAmazonS3 s3,
+            IConfiguration configuration,
+            CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            var resume = await jobService.GetCandidateResumeAsync(id, userId, ct);
+            var bucket = configuration["AWS:S3Bucket"];
+            if (string.IsNullOrWhiteSpace(bucket))
+                return Results.Problem("AWS:S3Bucket is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
+
+            return Results.Ok(await EndpointHelpers.CreateResumeDownloadAsync(s3, bucket, resume));
+        })
+        .WithName("DownloadCandidateResume")
+        .Produces<ResumeDownloadResponse>()
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status404NotFound);
 
         hiringGroup.MapGet("/candidates/nearby", async (
             double? lat,

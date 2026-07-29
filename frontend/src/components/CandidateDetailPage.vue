@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { getCandidateResume } from '../api/jobs.js'
 import { useJobsStore } from '../stores/jobs'
 import { useSavedCandidates } from '../composables/useSavedCandidates'
 import BrandLogo from './BrandLogo.vue'
@@ -14,6 +15,8 @@ const loading = ref(false)
 const error = ref('')
 const candidate = ref(null)
 const showContact = ref(route.query.contact === '1')
+const resumeDownloading = ref(false)
+const resumeError = ref('')
 
 const candidateId = computed(() => route.params.id)
 const shortlisted = computed(() => candidate.value && isSaved(candidate.value.id))
@@ -100,6 +103,19 @@ function shortlist() {
 function contact() {
   showContact.value = true
 }
+
+async function downloadResume() {
+  resumeError.value = ''
+  resumeDownloading.value = true
+  try {
+    const { data } = await getCandidateResume(candidate.value.id)
+    if (data.url) window.location.assign(data.url)
+  } catch {
+    resumeError.value = 'We could not download this resume.'
+  } finally {
+    resumeDownloading.value = false
+  }
+}
 </script>
 
 <template>
@@ -113,6 +129,7 @@ function contact() {
 
     <main class="dash-main candidate-detail">
       <p v-if="error" class="job-form__error" role="alert">{{ error }}</p>
+      <p v-if="resumeError" class="job-form__error" role="alert">{{ resumeError }}</p>
 
       <div v-if="loading" class="candidate-empty">
         <strong>Loading candidate...</strong>
@@ -136,6 +153,13 @@ function contact() {
               {{ shortlisted ? 'Shortlisted' : 'Shortlist' }}
             </button>
             <button type="button" class="dash-btn dash-btn--outline" @click="contact">Contact</button>
+            <button
+              v-if="candidate.hasApplied && candidate.hasResume"
+              type="button"
+              class="dash-btn dash-btn--outline"
+              :disabled="resumeDownloading"
+              @click="downloadResume"
+            >{{ resumeDownloading ? 'Preparing resume…' : 'Download resume' }}</button>
           </div>
         </section>
 

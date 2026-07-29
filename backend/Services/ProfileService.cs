@@ -35,6 +35,19 @@ public sealed class ProfileService : IProfileService
         return profile;
     }
 
+    public async Task<ResumeFileReference> GetResumeAsync(Guid userId, CancellationToken ct)
+    {
+        var resume = await _db.Users
+            .Where(user => user.Id == userId && user.Role == UserRole.LookingForWork)
+            .Select(user => new { user.ResumeKey, user.ResumeFileName })
+            .FirstOrDefaultAsync(ct);
+
+        if (resume?.ResumeKey is null)
+            throw new NotFoundException("Resume not found.");
+
+        return new ResumeFileReference(resume.ResumeKey, resume.ResumeFileName ?? "resume");
+    }
+
     public async Task<UserProfile> UpdateProfileAsync(Guid userId, UpdateProfileRequest request, CancellationToken ct)
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct)

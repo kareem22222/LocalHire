@@ -32,6 +32,11 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
                 ["Jwt:Audience"] = "LocalHire.Tests",
                 ["Jwt:Secret"] = "test-secret-with-at-least-thirty-two-bytes",
                 ["Jwt:ExpirationMinutes"] = "60",
+                ["AWS:AccessKey"] = "test-access-key",
+                ["AWS:SecretKey"] = "test-secret-key",
+                ["AWS:S3Bucket"] = "localhire-test-resumes",
+                ["AWS:ServiceUrl"] = "http://localhost:4566",
+                ["AWS:PublicServiceUrl"] = "http://browser-localstack:4566",
             });
         });
 

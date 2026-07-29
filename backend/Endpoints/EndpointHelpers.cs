@@ -1,6 +1,11 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http.Headers;
 using System.Security.Claims;
+using Amazon.S3;
+using Amazon.S3.Model;
 using FluentValidation.Results;
+using LocalHire.Api.DTOs;
+using LocalHire.Api.Services;
 using LocalHire.Api.Utilities;
 
 namespace LocalHire.Api.Endpoints;
@@ -25,6 +30,37 @@ internal static class EndpointHelpers
         var claim = user.FindFirstValue(JwtRegisteredClaimNames.Sub)
             ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
         return Guid.TryParse(claim, out userId);
+    }
+
+    public static string ResumeContentType(string fileName) =>
+        Path.GetExtension(fileName).ToLowerInvariant() switch
+        {
+            ".pdf" => "application/pdf",
+            ".doc" => "application/msword",
+            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            _ => "application/octet-stream",
+        };
+
+    public static async Task<ResumeDownloadResponse> CreateResumeDownloadAsync(
+        IAmazonS3 s3, string bucket, ResumeFileReference resume)
+    {
+        var disposition = new ContentDispositionHeaderValue("attachment")
+        {
+            FileNameStar = resume.FileName,
+        };
+        var url = await s3.GetPreSignedURLAsync(new GetPreSignedUrlRequest
+        {
+            BucketName = bucket,
+            Key = resume.Key,
+            Verb = HttpVerb.GET,
+            Expires = DateTime.UtcNow.AddMinutes(5),
+            ResponseHeaderOverrides = new ResponseHeaderOverrides
+            {
+                ContentType = ResumeContentType(resume.FileName),
+                ContentDisposition = disposition.ToString(),
+            },
+        });
+        return new ResumeDownloadResponse(url, resume.FileName);
     }
 
     /// <summary>

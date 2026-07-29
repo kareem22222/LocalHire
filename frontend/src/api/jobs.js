@@ -31,6 +31,10 @@ export function getCandidate(id) {
   return api.get(`/hiring/candidates/${id}`)
 }
 
+export function getCandidateResume(id) {
+  return api.get(`/hiring/candidates/${id}/resume`)
+}
+
 export function getNearbyCandidates(params = {}) {
   return api.get('/hiring/candidates/nearby', { params })
 }

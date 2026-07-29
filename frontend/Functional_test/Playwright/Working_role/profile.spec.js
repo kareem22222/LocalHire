@@ -25,6 +25,17 @@ test('shows every worker profile section and optional resume control', async ({ 
   await expect(page.getByText(/Resume \(optional/)).toBeVisible()
 })
 
+test('downloads the stored resume from the worker profile', async ({ page }) => {
+  await openProfile(page)
+  await expect(page.getByText('demo-worker-resume.pdf')).toBeVisible()
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Download', exact: true }).click()
+  const download = await downloadPromise
+
+  expect(download.suggestedFilename()).toBe('demo-worker-resume.pdf')
+})
+
 test('reports multiple worker profile validation errors together', async ({ page }) => {
   await openProfile(page)
   await page.getByRole('button', { name: 'Edit profile' }).click()

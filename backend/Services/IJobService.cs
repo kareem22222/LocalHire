@@ -37,6 +37,9 @@ public interface IJobService
     Task<CandidateDetailResponse> GetCandidateDetailAsync(
         Guid workerId, Guid employerId, CancellationToken ct);
 
+    Task<ResumeFileReference> GetCandidateResumeAsync(
+        Guid workerId, Guid employerId, CancellationToken ct);
+
     /// <summary>
     /// Returns active jobs for a worker. Typed searches can match jobs anywhere;
     /// otherwise coordinates use the nearby radius and the default list is scoped

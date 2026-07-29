@@ -68,6 +68,11 @@ public sealed class CachedJobService : IJobService
         GetOrCreateAsync($"candidate-detail:{employerId}:{workerId}",
             () => _inner.GetCandidateDetailAsync(workerId, employerId, ct));
 
+    // Recheck authorization and metadata for every short-lived URL the endpoint signs.
+    public Task<ResumeFileReference> GetCandidateResumeAsync(
+        Guid workerId, Guid employerId, CancellationToken ct) =>
+        _inner.GetCandidateResumeAsync(workerId, employerId, ct);
+
     public Task<IReadOnlyList<JobPostResponse>> GetNearbyJobsAsync(
         double? lat, double? lng, string? search, EmploymentType? employmentType,
         Guid workerId, CancellationToken ct)

@@ -22,6 +22,13 @@ const tokenFor = (role, userId) => {
   return `mock.${payload}.localhire`
 }
 
+const resumeFile = (response, fileName) => {
+  response.statusCode = 200
+  response.setHeader('Content-Type', 'application/pdf')
+  response.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
+  response.end(Buffer.from('%PDF-1.4\nMock resume'))
+}
+
 const authFrom = (request) => {
   const token = request.headers.authorization?.replace(/^Bearer /, '')
   if (!token?.startsWith('mock.')) return null
@@ -45,6 +52,10 @@ const jobResponse = (data, job) => {
 const candidateListItem = ({ email, createdAt, professionalSummary, experienceYears, education,
   skills, languages, hasResume, workPreferences, workHistory, educationHistory, skillDetails,
   languageDetails, credentials, gender, dateOfBirth, addressLine, ...candidate }) => candidate
+
+const hasAppliedToEmployer = (data, workerId, employerId) => data.applications.some((application) =>
+  application.workerId === workerId
+  && data.jobs.some((job) => job.id === application.jobId && job.employerId === employerId))
 
 function authorize(request, response, expectedRole) {
   const auth = authFrom(request)
@@ -78,6 +89,9 @@ export default function functionalTestApi() {
             data = createMockData()
             return json(response, 204)
           }
+          if (path === '/test/resume.pdf' && method === 'GET') {
+            return resumeFile(response, url.searchParams.get('fileName') || 'resume.pdf')
+          }
 
           if ((path === '/auth/login' || path === '/auth/register') && method === 'POST') {
             const body = await readBody(request)
@@ -95,6 +109,14 @@ export default function functionalTestApi() {
             const role = authorize(request, response)
             if (!role) return
             return json(response, 200, data.profiles[role])
+          }
+
+          if (path === '/me/resume' && method === 'GET') {
+            if (!authorize(request, response, 'LookingForWork')) return
+            const fileName = data.profiles.LookingForWork.resumeFileName
+            return fileName
+              ? json(response, 200, { url: `/api/test/resume.pdf?fileName=${encodeURIComponent(fileName)}`, fileName })
+              : json(response, 404, { title: 'Not Found' })
           }
 
           if (path === '/me/profile' && method === 'PUT') {
@@ -147,13 +169,24 @@ export default function functionalTestApi() {
               return json(response, 200, candidates)
             }
 
+            const candidateResumeMatch = path.match(/^\/hiring\/candidates\/([0-9a-f-]+)\/resume$/)
+            if (candidateResumeMatch && method === 'GET') {
+              const candidate = data.candidates.find((item) => item.id === candidateResumeMatch[1])
+              if (!candidate?.hasResume || !hasAppliedToEmployer(data, candidate.id, employerId)) {
+                return json(response, 404, { title: 'Not Found' })
+              }
+              const fileName = 'candidate-resume.pdf'
+              return json(response, 200, {
+                url: `/api/test/resume.pdf?fileName=${encodeURIComponent(fileName)}`,
+                fileName,
+              })
+            }
+
             const candidateMatch = path.match(/^\/hiring\/candidates\/([0-9a-f-]+)$/)
             if (candidateMatch && method === 'GET') {
               const candidate = data.candidates.find((item) => item.id === candidateMatch[1])
               if (!candidate) return json(response, 404, { title: 'Not Found' })
-              const hasApplied = data.applications.some((application) =>
-                application.workerId === candidate.id
-                && data.jobs.some((job) => job.id === application.jobId && job.employerId === employerId))
+              const hasApplied = hasAppliedToEmployer(data, candidate.id, employerId)
               const detail = hasApplied
                 ? { ...candidate, hasApplied }
                 : { ...candidate, email: null, addressLine: null, hasResume: false, credentials: null, hasApplied }

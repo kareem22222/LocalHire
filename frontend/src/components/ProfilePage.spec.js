@@ -1,12 +1,17 @@
-import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import api from '../api'
 import ProfilePage from './ProfilePage.vue'
+
+vi.mock('../api', () => ({ default: { get: vi.fn(), put: vi.fn() } }))
 
 function mountProfilePage(props = {}) {
   return mount(ProfilePage, { props })
 }
 
 describe('ProfilePage', () => {
+  beforeEach(() => api.get.mockReset())
+
   it('renders the user name when a user is provided', () => {
     const wrapper = mountProfilePage({ user: { name: 'Pat Doe' } })
 
@@ -114,6 +119,18 @@ describe('ProfilePage', () => {
     expect(wrapper.text()).toContain('pat-cv.pdf')
     expect(wrapper.find('.resume-upload__status').text()).toBe('Uploaded')
     expect(wrapper.findAll('button').some((button) => button.text() === 'Save')).toBe(true)
+  })
+
+  it('downloads the stored worker resume through the profile API', async () => {
+    api.get.mockResolvedValue({ data: {} })
+    const wrapper = mountProfilePage({
+      user: { name: 'Pat', role: 'LookingForWork', resumeFileName: 'pat-cv.pdf' },
+    })
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Download').trigger('click')
+    await flushPromises()
+
+    expect(api.get).toHaveBeenCalledWith('/me/resume')
   })
 
   it('reports all invalid worker sections before sending them', async () => {

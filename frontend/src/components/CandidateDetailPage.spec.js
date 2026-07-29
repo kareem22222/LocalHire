@@ -31,6 +31,7 @@ describe('CandidateDetailPage', () => {
         name: 'Ananya Rao',
         email: 'ananya@example.com',
         hasApplied: true,
+        hasResume: true,
         role: 'Cashier',
         gender: 'Female',
         dateOfBirth: '1990-01-02',
@@ -73,9 +74,11 @@ describe('CandidateDetailPage', () => {
     const buttons = wrapper.findAll('.candidate-detail__actions button')
     await buttons[0].trigger('click')
     await buttons[1].trigger('click')
+    await buttons[2].trigger('click')
 
     expect(buttons[0].attributes('disabled')).toBeDefined()
     expect(wrapper.text()).toContain('ananya@example.com')
+    expect(api.get).toHaveBeenLastCalledWith('/hiring/candidates/candidate-1/resume')
   })
 
   it('reloads on route changes, reports failures, and navigates back', async () => {
@@ -139,5 +142,16 @@ describe('CandidateDetailPage', () => {
     expect(wrapper.find('a[href^="mailto:"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Resume')
     expect(wrapper.text()).not.toContain('Private Forklift Licence')
+    expect(wrapper.text()).not.toContain('Download resume')
+  })
+
+  it('hides resume download when an applicant has no resume', async () => {
+    api.get.mockResolvedValue({
+      data: { id: 'candidate-1', name: 'Ananya Rao', hasApplied: true, hasResume: false },
+    })
+    const wrapper = await mountPage()
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Download resume')
   })
 })

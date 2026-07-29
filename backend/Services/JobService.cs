@@ -207,6 +207,23 @@ public sealed class JobService : IJobService
             hasApplied ? worker.Credentials : null);
     }
 
+    public async Task<ResumeFileReference> GetCandidateResumeAsync(
+        Guid workerId, Guid employerId, CancellationToken ct)
+    {
+        if (!await _candidateAccess.CanViewAsync(employerId, workerId, ct))
+            throw new NotFoundException("Resume not found.");
+
+        var resume = await _db.Users
+            .Where(user => user.Id == workerId && user.Role == UserRole.LookingForWork)
+            .Select(user => new { user.ResumeKey, user.ResumeFileName })
+            .FirstOrDefaultAsync(ct);
+
+        if (resume?.ResumeKey is null)
+            throw new NotFoundException("Resume not found.");
+
+        return new ResumeFileReference(resume.ResumeKey, resume.ResumeFileName ?? "resume");
+    }
+
     public async Task<IReadOnlyList<JobPostResponse>> GetNearbyJobsAsync(
         double? lat, double? lng, string? search, EmploymentType? employmentType,
         Guid workerId, CancellationToken ct)
