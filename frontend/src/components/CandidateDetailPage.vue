@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getCandidateResume } from '../api/jobs.js'
 import { useJobsStore } from '../stores/jobs'
 import { useSavedCandidates } from '../composables/useSavedCandidates'
+import { safeDownloadUrl } from '../utils/downloadUrl.js'
 import BrandLogo from './BrandLogo.vue'
 
 const route = useRoute()
@@ -109,7 +110,7 @@ async function downloadResume() {
   resumeDownloading.value = true
   try {
     const { data } = await getCandidateResume(candidate.value.id)
-    if (data.url) window.location.assign(data.url)
+    if (data.url) window.location.assign(safeDownloadUrl(data.url))
   } catch {
     resumeError.value = 'We could not download this resume.'
   } finally {

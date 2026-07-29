@@ -46,6 +46,7 @@ internal static class EndpointHelpers
     {
         var disposition = new ContentDispositionHeaderValue("attachment")
         {
+            FileName = resume.FileName,
             FileNameStar = resume.FileName,
         };
         var url = await s3.GetPreSignedURLAsync(new GetPreSignedUrlRequest

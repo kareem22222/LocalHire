@@ -33,6 +33,7 @@ public sealed class ResumeDownloadTests
         Assert.Contains("localhire-test-resumes", decodedUrl);
         Assert.Contains("response-content-type=application/pdf", decodedUrl);
         Assert.Contains("response-content-disposition=attachment", decodedUrl);
+        Assert.Contains("filename=worker-resume.pdf", decodedUrl);
     }
 
     [Fact]

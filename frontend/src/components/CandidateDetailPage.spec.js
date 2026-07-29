@@ -154,4 +154,19 @@ describe('CandidateDetailPage', () => {
 
     expect(wrapper.text()).not.toContain('Download resume')
   })
+
+  it('rejects an unsafe resume download URL', async () => {
+    api.get
+      .mockResolvedValueOnce({
+        data: { id: 'candidate-1', name: 'Ananya Rao', hasApplied: true, hasResume: true },
+      })
+      .mockResolvedValueOnce({ data: { url: 'javascript:alert(1)' } })
+    const wrapper = await mountPage()
+    await flushPromises()
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Download resume').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[role="alert"]').text()).toContain('could not download')
+  })
 })

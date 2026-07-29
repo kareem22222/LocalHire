@@ -133,6 +133,18 @@ describe('ProfilePage', () => {
     expect(api.get).toHaveBeenCalledWith('/me/resume')
   })
 
+  it('rejects an unsafe stored resume URL', async () => {
+    api.get.mockResolvedValue({ data: { url: 'data:text/html,unsafe' } })
+    const wrapper = mountProfilePage({
+      user: { name: 'Pat', role: 'LookingForWork', resumeFileName: 'pat-cv.pdf' },
+    })
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Download').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Failed to download resume.')
+  })
+
   it('reports all invalid worker sections before sending them', async () => {
     const workHistory = Array.from({ length: 11 }, () => ({
       jobTitle: '', employer: '', location: '', startDate: '2026-02-01',
