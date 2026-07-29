@@ -28,7 +28,7 @@ public sealed class WorkerJobSearchTests
             Job(employer.Id, "Hyderabad Driver", "Hyderabad", "Telangana", EmploymentType.PartTime));
         await db.SaveChangesAsync();
 
-        var service = new JobService(db);
+        var service = new JobService(db, new CandidateAccessPolicy(db));
         var defaults = await service.GetNearbyJobsAsync(
             null, null, null, null, worker.Id, CancellationToken.None);
         var searched = await service.GetNearbyJobsAsync(

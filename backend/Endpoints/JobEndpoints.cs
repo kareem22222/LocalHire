@@ -128,10 +128,10 @@ public static class JobEndpoints
             IJobService jobService,
             CancellationToken ct) =>
         {
-            if (!user.TryGetUserId(out _))
+            if (!user.TryGetUserId(out var userId))
                 return Results.Unauthorized();
 
-            var candidate = await jobService.GetCandidateDetailAsync(id, ct);
+            var candidate = await jobService.GetCandidateDetailAsync(id, userId, ct);
             return Results.Ok(candidate);
         })
         .WithName("GetCandidateDetail");

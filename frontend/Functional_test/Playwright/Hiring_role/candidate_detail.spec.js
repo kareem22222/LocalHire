@@ -30,6 +30,36 @@ test('reveals contact details on request and hides them by default', async ({ pa
   await expect(page.getByRole('link', { name: /@/ })).toHaveAttribute('href', /^mailto:/)
 })
 
+test('explains that contact details are locked for a browsed-only candidate', async ({ page }) => {
+  await page.goto('/hiring/candidates')
+  const card = page.locator('article.candidate-card').nth(8)
+  const name = (await card.locator('h3').innerText()).trim()
+  await card.getByRole('button', { name: `View details for ${name}` }).click()
+  await expect(page).toHaveURL(/\/hiring\/candidates\/[^/?]+$/)
+  await expect(page.getByRole('heading', { name, exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Contact', exact: true }).click()
+
+  await expect(page.getByText('Contact details unlock once this candidate applies to one of your roles.')).toBeVisible()
+  await expect(page.locator('a[href^="mailto:"]')).toHaveCount(0)
+})
+
+test('does not unlock a candidate who applied to another employer', async ({ page }) => {
+  const payload = Buffer.from(JSON.stringify({
+    role: 'Hiring',
+    userId: 'e0000000-0000-4000-8000-000000000002',
+    exp: Math.floor(Date.now() / 1000) + 60 * 60,
+  })).toString('base64url')
+  await page.addInitScript((token) => {
+    localStorage.setItem('localhire.accessToken', token)
+  }, `mock.${payload}.localhire`)
+
+  await openFirstCandidate(page)
+  await page.getByRole('button', { name: 'Contact', exact: true }).click()
+
+  await expect(page.getByText('Contact details unlock once this candidate applies to one of your roles.')).toBeVisible()
+  await expect(page.locator('a[href^="mailto:"]')).toHaveCount(0)
+})
+
 test('returns to the candidate list from the detail page', async ({ page }) => {
   await openFirstCandidate(page)
   await page.getByRole('button', { name: 'Back', exact: true }).press('Enter')

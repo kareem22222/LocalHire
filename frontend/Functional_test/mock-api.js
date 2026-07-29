@@ -13,20 +13,21 @@ const readBody = async (request) => {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'))
 }
 
-const tokenFor = (role) => {
+const tokenFor = (role, userId) => {
   const payload = Buffer.from(JSON.stringify({
     role,
+    userId,
     exp: Math.floor(Date.now() / 1000) + 60 * 60,
   })).toString('base64url')
   return `mock.${payload}.localhire`
 }
 
-const roleFrom = (request) => {
+const authFrom = (request) => {
   const token = request.headers.authorization?.replace(/^Bearer /, '')
   if (!token?.startsWith('mock.')) return null
   try {
     const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'))
-    return payload.exp * 1000 > Date.now() ? payload.role : null
+    return payload.exp * 1000 > Date.now() ? payload : null
   } catch {
     return null
   }
@@ -46,16 +47,16 @@ const candidateListItem = ({ email, createdAt, professionalSummary, experienceYe
   languageDetails, credentials, gender, dateOfBirth, addressLine, ...candidate }) => candidate
 
 function authorize(request, response, expectedRole) {
-  const role = roleFrom(request)
-  if (!role) {
+  const auth = authFrom(request)
+  if (!auth?.role || !auth.userId) {
     json(response, 401, { title: 'Unauthorized' })
     return null
   }
-  if (expectedRole && role !== expectedRole) {
+  if (expectedRole && auth.role !== expectedRole) {
     json(response, 403, { title: 'Forbidden' })
     return null
   }
-  return role
+  return auth.role
 }
 
 export default function functionalTestApi() {
@@ -85,7 +86,9 @@ export default function functionalTestApi() {
                 || !['Hiring', 'LookingForWork'].includes(body.role))) {
               return json(response, 401, { title: 'Unauthorized' })
             }
-            return json(response, path.endsWith('register') ? 201 : 200, { token: tokenFor(body.role) })
+            return json(response, path.endsWith('register') ? 201 : 200, {
+              token: tokenFor(body.role, data.profiles[body.role]?.id),
+            })
           }
 
           if (path === '/auth/me' && method === 'GET') {
@@ -110,6 +113,7 @@ export default function functionalTestApi() {
 
           if (path.startsWith('/hiring/')) {
             if (!authorize(request, response, 'Hiring')) return
+            const employerId = authFrom(request).userId
 
             if (path === '/hiring/jobs' && method === 'GET') {
               return json(response, 200, data.jobs.map((job) => jobResponse(data, job)))
@@ -120,6 +124,7 @@ export default function functionalTestApi() {
               const created = {
                 ...body,
                 id: idFor('c', data.nextJob++),
+                employerId,
                 requiredSkills: body.requiredSkills || [],
                 languages: body.languages || [],
                 benefits: body.benefits || [],
@@ -145,7 +150,14 @@ export default function functionalTestApi() {
             const candidateMatch = path.match(/^\/hiring\/candidates\/([0-9a-f-]+)$/)
             if (candidateMatch && method === 'GET') {
               const candidate = data.candidates.find((item) => item.id === candidateMatch[1])
-              return json(response, candidate ? 200 : 404, candidate || { title: 'Not Found' })
+              if (!candidate) return json(response, 404, { title: 'Not Found' })
+              const hasApplied = data.applications.some((application) =>
+                application.workerId === candidate.id
+                && data.jobs.some((job) => job.id === application.jobId && job.employerId === employerId))
+              const detail = hasApplied
+                ? { ...candidate, hasApplied }
+                : { ...candidate, email: null, addressLine: null, hasResume: false, credentials: null, hasApplied }
+              return json(response, 200, detail)
             }
 
             const shortlistMatch = path.match(/^\/hiring\/jobs\/([0-9a-f-]+)\/applications\/([0-9a-f-]+)\/shortlist$/)
