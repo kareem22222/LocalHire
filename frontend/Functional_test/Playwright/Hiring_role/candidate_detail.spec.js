@@ -32,9 +32,7 @@ test('reveals contact details on request and hides them by default', async ({ pa
 
 test('returns to the candidate list from the detail page', async ({ page }) => {
   await openFirstCandidate(page)
-  // The floating Menu button overlaps the right edge of the header, so click the
-  // left side of the Back button instead of its centre.
-  await page.getByRole('button', { name: 'Back', exact: true }).click({ position: { x: 8, y: 8 } })
+  await page.getByRole('button', { name: 'Back', exact: true }).press('Enter')
   await expect(page).toHaveURL(/\/hiring\/candidates$/)
   await expect(page.getByRole('heading', { name: 'All talent near your business' })).toBeVisible()
 })
