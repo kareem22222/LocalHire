@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/fixtures.js'
 import { activateRoleCardControl } from '../support/helpers.js'
 
 // The job form resolves the state and area list from a public pincode service.
@@ -64,7 +64,7 @@ test('creates a role, lists it, then edits and saves it', async ({ page }) => {
   await page.getByRole('button', { name: 'Save changes' }).click()
 
   // Saving returns to the read-only view on the same job.
-  await expect(page).toHaveURL(new RegExp(`${jobUrl.split('/').pop()}$`))
+  await expect(page).toHaveURL(jobUrl)
   await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Save changes' })).toHaveCount(0)
 

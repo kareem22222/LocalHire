@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/fixtures.js'
 import { openMenu } from '../support/helpers.js'
 
 async function openProfile(page) {

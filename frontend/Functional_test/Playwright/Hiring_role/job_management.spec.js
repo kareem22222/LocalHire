@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/fixtures.js'
 import { activateRoleCardControl } from '../support/helpers.js'
 
 test('validates every required job field in the browser', async ({ page }) => {
@@ -41,9 +41,11 @@ test('edits a role, blocks invalid data, and cancels without saving', async ({ p
   await page.getByLabel('Title').fill('')
   await page.getByRole('button', { name: 'Save changes' }).click()
   await expect(page.getByText('Title is required.', { exact: true })).toBeVisible()
+  await page.getByLabel('Title').fill(`${title} unsaved`)
   await page.getByRole('button', { name: 'Cancel' }).click()
   await expect(page).toHaveURL(/\/jobs\/[^/]+$/)
   await expect(page.getByRole('heading', { name: 'Job details' })).toBeVisible()
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
   await expect(page.getByLabel('Title')).toHaveValue(title)
 })
 
@@ -52,4 +54,6 @@ test('backs out of job creation without changing data', async ({ page }) => {
   await page.getByLabel('Title').fill('Unsaved browser test role')
   await page.getByRole('button', { name: 'Back', exact: true }).click()
   await expect(page).toHaveURL(/\/$/)
+  await page.goto('/PostNewJob')
+  await expect(page.getByLabel('Title')).toHaveValue('')
 })

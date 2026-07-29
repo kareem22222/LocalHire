@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/fixtures.js'
 import { notification, stubNotifications } from '../support/helpers.js'
 
 test('opens and closes the worker notification center', async ({ page }) => {

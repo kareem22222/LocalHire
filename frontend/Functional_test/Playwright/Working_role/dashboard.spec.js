@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/fixtures.js'
 import { chooseMenuItem } from '../support/helpers.js'
 
 test.beforeEach(async ({ page }) => {
@@ -21,7 +21,9 @@ test('searches and filters nearby roles', async ({ page }) => {
   await page.getByLabel('Employment type').selectOption('FullTime')
   await page.getByRole('button', { name: 'Search', exact: true }).click()
   await expect(page.getByText(/results$/).first()).toBeVisible()
-  for (const row of await page.locator('article.worker-job-row').all()) {
+  const rows = page.locator('article.worker-job-row')
+  await expect(rows.first()).toBeVisible()
+  for (const row of await rows.all()) {
     // Every row has to match the typed term and the employment-type filter.
     await expect(row.locator('.worker-job-row__main')).toContainText(/Store/i)
     await expect(row.locator('.worker-job-row__tags')).toContainText('Full-time')

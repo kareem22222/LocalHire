@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/fixtures.js'
 
 // The default talent list is scoped to the employer's own area, so its size
 // depends on seeded locations. A fixed list keeps the pagination maths assertable.

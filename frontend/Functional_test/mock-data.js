@@ -1,5 +1,5 @@
 const now = new Date('2026-07-01T12:00:00Z')
-const id = (prefix, index) => `${prefix}0000000-0000-4000-8000-${String(index).padStart(12, '0')}`
+export const id = (prefix, index) => `${prefix}0000000-0000-4000-8000-${String(index).padStart(12, '0')}`
 
 const roles = [
   ['Store Associate', 'FullTime'],

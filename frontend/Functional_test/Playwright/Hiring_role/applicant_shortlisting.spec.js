@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/fixtures.js'
 import { activateRoleCardControl } from '../support/helpers.js'
 
 // Opens the applicants list of a role that actually has applicants. The card back
@@ -85,11 +85,28 @@ test('reports a failed shortlist without changing the row', async ({ page }) => 
 })
 
 test('shows the applicants count and paginates long applicant lists', async ({ page }) => {
+  const applicants = Array.from({ length: 12 }, (_, index) => ({
+    id: `b0000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+    workerId: `d0000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+    workerName: `Stub Applicant ${String(index + 1).padStart(2, '0')}`,
+    role: 'Store Associate',
+    area: 'Indiranagar',
+    state: 'Karnataka',
+    pincode: '560038',
+    status: 'Applied',
+    appliedAt: new Date(2026, 0, index + 1).toISOString(),
+  }))
+  await page.route('**/api/hiring/jobs/*/applications', (route) => route.fulfill({ json: applicants }))
   await openApplicants(page)
   const cards = page.locator('article.candidate-card')
-  await expect(cards.first()).toBeVisible()
-  expect(await cards.count()).toBeLessThanOrEqual(10)
-  await expect(page.getByText(/^\d+ applicants$/)).toBeVisible()
+  await expect(cards).toHaveCount(10)
+  await expect(page.getByText('12 applicants')).toBeVisible()
+  const secondPage = page.getByRole('button', { name: 'Page 2 of 2' })
+  await secondPage.click()
+  await expect(secondPage).toHaveAttribute('aria-current', 'page')
+  await expect(cards).toHaveCount(2)
+  await expect(cards.first()).toContainText('Stub Applicant 11')
+  await expect(page.getByText('12 applicants')).toBeVisible()
 })
 
 test('shows the empty state for a role with no applicants', async ({ page }) => {

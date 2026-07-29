@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/fixtures.js'
 import { emptyStorage } from '../support/helpers.js'
 
 test.describe('without a session', () => {

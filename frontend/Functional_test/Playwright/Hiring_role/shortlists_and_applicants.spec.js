@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/fixtures.js'
 import { activateRoleCardControl } from '../support/helpers.js'
 
 test('shows only roles with shortlisted candidates and paginates them', async ({ page }) => {

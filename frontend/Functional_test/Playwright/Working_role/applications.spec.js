@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/fixtures.js'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/work/applications')
@@ -18,9 +18,13 @@ test('summarizes application totals and status history', async ({ page }) => {
 test('paginates application history', async ({ page }) => {
   const applications = page.locator('.applied-card')
   await expect(applications.first()).toBeVisible()
-  await page.getByRole('button', { name: /^Page 2 of / }).click()
+  const firstApplicationHref = await applications.first().getAttribute('href')
+  const secondPage = page.getByRole('button', { name: /^Page 2 of / })
+  await expect(secondPage).toBeVisible()
+  await secondPage.click()
   await expect(page).toHaveURL(/\/work\/applications\?page=2$/)
-  await expect(applications.first()).toBeVisible()
+  await expect(secondPage).toHaveAttribute('aria-current', 'page')
+  await expect(applications.first()).not.toHaveAttribute('href', firstApplicationHref)
 })
 
 test('opens an applied job and preserves the applied state', async ({ page }) => {
@@ -88,12 +92,16 @@ test('shows a status, milestone, and summary for every application', async ({ pa
 test('counts shortlisted and hired applications in the totals', async ({ page }) => {
   const totals = page.getByRole('region', { name: 'Application totals' })
   await expect(totals).toBeVisible()
-
-  // "N roles tracked" is rendered directly, so it is the reliable source.
-  const tracked = await page.getByText(/^\d+ roles? tracked$/).innerText()
-  const total = Number(tracked.split(' ')[0])
-  expect(total).toBeGreaterThan(0)
-
-  // The metric animates up to the same number.
-  await expect(totals.locator('div').first().locator('strong')).toHaveText(String(total))
+  const counts = await page.evaluate(async () => {
+    const token = localStorage.getItem('localhire.accessToken')
+    const response = await fetch('/api/work/applications', { headers: { Authorization: 'Bearer ' + token } })
+    const applications = await response.json()
+    return {
+      shortlisted: applications.filter((item) => item.status === 'Shortlisted').length,
+      hired: applications.filter((item) => item.status === 'Hired').length,
+    }
+  })
+  const metric = (label) => totals.locator('div').filter({ hasText: label }).locator('strong')
+  await expect(metric('Shortlisted')).toHaveText(String(counts.shortlisted))
+  await expect(metric('Hired')).toHaveText(String(counts.hired))
 })

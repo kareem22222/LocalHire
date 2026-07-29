@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/fixtures.js'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/work/jobs')
@@ -10,9 +10,13 @@ test('paginates all nearby jobs and keeps application state visible', async ({ p
   await expect(jobs.first()).toBeVisible()
   expect(await jobs.count()).toBeLessThanOrEqual(6)
   await expect(jobs.first().getByRole('button', { name: /Apply now|Applied/ })).toBeVisible()
-  await page.getByRole('button', { name: /^Page 2 of / }).click()
+  const firstJobHref = await jobs.first().getByRole('link', { name: 'View details →' }).getAttribute('href')
+  const secondPage = page.getByRole('button', { name: /^Page 2 of / })
+  await expect(secondPage).toBeVisible()
+  await secondPage.click()
   await expect(page).toHaveURL(/\/work\/jobs\?page=2$/)
-  await expect(jobs.first()).toBeVisible()
+  await expect(secondPage).toHaveAttribute('aria-current', 'page')
+  await expect(jobs.first().getByRole('link', { name: 'View details →' })).not.toHaveAttribute('href', firstJobHref)
 })
 
 test('shows complete job details and a safe application state', async ({ page }) => {

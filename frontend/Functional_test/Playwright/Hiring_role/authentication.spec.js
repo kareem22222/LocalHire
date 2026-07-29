@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/fixtures.js'
 import { emptyStorage, openMenu, signIn } from '../support/helpers.js'
 
 test.describe('hiring authentication', () => {
@@ -9,11 +9,22 @@ test.describe('hiring authentication', () => {
     await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toHaveAccessibleName('Welcome back')
+    const focusable = dialog.locator('button:not([disabled]), input:not([disabled]), select:not([disabled]), a[href]')
+    await focusable.last().focus()
+    await page.keyboard.press('Tab')
+    await expect(dialog.locator(':focus')).toHaveCount(1)
+    await focusable.first().focus()
+    await page.keyboard.press('Shift+Tab')
+    await expect(dialog.locator(':focus')).toHaveCount(1)
     await page.keyboard.press('Escape')
     await expect(dialog).toBeHidden()
   })
 
   test('validates each sign-in step before sending a request', async ({ page }) => {
+    let signInRequests = 0
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname === '/api/auth/login') signInRequests += 1
+    })
     await page.goto('/')
     await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     const dialog = page.getByRole('dialog')
@@ -21,10 +32,17 @@ test.describe('hiring authentication', () => {
     await dialog.getByRole('button', { name: 'Continue' }).click()
     await expect(dialog.getByText('Choose how you will use LocalHire.')).toBeVisible()
     await expect(dialog.getByText('Enter your email address.')).toBeVisible()
+    expect(signInRequests).toBe(0)
     await dialog.getByLabel('I am').selectOption('Hiring')
     await dialog.getByLabel('Email address').fill('not-an-email')
     await dialog.getByRole('button', { name: 'Continue' }).click()
     await expect(dialog.getByText('Enter a valid email address.')).toBeVisible()
+    expect(signInRequests).toBe(0)
+    await dialog.getByLabel('Email address').fill('demo@localhire.test')
+    await dialog.getByRole('button', { name: 'Continue' }).click()
+    await dialog.getByRole('button', { name: 'Sign in', exact: true }).click()
+    await expect(dialog.getByText('Enter your password.')).toBeVisible()
+    expect(signInRequests).toBe(0)
   })
 
   test('switches between sign-in and the three-step registration flow', async ({ page }) => {

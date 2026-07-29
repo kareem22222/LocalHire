@@ -7,6 +7,7 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:8080'
 const browser = process.env.CI
   ? devices['Desktop Chrome']
   : {
+      channel: process.env.PLAYWRIGHT_CHANNEL,
       viewport: null,
       launchOptions: {
         args: ['--start-fullscreen', '--force-device-scale-factor=0.75'],
@@ -18,8 +19,7 @@ export default defineConfig({
   globalSetup: './Functional_test/Playwright/support/global-setup.js',
   timeout: 30_000,
   expect: { timeout: 10_000 },
-  // Retry a failing test twice before reporting it as a failure.
-  retries: 3,
+  retries: process.env.CI ? 1 : 0,
   workers: 1,
   reporter: process.env.CI
     ? [['github'], ['html', { open: 'never' }]]
@@ -42,7 +42,6 @@ export default defineConfig({
       testMatch: /Hiring_role\/.*\.spec\.js/,
       use: {
         ...browser,
-        channel: process.env.CI ? undefined : 'chrome',
         storageState: path.join(root, '.playwright', 'hiring.json'),
       },
     },
@@ -51,7 +50,6 @@ export default defineConfig({
       testMatch: /Working_role\/.*\.spec\.js/,
       use: {
         ...browser,
-        channel: process.env.CI ? undefined : 'chrome',
         storageState: path.join(root, '.playwright', 'working.json'),
       },
     },

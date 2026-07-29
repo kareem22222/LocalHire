@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/fixtures.js'
 
 async function openFirstCandidate(page) {
   await page.goto('/hiring/candidates')

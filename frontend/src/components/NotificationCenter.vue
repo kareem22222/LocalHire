@@ -151,6 +151,6 @@ onUnmounted(() => {
 .notification-center__show-more { width: calc(100% - 12px); margin: 6px; padding: 11px 14px; color: #07559a; border: 1px solid rgba(7,85,154,.2); border-radius: 999px; background: #fff; font-size: 12px; font-weight: 800; cursor: pointer; }
 .notification-center__show-more:hover { background: #edf6f8; border-color: rgba(7,85,154,.4); }
 @keyframes enter { from { opacity: 0; transform: translateY(-6px) scale(.98); } }
-@media (max-width: 520px) { .notification-center { right: 16px; }.notification-center__panel { position: fixed; top: 138px; right: 16px; left: 16px; width: auto; } }
+@media (max-width: 520px) { .notification-center { right: 16px; }.notification-center__panel { position: fixed; top: 138px; right: 16px; left: 16px; width: auto; max-height: calc(100dvh - 154px); overflow-y: auto; } }
 @media (prefers-reduced-motion: reduce) { .notification-center__panel { animation: none; } }
 </style>

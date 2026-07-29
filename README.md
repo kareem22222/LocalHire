@@ -319,7 +319,8 @@ frontend/Functional_test/Playwright/
 `-- support/           # shared login state and small navigation helpers
 ```
 
-On this Windows machine Docker runs inside WSL, so use two terminals.
+When Docker runs inside WSL, use two terminals and replace the repository-root
+placeholder below with the location where you cloned LocalHire.
 
 Terminal 1 - PowerShell, then WSL:
 
@@ -328,7 +329,7 @@ wsl
 ```
 
 ```bash
-cd /mnt/c/Users/sakareem/LocalHire
+cd /mnt/c/path/to/LocalHire
 sudo docker compose up --build
 ```
 
@@ -338,19 +339,23 @@ terminal running.
 Terminal 2 - PowerShell:
 
 ```powershell
-cd C:\Users\sakareem\LocalHire\frontend
+Set-Location C:\path\to\LocalHire\frontend
 npm ci
 $env:PLAYWRIGHT_BASE_URL = "http://127.0.0.1:8080"
 
 # Fast default: runs browsers in the background
 npm run test:e2e
 
-# Visible browser: opens Chrome full screen at 75% scale while the tests run
+# Visible browser: opens Chromium full screen at 75% scale while the tests run
 npm run test:e2e:headed
 
 # Interactive Playwright test explorer
 npm run test:e2e:ui
 ```
+
+> **Warning:** With `PLAYWRIGHT_BASE_URL` set, lifecycle, application,
+> shortlisting, and profile tests modify that backend's data. Use an isolated
+> local/test environment, not a shared deployment.
 
 Useful focused runs:
 
@@ -363,10 +368,10 @@ npm run test:e2e -- --project="Working role"
 npm run test:e2e -- Functional_test/Playwright/Hiring_role/candidates.spec.js
 
 # Debug one feature in a visible browser
-npx playwright test Functional_test/Playwright/Working_role/jobs.spec.js --headed --debug
+npm run test:e2e -- Functional_test/Playwright/Working_role/jobs.spec.js --headed --debug
 ```
 
-Local headed runs use full-screen Chrome at 75% scale; GitHub Actions remains
+Local headed runs use full-screen Chromium at 75% scale; GitHub Actions remains
 headless. The setup signs in once per role and reuses an ignored storage-state file, which
 keeps the suite fast and below the authentication rate limit. To add coverage,
 create a new `*.spec.js` file in the matching role folder. Failed runs retain a

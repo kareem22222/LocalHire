@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/fixtures.js'
 
 function rowFor(page, jobId) {
   return page.locator(`article.worker-job-row:has(a[href="/work/jobs/${jobId}"])`)

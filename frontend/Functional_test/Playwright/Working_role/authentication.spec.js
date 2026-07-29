@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/fixtures.js'
 import { emptyStorage, openMenu, signIn } from '../support/helpers.js'
 
 test.describe('worker authentication', () => {

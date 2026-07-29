@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/fixtures.js'
 import { chooseMenuItem } from '../support/helpers.js'
 
 test.beforeEach(async ({ page }) => {
@@ -17,17 +17,26 @@ test('shows the hiring pipeline, quick actions, roles, and nearby talent', async
 })
 
 test('searches and filters talent, then carries filters to all candidates', async ({ page }) => {
+  const candidates = Array.from({ length: 12 }, (_, index) => ({
+    id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+    name: `Bengaluru Candidate ${index + 1}`,
+    role: 'Store Associate',
+    area: 'Bengaluru',
+    state: 'Karnataka',
+    pincode: '560038',
+  }))
+  await page.route('**/api/hiring/candidates/nearby*', (route) => route.fulfill({ json: candidates }))
   const search = page.getByLabel('Search candidates by address or role')
   await search.fill('Bengaluru')
-  await page.getByRole('combobox', { name: /Filter by role/i }).selectOption({ index: 1 })
+  const role = page.getByRole('combobox', { name: /Filter by role/i })
+  await role.selectOption({ index: 1 })
+  const selectedRole = await role.inputValue()
   await page.getByRole('button', { name: 'Search', exact: true }).click()
   await expect(page.getByText(/results$/).first()).toBeVisible()
-  const more = page.getByRole('button', { name: /Show more candidates/ })
-  if (await more.isVisible()) {
-    await more.click()
-    await expect(page).toHaveURL(/\/hiring\/candidates\?.*search=Bengaluru/)
-    await expect(page.getByRole('heading', { name: /talent near your business/i })).toBeVisible()
-  }
+  await page.getByRole('button', { name: /Show more candidates/ }).click()
+  await expect.poll(() => new URL(page.url()).searchParams.get('search')).toBe('Bengaluru')
+  await expect.poll(() => new URL(page.url()).searchParams.get('role')).toBe(selectedRole)
+  await expect(page.getByRole('heading', { name: new RegExp(selectedRole, 'i') })).toBeVisible()
 })
 
 test('opens post-job and shortlist quick actions', async ({ page }) => {

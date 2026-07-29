@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../support/fixtures.js'
 import { emptyStorage } from '../support/helpers.js'
 
 test.describe('without a session', () => {
@@ -40,6 +40,8 @@ test('the employer job editor is not reachable for a worker', async ({ page }) =
 
 test('the employer shortlists page shows no data for a worker', async ({ page }) => {
   await page.goto('/hiring/shortlists')
+  await expect(page).toHaveURL(/\/hiring\/shortlists$/)
+  await expect(page.getByRole('alert')).toContainText('We could not load your shortlists.')
   await expect(page.locator('article.hiring-role-card')).toHaveCount(0)
 })
 

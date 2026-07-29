@@ -1,4 +1,4 @@
-import { createMockData } from './mock-data.js'
+import { createMockData, id as idFor } from './mock-data.js'
 
 const json = (response, status, body) => {
   response.statusCode = status
@@ -59,7 +59,7 @@ function authorize(request, response, expectedRole) {
 }
 
 export default function functionalTestApi() {
-  const data = createMockData()
+  let data = createMockData()
 
   return {
     name: 'localhire-functional-test-api',
@@ -73,6 +73,10 @@ export default function functionalTestApi() {
 
         try {
           if (path === '/health') return json(response, 200, { status: 'ok' })
+          if (path === '/test/reset' && method === 'POST') {
+            data = createMockData()
+            return json(response, 204)
+          }
 
           if ((path === '/auth/login' || path === '/auth/register') && method === 'POST') {
             const body = await readBody(request)
@@ -210,6 +214,13 @@ export default function functionalTestApi() {
                 createdAt: new Date().toISOString(),
               }
               data.workerApplications.unshift(application)
+              data.applications.unshift({
+                id: application.id,
+                jobId: job.id,
+                workerId: data.profiles.LookingForWork.id,
+                status: application.status,
+                appliedAt: application.createdAt,
+              })
               return json(response, 201, application)
             }
 
@@ -255,10 +266,6 @@ export default function functionalTestApi() {
       })
     },
   }
-}
-
-function idFor(prefix, index) {
-  return `${prefix}0000000-0000-4000-8000-${String(index).padStart(12, '0')}`
 }
 
 function applicantResponse(data, application) {
