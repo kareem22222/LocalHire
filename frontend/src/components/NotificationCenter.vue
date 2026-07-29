@@ -121,7 +121,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.notification-center { position: fixed; top: 18px; right: 120px; z-index: 185; }
+.notification-center { position: fixed; top: 82px; right: 24px; z-index: 185; }
 .notification-center__bell { position: relative; display: grid; width: 44px; height: 44px; place-items: center; color: #12324a; border: 1px solid rgba(18,50,74,.12); border-radius: 999px; background: rgba(255,255,255,.94); box-shadow: 0 10px 30px rgba(7,85,154,.12); cursor: pointer; }
 .notification-center__bell svg { width: 20px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
 .notification-center__bell:hover { color: #07559a; border-color: rgba(7,85,154,.28); }
@@ -151,6 +151,6 @@ onUnmounted(() => {
 .notification-center__show-more { width: calc(100% - 12px); margin: 6px; padding: 11px 14px; color: #07559a; border: 1px solid rgba(7,85,154,.2); border-radius: 999px; background: #fff; font-size: 12px; font-weight: 800; cursor: pointer; }
 .notification-center__show-more:hover { background: #edf6f8; border-color: rgba(7,85,154,.4); }
 @keyframes enter { from { opacity: 0; transform: translateY(-6px) scale(.98); } }
-@media (max-width: 520px) { .notification-center { right: 104px; }.notification-center__panel { position: fixed; top: 76px; right: 16px; left: 16px; width: auto; } }
+@media (max-width: 520px) { .notification-center { right: 16px; }.notification-center__panel { position: fixed; top: 138px; right: 16px; left: 16px; width: auto; max-height: calc(100dvh - 154px); overflow-y: auto; } }
 @media (prefers-reduced-motion: reduce) { .notification-center__panel { animation: none; } }
 </style>

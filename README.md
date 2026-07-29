@@ -294,6 +294,8 @@ the IAM policy and the actual bucket.
 
 ## Testing
 
+### Unit tests
+
 ```powershell
 # Frontend
 cd frontend
@@ -303,6 +305,81 @@ npm test
 cd backend
 dotnet test .\LocalHire.Api.slnx
 ```
+
+### Functional browser tests (Playwright)
+
+The Playwright suite opens the real application in Chromium/Chrome and tests
+the hiring and working roles separately. It runs headlessly in GitHub Actions
+on every push and pull request through `.github/workflows/e2e.yml`.
+
+```text
+frontend/Functional_test/Playwright/
+|-- Hiring_role/       # one spec file per employer feature/scenario
+|-- Working_role/      # one spec file per worker feature/scenario
+`-- support/           # shared login state and small navigation helpers
+```
+
+When Docker runs inside WSL, use two terminals and replace the repository-root
+placeholder below with the location where you cloned LocalHire.
+
+Terminal 1 - PowerShell, then WSL:
+
+```powershell
+wsl
+```
+
+```bash
+cd /mnt/c/path/to/LocalHire
+sudo docker compose up --build
+```
+
+Wait for `http://127.0.0.1:8080/api/health` to become healthy. Keep that
+terminal running.
+
+Terminal 2 - PowerShell:
+
+```powershell
+Set-Location C:\path\to\LocalHire\frontend
+npm ci
+$env:PLAYWRIGHT_BASE_URL = "http://127.0.0.1:8080"
+
+# Fast default: runs browsers in the background
+npm run test:e2e
+
+# Visible browser: opens Chromium full screen at 75% scale while the tests run
+npm run test:e2e:headed
+
+# Interactive Playwright test explorer
+npm run test:e2e:ui
+```
+
+> **Warning:** With `PLAYWRIGHT_BASE_URL` set, lifecycle, application,
+> shortlisting, and profile tests modify that backend's data. Use an isolated
+> local/test environment, not a shared deployment.
+
+Useful focused runs:
+
+```powershell
+# One role
+npm run test:e2e -- --project="Hiring role"
+npm run test:e2e -- --project="Working role"
+
+# One feature file
+npm run test:e2e -- Functional_test/Playwright/Hiring_role/candidates.spec.js
+
+# Debug one feature in a visible browser
+npm run test:e2e -- Functional_test/Playwright/Working_role/jobs.spec.js --headed --debug
+```
+
+Local headed runs use full-screen Chromium at 75% scale; GitHub Actions remains
+headless. The setup signs in once per role and reuses an ignored storage-state file, which
+keeps the suite fast and below the authentication rate limit. To add coverage,
+create a new `*.spec.js` file in the matching role folder. Failed runs retain a
+trace and screenshot; GitHub Actions uploads the HTML report and test results.
+
+If Playwright's browser is not installed on a machine without Google Chrome,
+run `npx playwright install chromium` once. The normal local `--headed` run
+opens a visible browser; the default run and GitHub Actions remain headless.
 
 ## Code coverage (SonarCloud)
 

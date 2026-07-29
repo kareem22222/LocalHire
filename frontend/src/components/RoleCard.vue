@@ -174,6 +174,7 @@ function onFocusOut(event) {
 
 .hiring-role-card__back {
   display: flex;
+  pointer-events: none;
   flex-direction: column;
   transform: rotateY(180deg);
   opacity: 0;
@@ -181,10 +182,12 @@ function onFocusOut(event) {
 
 .hiring-role-card--flipped .hiring-role-card__front {
   opacity: 0;
+  pointer-events: none;
 }
 
 .hiring-role-card--flipped .hiring-role-card__back {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .hiring-role-card__status {

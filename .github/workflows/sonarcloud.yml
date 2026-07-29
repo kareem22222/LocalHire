@@ -69,6 +69,7 @@ jobs:
           /d:sonar.exclusions="backend/Data/Migrations/**,backend/wwwroot/**,frontend/coverage/**,frontend/dist/**"
           /d:sonar.cpd.exclusions="backend/Data/Migrations/**"
           /d:sonar.coverage.exclusions="backend/Data/Migrations/**,**/*.spec.js,**/test/**,**/__tests__/**,frontend/src/components/PrivacyPolicy.vue"
+          /d:sonar.test.inclusions='frontend/src/**/*.spec.js,frontend/Functional_test/**'
 
       - name: Build backend
         run: dotnet build backend/LocalHire.Api.slnx --configuration Release

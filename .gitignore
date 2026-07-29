@@ -9,6 +9,9 @@
 **/.vs/
 **/coverage/
 **/TestResults/
+**/playwright-report/
+**/test-results/
+**/.playwright/
 *.log
 backend/wwwroot/
 !.gitkeep
