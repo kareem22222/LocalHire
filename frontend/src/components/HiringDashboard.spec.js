@@ -130,14 +130,22 @@ describe('HiringDashboard', () => {
     expect(wrapper.find('.hiring-roles__head button').exists()).toBe(false)
   })
 
-  it('renders the hiring pipeline card with its health metric', () => {
-    const wrapper = mountHiringDashboard()
+  it('renders the hiring pipeline from current shortlist progress', async () => {
+    const wrapper = mountHiringDashboard({
+      myJobs: [{ id: 'job-1', applicationCount: 4, shortlistedCount: 2 }],
+    })
 
     const pipeline = wrapper.find('.hiring-side-stack .hiring-sidebar')
     expect(pipeline.exists()).toBe(true)
     expect(pipeline.find('h2').text()).toBe('Hiring pipeline')
     expect(pipeline.find('.hiring-progress span').text()).toBe('Pipeline health')
-    expect(pipeline.find('.hiring-progress strong').text()).toBe('88%')
+    expect(pipeline.find('.hiring-progress strong').text()).toBe('50%')
+    expect(pipeline.find('[role="progressbar"]').attributes('aria-valuenow')).toBe('50')
+    expect(pipeline.find('.hiring-progress b').attributes('style')).toContain('width: 50%')
+
+    await wrapper.setProps({ myJobs: [{ id: 'job-1', applicationCount: 4, shortlistedCount: 1 }] })
+    expect(pipeline.find('.hiring-progress strong').text()).toBe('25%')
+    expect(pipeline.find('.hiring-progress b').attributes('style')).toContain('width: 25%')
   })
 
   it('renders the quick actions card with the available actions', () => {

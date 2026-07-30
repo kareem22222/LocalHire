@@ -29,10 +29,10 @@ public sealed class SavedItemsTests
         }
 
         client.DefaultRequestHeaders.Authorization = Bearer(await Login(client, "owner@example.com", "Hiring"));
-        Assert.Equal(HttpStatusCode.NoContent,
-            (await client.PostAsync($"/api/hiring/saved-candidates/{workerId}", null)).StatusCode);
-        Assert.Equal(HttpStatusCode.NoContent,
-            (await client.PostAsync($"/api/hiring/saved-candidates/{workerId}", null)).StatusCode);
+        var saves = await Task.WhenAll(
+            client.PostAsync($"/api/hiring/saved-candidates/{workerId}", null),
+            client.PostAsync($"/api/hiring/saved-candidates/{workerId}", null));
+        Assert.All(saves, response => Assert.Equal(HttpStatusCode.NoContent, response.StatusCode));
         Assert.Equal([workerId], (await client.GetFromJsonAsync<Guid[]>("/api/hiring/saved-candidates"))!);
 
         client.DefaultRequestHeaders.Authorization = Bearer(await Login(client, "other@example.com", "Hiring"));
@@ -64,16 +64,25 @@ public sealed class SavedItemsTests
         var jobId = (await create.Content.ReadFromJsonAsync<JobPostResponse>())!.Id;
 
         client.DefaultRequestHeaders.Authorization = Bearer(await Login(client, "worker@example.com", "LookingForWork"));
-        Assert.Equal(HttpStatusCode.NoContent,
-            (await client.PostAsync($"/api/work/saved-jobs/{jobId}", null)).StatusCode);
-        Assert.Equal(HttpStatusCode.NoContent,
-            (await client.PostAsync($"/api/work/saved-jobs/{jobId}", null)).StatusCode);
+        var saves = await Task.WhenAll(
+            client.PostAsync($"/api/work/saved-jobs/{jobId}", null),
+            client.PostAsync($"/api/work/saved-jobs/{jobId}", null));
+        Assert.All(saves, response => Assert.Equal(HttpStatusCode.NoContent, response.StatusCode));
         Assert.Equal([jobId], (await client.GetFromJsonAsync<Guid[]>("/api/work/saved-jobs"))!);
 
         client.DefaultRequestHeaders.Authorization = Bearer(await Login(client, "other@example.com", "LookingForWork"));
         Assert.Empty((await client.GetFromJsonAsync<Guid[]>("/api/work/saved-jobs"))!);
         Assert.Equal(HttpStatusCode.NoContent,
             (await client.DeleteAsync($"/api/work/saved-jobs/{jobId}")).StatusCode);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LocalHireDbContext>();
+            db.JobPosts.Single(job => job.Id == jobId).IsActive = false;
+            await db.SaveChangesAsync();
+        }
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await client.PostAsync($"/api/work/saved-jobs/{jobId}", null)).StatusCode);
 
         client.DefaultRequestHeaders.Authorization = Bearer(await Login(client, "worker@example.com", "LookingForWork"));
         Assert.Equal([jobId], (await client.GetFromJsonAsync<Guid[]>("/api/work/saved-jobs"))!);

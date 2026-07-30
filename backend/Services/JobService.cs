@@ -572,14 +572,25 @@ public sealed class JobService : IJobService
                     && savedCandidate.WorkerId == workerId, ct))
             return;
 
-        _db.SavedCandidates.Add(new SavedCandidate
+        var savedCandidate = new SavedCandidate
         {
             Id = Guid.NewGuid(),
             EmployerId = employerId,
             WorkerId = workerId,
             CreatedAt = DateTimeOffset.UtcNow
-        });
-        await _db.SaveChangesAsync(ct);
+        };
+        _db.SavedCandidates.Add(savedCandidate);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            _db.Entry(savedCandidate).State = EntityState.Detached;
+            if (!await _db.SavedCandidates.AnyAsync(
+                    item => item.EmployerId == employerId && item.WorkerId == workerId, ct))
+                throw;
+        }
     }
 
     public async Task RemoveSavedCandidateAsync(
@@ -665,14 +676,25 @@ public sealed class JobService : IJobService
                 savedJob => savedJob.WorkerId == workerId && savedJob.JobPostId == jobId, ct))
             return;
 
-        _db.SavedJobs.Add(new SavedJob
+        var savedJob = new SavedJob
         {
             Id = Guid.NewGuid(),
             WorkerId = workerId,
             JobPostId = jobId,
             CreatedAt = DateTimeOffset.UtcNow
-        });
-        await _db.SaveChangesAsync(ct);
+        };
+        _db.SavedJobs.Add(savedJob);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            _db.Entry(savedJob).State = EntityState.Detached;
+            if (!await _db.SavedJobs.AnyAsync(
+                    item => item.WorkerId == workerId && item.JobPostId == jobId, ct))
+                throw;
+        }
     }
 
     public async Task RemoveSavedJobAsync(Guid jobId, Guid workerId, CancellationToken ct)

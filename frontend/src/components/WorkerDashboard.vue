@@ -106,7 +106,7 @@ const hasMoreJobs = computed(() => !props.loading && !props.listOnly && props.jo
       >
         <div class="hiring-progress">
           <span>Profile score</span>
-          <strong><CountUp :from="100" :to="profileScore" :delay="0.5" :duration="0.8" immediate separator="" suffix="%" /></strong>
+          <strong><CountUp :to="profileScore" :duration="0.8" immediate separator="" suffix="%" /></strong>
           <progress
             class="worker-profile-progress"
             aria-label="Profile score"

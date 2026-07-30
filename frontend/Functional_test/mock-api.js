@@ -142,7 +142,7 @@ export default function functionalTestApi() {
             }
 
             const savedCandidateMatch = path.match(/^\/hiring\/saved-candidates\/([0-9a-f-]+)$/)
-            if (savedCandidateMatch) {
+            if (savedCandidateMatch && (method === 'POST' || method === 'DELETE')) {
               const saved = data.savedCandidates[employerId] ||= []
               if (method === 'POST' && !saved.includes(savedCandidateMatch[1])) saved.push(savedCandidateMatch[1])
               if (method === 'DELETE') {
@@ -283,7 +283,7 @@ export default function functionalTestApi() {
             }
 
             const savedJobMatch = path.match(/^\/work\/saved-jobs\/([0-9a-f-]+)$/)
-            if (savedJobMatch) {
+            if (savedJobMatch && (method === 'POST' || method === 'DELETE')) {
               const saved = data.savedJobs[workerId] ||= []
               if (method === 'POST' && !saved.includes(savedJobMatch[1])) saved.push(savedJobMatch[1])
               if (method === 'DELETE') {

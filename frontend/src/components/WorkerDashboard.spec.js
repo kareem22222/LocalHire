@@ -31,6 +31,8 @@ describe('WorkerDashboard', () => {
     const progress = wrapper.get('progress')
 
     expect(progress.attributes('value')).toBe('95')
+    await wrapper.setProps({ user: { profileCompletionPercent: 40 } })
+    expect(progress.attributes('value')).toBe('40')
 
     await wrapper.findAll('button').find((item) => item.text() === 'Applied jobs').trigger('click')
     await wrapper.findAll('button').find((item) => item.text() === 'Update profile').trigger('click')

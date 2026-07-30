@@ -177,27 +177,45 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
         modelBuilder.Entity<SavedCandidate>(entity =>
         {
             entity.HasKey(savedCandidate => savedCandidate.Id);
+            entity.Property(savedCandidate => savedCandidate.EmployerRole)
+                .HasMaxLength(50)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasDefaultValue(UserRole.Hiring);
+            entity.Property(savedCandidate => savedCandidate.WorkerRole)
+                .HasMaxLength(50)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasDefaultValue(UserRole.LookingForWork);
             entity.HasIndex(savedCandidate => new { savedCandidate.EmployerId, savedCandidate.WorkerId }).IsUnique();
 
             entity.HasOne(savedCandidate => savedCandidate.Employer)
                 .WithMany(user => user.SavedCandidates)
-                .HasForeignKey(savedCandidate => savedCandidate.EmployerId)
+                .HasForeignKey(savedCandidate => new { savedCandidate.EmployerId, savedCandidate.EmployerRole })
+                .HasPrincipalKey(user => new { user.Id, user.Role })
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(savedCandidate => savedCandidate.Worker)
                 .WithMany(user => user.SavedByEmployers)
-                .HasForeignKey(savedCandidate => savedCandidate.WorkerId)
+                .HasForeignKey(savedCandidate => new { savedCandidate.WorkerId, savedCandidate.WorkerRole })
+                .HasPrincipalKey(user => new { user.Id, user.Role })
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<SavedJob>(entity =>
         {
             entity.HasKey(savedJob => savedJob.Id);
+            entity.Property(savedJob => savedJob.WorkerRole)
+                .HasMaxLength(50)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasDefaultValue(UserRole.LookingForWork);
             entity.HasIndex(savedJob => new { savedJob.WorkerId, savedJob.JobPostId }).IsUnique();
 
             entity.HasOne(savedJob => savedJob.Worker)
                 .WithMany(user => user.SavedJobs)
-                .HasForeignKey(savedJob => savedJob.WorkerId)
+                .HasForeignKey(savedJob => new { savedJob.WorkerId, savedJob.WorkerRole })
+                .HasPrincipalKey(user => new { user.Id, user.Role })
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(savedJob => savedJob.JobPost)
@@ -205,6 +223,7 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
                 .HasForeignKey(savedJob => savedJob.JobPostId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+
     }
 
     private static ValueConverter<T, string> JsonConverter<T>() where T : new() => new(

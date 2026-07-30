@@ -50,10 +50,18 @@ test('shows contact details from the candidate card', async ({ page }) => {
 })
 
 test('saves a candidate in account-scoped state', async ({ page }) => {
+  test.slow()
   const card = page.locator('article.candidate-card').first()
   const candidateName = await card.getByRole('heading').textContent()
   await card.getByRole('button', { name: 'Save candidate', exact: true }).click()
   await expect(card.getByRole('button', { name: 'Saved candidate', exact: true })).toBeDisabled()
+  const unsupportedStatuses = await page.evaluate(async () => {
+    const headers = { Authorization: `Bearer ${localStorage.getItem('localhire.accessToken')}` }
+    const [candidateId] = await fetch('/api/hiring/saved-candidates', { headers }).then((response) => response.json())
+    return Promise.all(['GET', 'PUT'].map((method) =>
+      fetch(`/api/hiring/saved-candidates/${candidateId}`, { method, headers }).then((response) => response.status)))
+  })
+  expect(unsupportedStatuses).toEqual([404, 404])
   await page.reload()
   await expect(page.locator('article.candidate-card').first().getByRole('button', { name: 'Saved candidate', exact: true })).toBeDisabled()
 

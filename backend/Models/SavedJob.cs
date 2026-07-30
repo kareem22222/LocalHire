@@ -4,6 +4,7 @@ public sealed class SavedJob
 {
     public Guid Id { get; set; }
     public Guid WorkerId { get; set; }
+    public UserRole WorkerRole { get; set; } = UserRole.LookingForWork;
     public Guid JobPostId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 

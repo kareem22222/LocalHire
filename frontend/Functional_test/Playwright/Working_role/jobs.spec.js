@@ -29,11 +29,19 @@ test('shows complete job details and a safe application state', async ({ page })
 })
 
 test('saves a job across the list, detail page, and reload', async ({ page }) => {
+  test.slow()
   const firstJob = page.locator('article.worker-job-row').first()
   const jobTitle = await firstJob.getByRole('heading').textContent()
+  const jobId = (await firstJob.getByRole('link', { name: /View details/ }).getAttribute('href')).split('/').at(-1)
   await firstJob.getByRole('button', { name: /^Save / }).click()
   await expect(firstJob.locator('.worker-job-row__save')).toHaveText('Saved job')
   await expect(firstJob.locator('.worker-job-row__save')).toBeDisabled()
+  const unsupportedStatuses = await page.evaluate(async (id) => {
+    const headers = { Authorization: `Bearer ${localStorage.getItem('localhire.accessToken')}` }
+    return Promise.all(['GET', 'PUT'].map((method) =>
+      fetch(`/api/work/saved-jobs/${id}`, { method, headers }).then((response) => response.status)))
+  }, jobId)
+  expect(unsupportedStatuses).toEqual([404, 404])
 
   await firstJob.getByRole('link', { name: /View details/ }).click()
   await expect(page.getByRole('button', { name: 'Saved job' })).toBeDisabled()

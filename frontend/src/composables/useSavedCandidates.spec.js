@@ -51,4 +51,33 @@ describe('useSavedCandidates', () => {
     expect(next.isSaved('candidate-1')).toBe(false)
     expect(next.isSaved('candidate-2')).toBe(true)
   })
+
+  it('serializes same-candidate changes and ignores stale-session rollbacks', async () => {
+    let finishSave
+    saveCandidate.mockReturnValue(new Promise((resolve, reject) => { finishSave = { resolve, reject } }))
+    const current = useSavedCandidates()
+    await current.load()
+
+    const adding = current.add('candidate-1')
+    await vi.waitFor(() => expect(current.isSaved('candidate-1')).toBe(true))
+    const removing = current.remove('candidate-1')
+    expect(removeSavedCandidate).not.toHaveBeenCalled()
+
+    finishSave.resolve({})
+    await adding
+    await removing
+    expect(removeSavedCandidate).toHaveBeenCalledWith('candidate-1')
+    expect(current.isSaved('candidate-1')).toBe(false)
+
+    saveCandidate.mockReturnValue(new Promise((resolve, reject) => { finishSave = { resolve, reject } }))
+    const staleSave = current.add('candidate-2')
+    await vi.waitFor(() => expect(current.isSaved('candidate-2')).toBe(true))
+    clearSavedCandidates()
+    getSavedCandidates.mockResolvedValue({ data: ['candidate-next'] })
+    const next = useSavedCandidates()
+    await next.load()
+    finishSave.reject(new Error('old session failed'))
+    await staleSave
+    expect(next.isSaved('candidate-next')).toBe(true)
+  })
 })

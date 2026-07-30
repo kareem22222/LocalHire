@@ -28,4 +28,23 @@ describe('useSavedJobs', () => {
     expect(saveJob).toHaveBeenCalledWith('job-2')
     expect(isSaved('job-2')).toBe(true)
   })
+
+  it('serializes rapid toggles for the same job', async () => {
+    let resolveSave
+    getSavedJobs.mockResolvedValue({ data: [] })
+    saveJob.mockReturnValue(new Promise((resolve) => { resolveSave = resolve }))
+    const { isSaved, toggle, load } = useSavedJobs()
+    await load()
+
+    const saving = toggle('job-1')
+    await vi.waitFor(() => expect(isSaved('job-1')).toBe(true))
+    const removing = toggle('job-1')
+    expect(removeSavedJob).not.toHaveBeenCalled()
+
+    resolveSave({})
+    await saving
+    await removing
+    expect(removeSavedJob).toHaveBeenCalledWith('job-1')
+    expect(isSaved('job-1')).toBe(false)
+  })
 })
