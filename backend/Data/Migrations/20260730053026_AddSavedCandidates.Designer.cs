@@ -3,17 +3,20 @@ using System;
 using LocalHire.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace LocalHire.Api.Migrations
+namespace LocalHire.Api.Data.Migrations
 {
     [DbContext(typeof(LocalHireDbContext))]
-    partial class LocalHireDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260730053026_AddSavedCandidates")]
+    partial class AddSavedCandidates
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -253,31 +256,6 @@ namespace LocalHire.Api.Migrations
                     b.ToTable("SavedCandidates");
                 });
 
-            modelBuilder.Entity("LocalHire.Api.Models.SavedJob", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("JobPostId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("WorkerId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("JobPostId");
-
-                    b.HasIndex("WorkerId", "JobPostId")
-                        .IsUnique();
-
-                    b.ToTable("SavedJobs");
-                });
-
             modelBuilder.Entity("LocalHire.Api.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -471,30 +449,9 @@ namespace LocalHire.Api.Migrations
                     b.Navigation("Worker");
                 });
 
-            modelBuilder.Entity("LocalHire.Api.Models.SavedJob", b =>
-                {
-                    b.HasOne("LocalHire.Api.Models.JobPost", "JobPost")
-                        .WithMany("SavedByWorkers")
-                        .HasForeignKey("JobPostId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("LocalHire.Api.Models.User", "Worker")
-                        .WithMany("SavedJobs")
-                        .HasForeignKey("WorkerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("JobPost");
-
-                    b.Navigation("Worker");
-                });
-
             modelBuilder.Entity("LocalHire.Api.Models.JobPost", b =>
                 {
                     b.Navigation("Applications");
-
-                    b.Navigation("SavedByWorkers");
                 });
 
             modelBuilder.Entity("LocalHire.Api.Models.User", b =>
@@ -508,8 +465,6 @@ namespace LocalHire.Api.Migrations
                     b.Navigation("SavedByEmployers");
 
                     b.Navigation("SavedCandidates");
-
-                    b.Navigation("SavedJobs");
                 });
 #pragma warning restore 612, 618
         }

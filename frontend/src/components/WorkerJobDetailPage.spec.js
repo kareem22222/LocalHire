@@ -1,10 +1,11 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import api from '../api'
+import { clearSavedJobs } from '../composables/useSavedJobs'
 import { createTestRouter } from '../test/router'
 import WorkerJobDetailPage from './WorkerJobDetailPage.vue'
 
-vi.mock('../api', () => ({ default: { get: vi.fn(), post: vi.fn() } }))
+vi.mock('../api', () => ({ default: { get: vi.fn(), post: vi.fn(), delete: vi.fn() } }))
 
 const job = {
   id: 'job-1', title: 'Cashier', description: 'Handle billing', workplaceName: 'Corner Shop',
@@ -16,8 +17,10 @@ const job = {
 
 describe('WorkerJobDetailPage', () => {
   beforeEach(() => {
+    clearSavedJobs()
     api.get.mockReset()
     api.post.mockReset()
+    api.delete.mockReset()
     api.get.mockImplementation((url) => Promise.resolve({ data: url === '/work/jobs/job-1' ? job : [] }))
     api.post.mockResolvedValue({ data: {} })
   })
@@ -33,6 +36,10 @@ describe('WorkerJobDetailPage', () => {
     expect(wrapper.text()).toContain('10th pass')
     expect(wrapper.text()).toContain('Billing')
     expect(wrapper.text()).toContain('PF')
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Save job').trigger('click')
+    await flushPromises()
+    expect(api.post).toHaveBeenCalledWith('/work/saved-jobs/job-1')
 
     await wrapper.findAll('button').find((button) => button.text() === 'Apply now').trigger('click')
     await flushPromises()
@@ -63,6 +70,7 @@ describe('WorkerJobDetailPage', () => {
     let applicationLoads = 0
     api.get.mockImplementation((url) => {
       if (url === '/work/jobs/job-1') return Promise.resolve({ data: job })
+      if (url === '/work/saved-jobs') return Promise.resolve({ data: [] })
       applicationLoads += 1
       return applicationLoads === 1
         ? Promise.resolve({ data: [] })

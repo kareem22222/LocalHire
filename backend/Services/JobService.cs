@@ -553,6 +553,47 @@ public sealed class JobService : IJobService
             matchScore);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetSavedCandidateIdsAsync(
+        Guid employerId, CancellationToken ct) =>
+        await _db.SavedCandidates
+            .Where(savedCandidate => savedCandidate.EmployerId == employerId)
+            .Select(savedCandidate => savedCandidate.WorkerId)
+            .ToListAsync(ct);
+
+    public async Task SaveCandidateAsync(
+        Guid workerId, Guid employerId, CancellationToken ct)
+    {
+        if (!await _db.Users.AnyAsync(
+                user => user.Id == workerId && user.Role == UserRole.LookingForWork, ct))
+            throw new NotFoundException("Candidate not found.");
+
+        if (await _db.SavedCandidates.AnyAsync(
+                savedCandidate => savedCandidate.EmployerId == employerId
+                    && savedCandidate.WorkerId == workerId, ct))
+            return;
+
+        _db.SavedCandidates.Add(new SavedCandidate
+        {
+            Id = Guid.NewGuid(),
+            EmployerId = employerId,
+            WorkerId = workerId,
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task RemoveSavedCandidateAsync(
+        Guid workerId, Guid employerId, CancellationToken ct)
+    {
+        var savedCandidate = await _db.SavedCandidates.FirstOrDefaultAsync(
+            item => item.EmployerId == employerId && item.WorkerId == workerId, ct);
+        if (savedCandidate is null)
+            return;
+
+        _db.SavedCandidates.Remove(savedCandidate);
+        await _db.SaveChangesAsync(ct);
+    }
+
     public async Task<JobApplicationResponse> ApplyAsync(Guid jobId, Guid workerId, CancellationToken ct)
     {
         var jobPost = await _db.JobPosts.FirstOrDefaultAsync(j => j.Id == jobId && j.IsActive, ct)
@@ -606,5 +647,42 @@ public sealed class JobService : IJobService
             .ToListAsync(ct);
 
         return applications.OrderByDescending(a => a.CreatedAt).ToList();
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetSavedJobIdsAsync(
+        Guid workerId, CancellationToken ct) =>
+        await _db.SavedJobs
+            .Where(savedJob => savedJob.WorkerId == workerId)
+            .Select(savedJob => savedJob.JobPostId)
+            .ToListAsync(ct);
+
+    public async Task SaveJobAsync(Guid jobId, Guid workerId, CancellationToken ct)
+    {
+        if (!await _db.JobPosts.AnyAsync(jobPost => jobPost.Id == jobId && jobPost.IsActive, ct))
+            throw new NotFoundException("Job post not found or no longer active.");
+
+        if (await _db.SavedJobs.AnyAsync(
+                savedJob => savedJob.WorkerId == workerId && savedJob.JobPostId == jobId, ct))
+            return;
+
+        _db.SavedJobs.Add(new SavedJob
+        {
+            Id = Guid.NewGuid(),
+            WorkerId = workerId,
+            JobPostId = jobId,
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task RemoveSavedJobAsync(Guid jobId, Guid workerId, CancellationToken ct)
+    {
+        var savedJob = await _db.SavedJobs.FirstOrDefaultAsync(
+            item => item.WorkerId == workerId && item.JobPostId == jobId, ct);
+        if (savedJob is null)
+            return;
+
+        _db.SavedJobs.Remove(savedJob);
+        await _db.SaveChangesAsync(ct);
     }
 }

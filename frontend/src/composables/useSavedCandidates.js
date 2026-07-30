@@ -1,62 +1,66 @@
 import { ref } from 'vue'
+import { getSavedCandidates, removeSavedCandidate, saveCandidate } from '../api/jobs.js'
 
-// A lightweight, client-side "saved shortlist" of worker ids. Used for the
-// talent browsing flows ("Talent near your business", the all-candidates page,
-// and the candidate detail page) where there is no specific job/application to
-// attach a server-side shortlist to. Persisted to localStorage so the employer's
-// picks survive reloads. Per-job shortlisting (on a role's applicants page) is a
-// separate, server-backed flow that changes an application's status.
-const STORAGE_KEY = 'localhire.savedCandidates'
+const saved = ref(new Set())
+let loaded = false
+let loadPromise = null
+let generation = 0
 
-function readInitial() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return new Set(raw ? JSON.parse(raw) : [])
-  } catch {
-    return new Set()
-  }
-}
+async function load() {
+  if (loaded) return
+  if (loadPromise) return loadPromise
 
-// Module-level so every component shares the same reactive set.
-const saved = ref(readInitial())
-
-function persist() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...saved.value]))
-  } catch {
-    // Storage unavailable (private mode); keep the in-memory set only.
-  }
+  const currentGeneration = generation
+  loadPromise = getSavedCandidates()
+    .then(({ data }) => {
+      if (currentGeneration !== generation) return
+      saved.value = new Set(data)
+      loaded = true
+    })
+    .finally(() => {
+      if (currentGeneration === generation) loadPromise = null
+    })
+  return loadPromise
 }
 
 export function clearSavedCandidates() {
+  generation += 1
+  loaded = false
+  loadPromise = null
   saved.value = new Set()
-  try {
-    localStorage.removeItem(STORAGE_KEY)
-  } catch {
-    // Storage unavailable; the in-memory shortlist is already cleared.
-  }
 }
 
 export function useSavedCandidates() {
+  void load().catch(() => {})
+
   function isSaved(id) {
     return id != null && saved.value.has(id)
   }
 
-  function add(id) {
-    if (id == null || saved.value.has(id)) return
-    const next = new Set(saved.value)
-    next.add(id)
-    saved.value = next
-    persist()
+  async function add(id) {
+    if (id == null) return
+    const currentGeneration = generation
+    await load().catch(() => {})
+    if (currentGeneration !== generation || saved.value.has(id)) return
+    saved.value = new Set([...saved.value, id])
+    try {
+      await saveCandidate(id)
+    } catch {
+      saved.value = new Set([...saved.value].filter((savedId) => savedId !== id))
+    }
   }
 
-  function remove(id) {
-    if (!saved.value.has(id)) return
-    const next = new Set(saved.value)
-    next.delete(id)
-    saved.value = next
-    persist()
+  async function remove(id) {
+    const currentGeneration = generation
+    await load().catch(() => {})
+    if (currentGeneration !== generation || !saved.value.has(id)) return
+    saved.value = new Set([...saved.value].filter((savedId) => savedId !== id))
+    try {
+      await removeSavedCandidate(id)
+    } catch {
+      saved.value = new Set([...saved.value, id])
+    }
   }
 
-  return { saved, isSaved, add, remove }
+  return { saved, isSaved, add, remove, load }
 }

@@ -137,6 +137,21 @@ export default function functionalTestApi() {
             if (!authorize(request, response, 'Hiring')) return
             const employerId = authFrom(request).userId
 
+            if (path === '/hiring/saved-candidates' && method === 'GET') {
+              return json(response, 200, data.savedCandidates[employerId] || [])
+            }
+
+            const savedCandidateMatch = path.match(/^\/hiring\/saved-candidates\/([0-9a-f-]+)$/)
+            if (savedCandidateMatch) {
+              const saved = data.savedCandidates[employerId] ||= []
+              if (method === 'POST' && !saved.includes(savedCandidateMatch[1])) saved.push(savedCandidateMatch[1])
+              if (method === 'DELETE') {
+                const index = saved.indexOf(savedCandidateMatch[1])
+                if (index >= 0) saved.splice(index, 1)
+              }
+              return json(response, 204)
+            }
+
             if (path === '/hiring/jobs' && method === 'GET') {
               return json(response, 200, data.jobs.map((job) => jobResponse(data, job)))
             }
@@ -261,6 +276,22 @@ export default function functionalTestApi() {
 
           if (path.startsWith('/work/')) {
             if (!authorize(request, response, 'LookingForWork')) return
+            const workerId = authFrom(request).userId
+
+            if (path === '/work/saved-jobs' && method === 'GET') {
+              return json(response, 200, data.savedJobs[workerId] || [])
+            }
+
+            const savedJobMatch = path.match(/^\/work\/saved-jobs\/([0-9a-f-]+)$/)
+            if (savedJobMatch) {
+              const saved = data.savedJobs[workerId] ||= []
+              if (method === 'POST' && !saved.includes(savedJobMatch[1])) saved.push(savedJobMatch[1])
+              if (method === 'DELETE') {
+                const index = saved.indexOf(savedJobMatch[1])
+                if (index >= 0) saved.splice(index, 1)
+              }
+              return json(response, 204)
+            }
 
             if (path === '/work/jobs/nearby' && method === 'GET') {
               const search = (url.searchParams.get('search') || '').toLowerCase()

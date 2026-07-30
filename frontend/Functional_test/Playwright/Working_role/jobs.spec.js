@@ -28,6 +28,17 @@ test('shows complete job details and a safe application state', async ({ page })
   await expect(page.getByRole('button', { name: /Apply now|Applied/ })).toBeVisible()
 })
 
+test('saves a job across the list, detail page, and reload', async ({ page }) => {
+  const firstJob = page.locator('article.worker-job-row').first()
+  await firstJob.getByRole('button', { name: /^Save / }).click()
+  await expect(firstJob.getByRole('button', { name: /^Remove / })).toHaveText('Saved')
+
+  await firstJob.getByRole('link', { name: /View details/ }).click()
+  await expect(page.getByRole('button', { name: 'Saved' })).toHaveAttribute('aria-pressed', 'true')
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Saved' })).toHaveAttribute('aria-pressed', 'true')
+})
+
 test('returns from job details to the dashboard', async ({ page }) => {
   await page.locator('article.worker-job-row').first().getByRole('link', { name: 'View details →' }).click()
   await page.getByRole('button', { name: 'Back', exact: true }).click()

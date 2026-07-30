@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import '../hiring-dashboard.css'
+import { useSavedJobs } from '../composables/useSavedJobs'
 import {
   EMPLOYMENT_TYPE_LABELS,
   formatEmploymentType,
@@ -39,6 +40,7 @@ const emit = defineEmits([
 const search = ref('')
 const employmentType = ref('All')
 const employmentTypes = ['All', ...Object.keys(EMPLOYMENT_TYPE_LABELS)]
+const { isSaved: isJobSaved, toggle: toggleSavedJob } = useSavedJobs()
 let searchTimer = null
 
 const profileScore = computed(() => {
@@ -192,6 +194,15 @@ const hasMoreJobs = computed(() => !props.loading && !props.listOnly && props.jo
             </div>
           </a>
           <div class="worker-job-row__actions">
+            <button
+              type="button"
+              class="worker-job-row__save"
+              :aria-label="`${isJobSaved(job.id) ? 'Remove' : 'Save'} ${job.title}`"
+              :aria-pressed="isJobSaved(job.id)"
+              @click="toggleSavedJob(job.id)"
+            >
+              {{ isJobSaved(job.id) ? 'Saved' : 'Save job' }}
+            </button>
             <a class="worker-job-row__details" :href="`/work/jobs/${job.id}`" @click.prevent="emit('open-job', job.id)">View details →</a>
             <button
               type="button"
@@ -457,6 +468,20 @@ const hasMoreJobs = computed(() => !props.loading && !props.listOnly && props.jo
   font-size: 13px;
   font-weight: 800;
   text-decoration: none;
+}
+
+.worker-job-row__save {
+  padding: 8px 14px;
+  color: var(--worker-role-green-text);
+  border: 1.5px solid rgba(var(--worker-role-green-rgb), 0.28);
+  border-radius: 999px;
+  background: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.worker-job-row__save[aria-pressed="true"] {
+  background: rgba(var(--worker-role-green-rgb), 0.09);
 }
 
 @media (max-width: 720px) {

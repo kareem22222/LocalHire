@@ -4,9 +4,23 @@ import api from '../api'
 import { createTestRouter } from '../test/router'
 import CandidateDetailPage from './CandidateDetailPage.vue'
 
+const savedCandidatesState = vi.hoisted(() => ({ saved: null }))
+
 vi.mock('../api', () => ({
   default: { get: vi.fn(), post: vi.fn(), put: vi.fn() },
 }))
+vi.mock('../composables/useSavedCandidates', async () => {
+  const { ref } = await import('vue')
+  const saved = ref(new Set())
+  savedCandidatesState.saved = saved
+  return {
+    clearSavedCandidates: () => { saved.value = new Set() },
+    useSavedCandidates: () => ({
+      isSaved: (id) => saved.value.has(id),
+      add: (id) => { saved.value = new Set([...saved.value, id]) },
+    }),
+  }
+})
 
 let router
 
@@ -21,6 +35,7 @@ async function mountPage(location = '/hiring/candidates/candidate-1') {
 
 describe('CandidateDetailPage', () => {
   beforeEach(() => {
+    savedCandidatesState.saved.value = new Set()
     api.get.mockReset()
   })
 

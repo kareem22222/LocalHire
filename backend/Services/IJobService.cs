@@ -76,7 +76,15 @@ public interface IJobService
     /// </summary>
     Task<IReadOnlyList<CandidateResponse>> GetNearbyCandidatesAsync(double? lat, double? lng, string? search, string? role, Guid employerId, CancellationToken ct);
 
+    Task<IReadOnlyList<Guid>> GetSavedCandidateIdsAsync(Guid employerId, CancellationToken ct);
+    Task SaveCandidateAsync(Guid workerId, Guid employerId, CancellationToken ct);
+    Task RemoveSavedCandidateAsync(Guid workerId, Guid employerId, CancellationToken ct);
+
     Task<JobApplicationResponse> ApplyAsync(Guid jobId, Guid workerId, CancellationToken ct);
 
     Task<IReadOnlyList<JobApplicationResponse>> GetMyApplicationsAsync(Guid workerId, CancellationToken ct);
+
+    Task<IReadOnlyList<Guid>> GetSavedJobIdsAsync(Guid workerId, CancellationToken ct);
+    Task SaveJobAsync(Guid jobId, Guid workerId, CancellationToken ct);
+    Task RemoveSavedJobAsync(Guid jobId, Guid workerId, CancellationToken ct);
 }
