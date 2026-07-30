@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import api from '../api'
 import { clearSavedJobs } from '../composables/useSavedJobs'
@@ -38,6 +38,9 @@ describe('WorkerDashboard', () => {
     await wrapper.find('.worker-job-row__main').trigger('click')
     await wrapper.find('.worker-job-row__details').trigger('click')
     await wrapper.findAll('button').find((item) => item.text() === 'Save job').trigger('click')
+    await flushPromises()
+    const savedButton = wrapper.findAll('button').find((item) => item.text() === 'Saved job')
+    expect(savedButton.attributes('disabled')).toBeDefined()
     await wrapper.findAll('button').find((item) => item.text() === 'Apply now').trigger('click')
 
     await wrapper.find('input[type="search"]').setValue(' Cashier ')

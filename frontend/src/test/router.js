@@ -11,6 +11,7 @@ export function createTestRouter() {
       { path: '/PostNewJob', name: 'post-new-job', component: { template: '<div />' } },
       { path: '/hiring/roles', name: 'all-roles', component: { template: '<div />' } },
       { path: '/hiring/candidates', name: 'all-candidates', component: { template: '<div />' } },
+      { path: '/hiring/saved-candidates', name: 'saved-candidates', component: { template: '<div />' } },
       { path: '/hiring/shortlists', name: 'review-shortlists', component: { template: '<div />' } },
       { path: '/work/applications', name: 'worker-applications', component: { template: '<div />' } },
       { path: '/work/saved-jobs', name: 'worker-saved-jobs', component: { template: '<div />' } },

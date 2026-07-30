@@ -11,6 +11,7 @@ import WorkerJobDetailPage from '../components/WorkerJobDetailPage.vue'
 import AppliedJobsPage from '../components/AppliedJobsPage.vue'
 import AllWorkerJobsPage from '../components/AllWorkerJobsPage.vue'
 import SavedJobsPage from '../components/SavedJobsPage.vue'
+import SavedCandidatesPage from '../components/SavedCandidatesPage.vue'
 import NotificationsPage from '../components/NotificationsPage.vue'
 
 const routes = [
@@ -18,6 +19,7 @@ const routes = [
   { path: '/PostNewJob', name: 'post-new-job', component: PostJobView },
   { path: '/hiring/roles', name: 'all-roles', component: AllRolesPage },
   { path: '/hiring/candidates', name: 'all-candidates', component: AllCandidatesPage },
+  { path: '/hiring/saved-candidates', name: 'saved-candidates', component: SavedCandidatesPage },
   { path: '/hiring/shortlists', name: 'review-shortlists', component: ShortlistsPage },
   { path: '/work/applications', name: 'worker-applications', component: AppliedJobsPage },
   { path: '/work/saved-jobs', name: 'worker-saved-jobs', component: SavedJobsPage },

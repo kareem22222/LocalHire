@@ -56,6 +56,7 @@ const authMenuItems = computed(() => {
     { label: 'Dashboard', path: '/' },
     { label: 'Open roles', path: '/hiring/roles' },
     { label: 'Talent', path: '/hiring/candidates' },
+    { label: 'Saved candidates', path: '/hiring/saved-candidates' },
     { label: 'Shortlists', path: '/hiring/shortlists' },
   ]
   if (role === 'worker') return [

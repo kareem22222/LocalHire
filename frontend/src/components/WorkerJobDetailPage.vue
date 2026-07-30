@@ -88,9 +88,10 @@ async function apply() {
               type="button"
               class="dash-btn worker-outline"
               :aria-pressed="isJobSaved(job.id)"
+              :disabled="isJobSaved(job.id)"
               @click="toggleSavedJob(job.id)"
             >
-              {{ isJobSaved(job.id) ? 'Saved' : 'Save job' }}
+              {{ isJobSaved(job.id) ? 'Saved job' : 'Save job' }}
             </button>
             <button type="button" class="dash-btn worker-primary" :disabled="application || applying" @click="apply">
               {{ application ? 'Applied' : applying ? 'Applying...' : 'Apply now' }}

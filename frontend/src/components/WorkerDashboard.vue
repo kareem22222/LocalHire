@@ -201,11 +201,12 @@ const hasMoreJobs = computed(() => !props.loading && !props.listOnly && props.jo
             <button
               type="button"
               class="worker-job-row__save"
-              :aria-label="`${isJobSaved(job.id) ? 'Remove' : 'Save'} ${job.title}`"
+              :aria-label="isJobSaved(job.id) ? `${job.title} saved` : `Save ${job.title}`"
               :aria-pressed="isJobSaved(job.id)"
+              :disabled="isJobSaved(job.id)"
               @click="toggleSavedJob(job.id)"
             >
-              {{ isJobSaved(job.id) ? 'Saved' : 'Save job' }}
+              {{ isJobSaved(job.id) ? 'Saved job' : 'Save job' }}
             </button>
             <a class="worker-job-row__details" :href="`/work/jobs/${job.id}`" @click.prevent="emit('open-job', job.id)">View details →</a>
             <button
@@ -487,6 +488,8 @@ const hasMoreJobs = computed(() => !props.loading && !props.listOnly && props.jo
 .worker-job-row__save[aria-pressed="true"] {
   background: rgba(var(--worker-role-green-rgb), 0.09);
 }
+
+.worker-job-row__save:disabled { cursor: default; opacity: 0.8; }
 
 @media (max-width: 720px) {
   .worker-search__primary,

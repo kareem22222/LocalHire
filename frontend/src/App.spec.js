@@ -159,6 +159,19 @@ describe('App authenticated menu', () => {
     wrapper.unmount()
   })
 
+  it('shows employers a menu link to their saved candidates', async () => {
+    const router = createTestRouter()
+    const wrapper = mountAppWithAuthMode('login', router)
+    await flushPromises()
+
+    const item = wrapper.findAll('.fake-menu-item').find((button) => button.text() === 'Saved candidates')
+    expect(item).toBeTruthy()
+    await item.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/hiring/saved-candidates')
+    wrapper.unmount()
+  })
+
   it('routes profile and sign out actions from StaggeredMenu', async () => {
     const wrapper = mountAppWithAuthMode('login')
     await flushPromises()

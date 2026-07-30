@@ -51,10 +51,19 @@ test('shows contact details from the candidate card', async ({ page }) => {
 
 test('saves a candidate in account-scoped state', async ({ page }) => {
   const card = page.locator('article.candidate-card').first()
+  const candidateName = await card.getByRole('heading').textContent()
   await card.getByRole('button', { name: 'Save candidate', exact: true }).click()
   await expect(card.getByRole('button', { name: 'Saved candidate', exact: true })).toBeDisabled()
   await page.reload()
   await expect(page.locator('article.candidate-card').first().getByRole('button', { name: 'Saved candidate', exact: true })).toBeDisabled()
+
+  await page.getByRole('button', { name: 'Menu' }).click()
+  await page.getByRole('button', { name: /^Saved candidates/ }).click()
+  await expect(page).toHaveURL(/\/hiring\/saved-candidates$/)
+  await expect(page.getByRole('heading', { name: 'Saved candidates' })).toBeVisible()
+  const savedCard = page.locator('article.candidate-card').filter({ hasText: candidateName })
+  await expect(savedCard).toBeVisible()
+  await expect(savedCard.getByRole('button', { name: 'Saved candidate', exact: true })).toBeDisabled()
 })
 
 

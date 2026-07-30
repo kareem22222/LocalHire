@@ -14,7 +14,7 @@ describe('SavedJobsPage', () => {
     api.delete.mockResolvedValue({ status: 204 })
   })
 
-  it('lists server-saved jobs and removes an unsaved job from the page', async () => {
+  it('lists server-saved jobs with a disabled saved state', async () => {
     const jobs = {
       'job-1': { id: 'job-1', title: 'Cashier', workplaceName: 'Local Shop', description: 'Help customers' },
       'job-2': { id: 'job-2', title: 'Cook', workplaceName: 'Corner Cafe', description: 'Prepare meals' },
@@ -35,11 +35,8 @@ describe('SavedJobsPage', () => {
 
     expect(wrapper.text()).toContain('Saved jobs')
     expect(wrapper.findAll('.worker-job-row')).toHaveLength(2)
-    await wrapper.findAll('.worker-job-row__save')[0].trigger('click')
-    await flushPromises()
-
-    expect(api.delete).toHaveBeenCalledWith('/work/saved-jobs/job-1')
-    expect(wrapper.findAll('.worker-job-row')).toHaveLength(1)
-    expect(wrapper.text()).not.toContain('Cashier')
+    expect(wrapper.findAll('.worker-job-row__save').every((button) => button.text() === 'Saved job')).toBe(true)
+    expect(wrapper.findAll('.worker-job-row__save').every((button) => button.attributes('disabled') !== undefined)).toBe(true)
+    expect(api.delete).not.toHaveBeenCalled()
   })
 })

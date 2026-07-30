@@ -32,18 +32,20 @@ test('saves a job across the list, detail page, and reload', async ({ page }) =>
   const firstJob = page.locator('article.worker-job-row').first()
   const jobTitle = await firstJob.getByRole('heading').textContent()
   await firstJob.getByRole('button', { name: /^Save / }).click()
-  await expect(firstJob.getByRole('button', { name: /^Remove / })).toHaveText('Saved')
+  await expect(firstJob.locator('.worker-job-row__save')).toHaveText('Saved job')
+  await expect(firstJob.locator('.worker-job-row__save')).toBeDisabled()
 
   await firstJob.getByRole('link', { name: /View details/ }).click()
-  await expect(page.getByRole('button', { name: 'Saved' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Saved job' })).toBeDisabled()
   await page.reload()
-  await expect(page.getByRole('button', { name: 'Saved' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Saved job' })).toBeDisabled()
 
   await page.getByRole('button', { name: 'Menu' }).click()
   await page.getByRole('button', { name: /^Saved jobs/ }).click()
   await expect(page).toHaveURL(/\/work\/saved-jobs$/)
   await expect(page.getByRole('heading', { name: 'Saved jobs' })).toBeVisible()
   await expect(page.locator('article.worker-job-row').filter({ hasText: jobTitle })).toBeVisible()
+  await expect(page.locator('article.worker-job-row').filter({ hasText: jobTitle }).locator('.worker-job-row__save')).toBeDisabled()
 })
 
 test('returns from job details to the dashboard', async ({ page }) => {

@@ -40,6 +40,7 @@ describe('WorkerJobDetailPage', () => {
     await wrapper.findAll('button').find((button) => button.text() === 'Save job').trigger('click')
     await flushPromises()
     expect(api.post).toHaveBeenCalledWith('/work/saved-jobs/job-1')
+    expect(wrapper.findAll('button').find((button) => button.text() === 'Saved job').attributes('disabled')).toBeDefined()
 
     await wrapper.findAll('button').find((button) => button.text() === 'Apply now').trigger('click')
     await flushPromises()
