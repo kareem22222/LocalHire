@@ -18,7 +18,8 @@ test('opens the shortlisted candidates for a role', async ({ page }) => {
   await expect(page.getByText(/shortlisted$/).first()).toBeVisible()
   const cards = page.locator('article.candidate-card')
   await expect(cards.first()).toBeVisible()
-  await expect(cards.first().getByRole('button', { name: 'Shortlisted' })).toBeDisabled()
+  await expect(cards.first().locator('.candidate-card__status')).toHaveText('Shortlisted')
+  await expect(cards.first().locator('.candidate-actions button')).toHaveText(['Hire', 'Reject', 'Contact'])
 })
 
 test('opens candidate detail and contact information from applicants', async ({ page }) => {
