@@ -82,6 +82,10 @@ describe('JobApplicantsPage', () => {
     await wrapper.vm.shortlist(pendingApplicant)
     expect(wrapper.get('[role="alert"]').text()).toContain('Could not shortlist')
 
+    api.post.mockResolvedValueOnce({ data: { ...pendingApplicant, status: 'Shortlisted' } })
+    await wrapper.vm.shortlist(pendingApplicant)
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+
     api.get.mockRejectedValue(new Error('offline'))
     await router.push('/hiring/jobs/job-2/shortlisted')
     await flushPromises()

@@ -129,6 +129,7 @@ async function reject(candidate) {
 
 async function decide(candidate, request, message) {
   if (deciding.value === candidate.applicationId) return
+  error.value = ''
   deciding.value = candidate.applicationId
   try {
     const updated = await request(jobId.value, candidate.applicationId)

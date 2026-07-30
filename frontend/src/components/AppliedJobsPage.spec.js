@@ -12,7 +12,7 @@ describe('AppliedJobsPage', () => {
     api.get.mockResolvedValue({ data: [{
       id: 'app-1', jobPostId: 'job-1', jobTitle: 'Cashier', workplaceName: 'Corner Shop',
       cityArea: 'Bandra', status: 'Shortlisted', createdAt: '2026-07-24T00:00:00Z',
-      statusUpdatedAt: '2026-07-25T00:00:00Z',
+      statusUpdatedAt: '2026-07-25T12:00:00Z',
     }] })
   })
 

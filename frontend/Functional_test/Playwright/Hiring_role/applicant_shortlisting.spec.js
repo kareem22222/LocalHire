@@ -42,6 +42,25 @@ async function openApplicantsWithOpenCandidates(page) {
   throw new Error('No role on the first page has an applicant left to shortlist.')
 }
 
+async function openApplicantsWithShortlistedCandidates(page) {
+  await page.goto('/hiring/roles')
+  await expect(page.getByRole('heading', { name: 'All open roles you are hiring for' })).toBeVisible()
+  const cards = page.locator('article.hiring-role-card')
+  await expect(cards.first()).toBeVisible()
+
+  const total = await cards.count()
+  for (let index = 0; index < total; index += 1) {
+    const card = cards.nth(index)
+    const shortlisted = labelCount(await card.locator('button[aria-label*="shortlisted for"]').getAttribute('aria-label'))
+    if (shortlisted > 0) {
+      await activateRoleCardControl(card, 'button[aria-label*="applicants for"]')
+      await expect(page).toHaveURL(/\/hiring\/jobs\/[^/]+\/applicants$/)
+      return
+    }
+  }
+  throw new Error('No role on the first page has an applicant available to hire.')
+}
+
 test('shortlists an applicant and keeps the status on the server', async ({ page }) => {
   const applicantsUrl = await openApplicantsWithOpenCandidates(page)
   const target = page.locator('article.candidate-card')
@@ -88,7 +107,7 @@ test('reports a failed shortlist without changing the row', async ({ page }) => 
 })
 
 test('hires a shortlisted applicant and keeps the terminal status', async ({ page }) => {
-  await openApplicants(page)
+  await openApplicantsWithShortlistedCandidates(page)
   const target = page.locator('article.candidate-card')
     .filter({ has: page.getByRole('button', { name: 'Hire', exact: true }) })
     .first()
@@ -101,8 +120,9 @@ test('hires a shortlisted applicant and keeps the terminal status', async ({ pag
   await expect(updated).toContainText('Hired')
   await expect(updated.locator('.candidate-actions')).toHaveCount(0)
   await page.reload()
-  await expect(page.locator('article.candidate-card').filter({ hasText: name }).first())
-    .toContainText('Hired')
+  const persisted = page.locator('article.candidate-card').filter({ hasText: name }).first()
+  await expect(persisted).toContainText('Hired')
+  await expect(persisted.locator('.candidate-actions')).toHaveCount(0)
 })
 
 test('confirms and persists rejecting an applied applicant', async ({ page }) => {
@@ -123,8 +143,9 @@ test('confirms and persists rejecting an applied applicant', async ({ page }) =>
   await expect(updated).toContainText('Rejected')
   await expect(updated.locator('.candidate-actions')).toHaveCount(0)
   await page.reload()
-  await expect(page.locator('article.candidate-card').filter({ hasText: name }).first())
-    .toContainText('Rejected')
+  const persisted = page.locator('article.candidate-card').filter({ hasText: name }).first()
+  await expect(persisted).toContainText('Rejected')
+  await expect(persisted.locator('.candidate-actions')).toHaveCount(0)
 })
 
 test('shows the applicants count and paginates long applicant lists', async ({ page }) => {

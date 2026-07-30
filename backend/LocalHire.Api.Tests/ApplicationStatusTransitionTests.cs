@@ -42,8 +42,10 @@ public sealed class ApplicationStatusTransitionTests : IDisposable
         var result = await _service.SetApplicationStatusAsync(
             jobId, applicationId, target, employerId, CancellationToken.None);
 
+        var application = (await _db.JobApplications.FindAsync(applicationId))!;
         Assert.Equal(target.ToString(), result.Status);
-        Assert.Equal(target, (await _db.JobApplications.FindAsync(applicationId))!.Status);
+        Assert.Equal(target, application.Status);
+        Assert.NotNull(application.StatusUpdatedAt);
         Assert.Equal(target.ToString(), Assert.Single(await _db.Notifications.ToListAsync()).Type);
     }
 
