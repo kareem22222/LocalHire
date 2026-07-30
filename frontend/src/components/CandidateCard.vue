@@ -80,7 +80,7 @@ function select(candidate) {
           type="button"
           :disabled="shortlisted"
           @click.stop="$emit('shortlist', candidate)"
-        >{{ shortlisted ? 'Shortlisted' : 'Shortlist' }}</button>
+        >{{ shortlisted ? 'Saved candidate' : 'Save candidate' }}</button>
         <button type="button" class="candidate-actions__ghost" @click.stop="$emit('contact', candidate)">Contact</button>
       </template>
     </div>

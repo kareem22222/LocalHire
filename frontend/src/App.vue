@@ -61,6 +61,7 @@ const authMenuItems = computed(() => {
   if (role === 'worker') return [
     { label: 'Dashboard', path: '/' },
     { label: 'Applications', path: '/work/applications' },
+    { label: 'Saved jobs', path: '/work/saved-jobs' },
   ]
   return [{ label: 'Dashboard', path: '/' }]
 })

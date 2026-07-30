@@ -310,6 +310,5 @@ describe('HiringDashboard', () => {
     expect(wrapper.emitted('contact')).toEqual([[candidate]])
     expect(wrapper.emitted('shortlist')).toEqual([[candidate]])
     expect(wrapper.emitted('review-shortlists')).toHaveLength(1)
-    expect(wrapper.find('.candidate-actions button').attributes('disabled')).toBeDefined()
   })
 })

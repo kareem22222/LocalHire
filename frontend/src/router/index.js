@@ -10,6 +10,7 @@ import ShortlistsPage from '../components/ShortlistsPage.vue'
 import WorkerJobDetailPage from '../components/WorkerJobDetailPage.vue'
 import AppliedJobsPage from '../components/AppliedJobsPage.vue'
 import AllWorkerJobsPage from '../components/AllWorkerJobsPage.vue'
+import SavedJobsPage from '../components/SavedJobsPage.vue'
 import NotificationsPage from '../components/NotificationsPage.vue'
 
 const routes = [
@@ -19,6 +20,7 @@ const routes = [
   { path: '/hiring/candidates', name: 'all-candidates', component: AllCandidatesPage },
   { path: '/hiring/shortlists', name: 'review-shortlists', component: ShortlistsPage },
   { path: '/work/applications', name: 'worker-applications', component: AppliedJobsPage },
+  { path: '/work/saved-jobs', name: 'worker-saved-jobs', component: SavedJobsPage },
   { path: '/work/jobs', name: 'all-worker-jobs', component: AllWorkerJobsPage },
   { path: '/notifications', name: 'notifications', component: NotificationsPage },
   {

@@ -11,15 +11,15 @@ async function openFirstCandidate(page) {
   return name
 }
 
-test('shortlists from the candidate detail page and keeps it after a reload', async ({ page }) => {
+test('saves from the candidate detail page and keeps it after a reload', async ({ page }) => {
   await openFirstCandidate(page)
-  const shortlist = page.getByRole('button', { name: 'Shortlist', exact: true })
+  const shortlist = page.getByRole('button', { name: 'Save candidate', exact: true })
   await expect(shortlist).toBeEnabled()
   await shortlist.click()
-  await expect(page.getByRole('button', { name: 'Shortlisted', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Saved candidate', exact: true })).toBeDisabled()
 
   await page.reload()
-  await expect(page.getByRole('button', { name: 'Shortlisted', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Saved candidate', exact: true })).toBeDisabled()
 })
 
 test('reveals contact details on request and hides them by default', async ({ page }) => {

@@ -13,6 +13,7 @@ export function createTestRouter() {
       { path: '/hiring/candidates', name: 'all-candidates', component: { template: '<div />' } },
       { path: '/hiring/shortlists', name: 'review-shortlists', component: { template: '<div />' } },
       { path: '/work/applications', name: 'worker-applications', component: { template: '<div />' } },
+      { path: '/work/saved-jobs', name: 'worker-saved-jobs', component: { template: '<div />' } },
       { path: '/work/jobs', name: 'all-worker-jobs', component: { template: '<div />' } },
       { path: '/notifications', name: 'notifications', component: { template: '<div />' } },
       { path: '/work/jobs/:id', name: 'worker-job-detail', component: { template: '<div />' } },

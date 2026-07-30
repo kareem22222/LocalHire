@@ -92,6 +92,7 @@ describe('CandidateDetailPage', () => {
     await buttons[2].trigger('click')
 
     expect(buttons[0].attributes('disabled')).toBeDefined()
+    expect(buttons[0].text()).toBe('Saved candidate')
     expect(wrapper.text()).toContain('ananya@example.com')
     expect(api.get).toHaveBeenLastCalledWith('/hiring/candidates/candidate-1/resume')
   })

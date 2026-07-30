@@ -26,6 +26,10 @@ const props = defineProps({
   applying: { type: [String, Number], default: null },
   listOnly: { type: Boolean, default: false },
   totalJobs: { type: Number, default: null },
+  listKicker: { type: String, default: 'Looking for work' },
+  listTitle: { type: String, default: 'Roles for you' },
+  emptyTitle: { type: String, default: 'No roles found' },
+  emptyText: { type: String, default: 'Try another role, area, employment type, or use your current location.' },
 })
 
 const emit = defineEmits([
@@ -128,8 +132,8 @@ const hasMoreJobs = computed(() => !props.loading && !props.listOnly && props.jo
     <section class="worker-jobs">
       <div class="hiring-roles__head">
         <div>
-          <span class="hiring-kicker">Looking for work</span>
-          <h2>Roles for you</h2>
+          <span class="hiring-kicker">{{ listKicker }}</span>
+          <h2>{{ listTitle }}</h2>
         </div>
         <span class="worker-results">{{ totalJobs ?? jobs.length }} results</span>
       </div>
@@ -223,8 +227,8 @@ const hasMoreJobs = computed(() => !props.loading && !props.listOnly && props.jo
       </div>
 
       <div v-if="!loading && !visibleJobs.length" class="candidate-empty">
-        <strong>No roles found</strong>
-        <p>Try another role, area, employment type, or use your current location.</p>
+        <strong>{{ emptyTitle }}</strong>
+        <p>{{ emptyText }}</p>
       </div>
 
       <slot />

@@ -20,6 +20,7 @@ describe('CandidateCard', () => {
     expect(wrapper.text()).toContain('Bandra, Maharashtra')
     expect(card.classes()).toContain('spotlight-card')
     expect(wrapper.find('article').attributes('role')).toBeUndefined()
+    expect(wrapper.text()).toContain('Save candidate')
     expect(wrapper.find('.candidate-card__select').element.tagName).toBe('BUTTON')
     await wrapper.find('.candidate-card__select').trigger('click')
     await wrapper.find('.candidate-actions button').trigger('click')
@@ -38,6 +39,7 @@ describe('CandidateCard', () => {
 
     await wrapper.setProps({ candidate: { id: 'candidate-1', name: 'Ravi' }, shortlisted: true })
     expect(wrapper.text()).toContain('Location not shared')
+    expect(wrapper.text()).toContain('Saved candidate')
     expect(wrapper.find('.candidate-actions button').attributes('disabled')).toBeDefined()
   })
 

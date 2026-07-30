@@ -49,12 +49,12 @@ test('shows contact details from the candidate card', async ({ page }) => {
   await expect(page.getByRole('link', { name: /@/ })).toHaveAttribute('href', /^mailto:/)
 })
 
-test('shortlists a candidate in account-scoped browser state', async ({ page }) => {
+test('saves a candidate in account-scoped state', async ({ page }) => {
   const card = page.locator('article.candidate-card').first()
-  await card.getByRole('button', { name: 'Shortlist', exact: true }).click()
-  await expect(card.getByRole('button', { name: 'Shortlisted', exact: true })).toBeDisabled()
+  await card.getByRole('button', { name: 'Save candidate', exact: true }).click()
+  await expect(card.getByRole('button', { name: 'Saved candidate', exact: true })).toBeDisabled()
   await page.reload()
-  await expect(page.locator('article.candidate-card').first().getByRole('button', { name: 'Shortlisted', exact: true })).toBeDisabled()
+  await expect(page.locator('article.candidate-card').first().getByRole('button', { name: 'Saved candidate', exact: true })).toBeDisabled()
 })
 
 
