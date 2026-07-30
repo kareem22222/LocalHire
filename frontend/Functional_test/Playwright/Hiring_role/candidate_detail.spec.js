@@ -1,4 +1,4 @@
-import { expect, test } from '../support/fixtures.js'
+import { expect, test, usesMockApi } from '../support/fixtures.js'
 
 async function openFirstCandidate(page) {
   await page.goto('/hiring/candidates')
@@ -31,6 +31,7 @@ test('reveals contact details on request and hides them by default', async ({ pa
 })
 
 test('downloads an applicants resume from candidate detail', async ({ page }) => {
+  test.skip(!usesMockApi, 'Requires the mock API resume fixture.')
   await openFirstCandidate(page)
 
   const downloadPromise = page.waitForEvent('download')
@@ -41,6 +42,7 @@ test('downloads an applicants resume from candidate detail', async ({ page }) =>
 })
 
 test('explains that contact details are locked for a browsed-only candidate', async ({ page }) => {
+  test.skip(!usesMockApi, 'Requires deterministic mock candidate data.')
   await page.goto('/hiring/candidates')
   const card = page.locator('article.candidate-card').nth(8)
   const name = (await card.locator('h3').innerText()).trim()
@@ -54,6 +56,7 @@ test('explains that contact details are locked for a browsed-only candidate', as
 })
 
 test('does not unlock a candidate who applied to another employer', async ({ page }) => {
+  test.skip(!usesMockApi, 'Requires mock API authentication.')
   const payload = Buffer.from(JSON.stringify({
     role: 'Hiring',
     userId: 'e0000000-0000-4000-8000-000000000002',

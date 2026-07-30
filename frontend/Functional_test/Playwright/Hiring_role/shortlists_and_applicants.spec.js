@@ -1,4 +1,4 @@
-import { expect, test } from '../support/fixtures.js'
+import { expect, test, usesMockApi } from '../support/fixtures.js'
 import { activateRoleCardControl } from '../support/helpers.js'
 
 test('shows only roles with shortlisted candidates and paginates them', async ({ page }) => {
@@ -23,6 +23,7 @@ test('opens the shortlisted candidates for a role', async ({ page }) => {
 })
 
 test('opens candidate detail and contact information from applicants', async ({ page }) => {
+  test.slow(!usesMockApi, 'The external backend loads both the roles and applicants pages.')
   await page.goto('/hiring/roles')
   // Roles without applicants exist (a freshly posted one sorts first), so pick a
   // role that has some. The card back is aria-hidden until the card flips, hence
@@ -32,8 +33,11 @@ test('opens candidate detail and contact information from applicants', async ({ 
     .first()
   await expect(role).toBeVisible()
   await activateRoleCardControl(role, 'button[aria-label*="applicants for"]')
-  const candidate = page.locator('article.candidate-card').first()
-  await candidate.getByRole('button', { name: 'Contact' }).click()
+  const candidate = page.locator('article.candidate-card')
+    .filter({ has: page.getByRole('button', { name: 'Contact', exact: true }) })
+    .first()
+  await expect(candidate).toBeVisible()
+  await candidate.getByRole('button', { name: 'Contact' }).press('Enter')
   await expect(page).toHaveURL(/\/hiring\/candidates\/[^/?]+\?contact=1$/)
   await expect(page.getByRole('heading', { name: 'Contact' })).toBeVisible()
 })

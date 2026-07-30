@@ -35,7 +35,7 @@ jobs:
 
       - name: Run browser tests
         working-directory: frontend
-        run: npm run test:e2e
+        run: xvfb-run --auto-servernum npm run test:e2e:headed
 
       - name: Upload failure report
         if: failure()
