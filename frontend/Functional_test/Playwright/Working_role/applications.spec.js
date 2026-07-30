@@ -72,7 +72,7 @@ test('shows a status, milestone, and summary for every application', async ({ pa
     Applied: 'Waiting for review',
     Shortlisted: 'Shortlist reached',
     Rejected: 'Application closed',
-    Hired: 'Offer reached',
+    Hired: 'Hired',
   }
 
   // The list renders a skeleton first, so wait for real cards before enumerating.

@@ -76,7 +76,7 @@ const APPLICATION_STATUS_DISPLAY = {
   Hired: {
     summary: 'You were selected for this role.',
     progress: 100,
-    milestone: 'Offer reached',
+    milestone: 'Hired',
   },
 }
 

@@ -117,7 +117,7 @@ describe('applicationStatusDisplay', () => {
     ['Applied', 28, 'Waiting for review'],
     ['Shortlisted', 64, 'Shortlist reached'],
     ['Rejected', 100, 'Application closed'],
-    ['Hired', 100, 'Offer reached'],
+    ['Hired', 100, 'Hired'],
   ])('describes %s with text and progress', (status, progress, milestone) => {
     const display = applicationStatusDisplay(status)
     expect(display.summary).toBeTruthy()

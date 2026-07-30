@@ -212,11 +212,16 @@ export default function functionalTestApi() {
                 application.status === 'Shortlisted' && ['Hired', 'Rejected'].includes(target)
               )
               if (!legal) return json(response, 409, { title: 'Conflict' })
+              const statusUpdatedAt = new Date().toISOString()
               application.status = target
+              application.statusUpdatedAt = statusUpdatedAt
               const workerApplication = data.workerApplications.find((item) =>
                 item.jobPostId === application.jobId
                 && application.workerId === data.profiles.LookingForWork.id)
-              if (workerApplication) workerApplication.status = target
+              if (workerApplication) {
+                workerApplication.status = target
+                workerApplication.statusUpdatedAt = statusUpdatedAt
+              }
               if (target === 'Hired' || target === 'Rejected') {
                 data.notifications.LookingForWork.unshift({
                   id: idFor('f', data.nextNotification++),
@@ -281,6 +286,7 @@ export default function functionalTestApi() {
               if (data.workerApplications.some((item) => item.jobPostId === job.id)) {
                 return json(response, 409, { message: 'You have already applied to this job.' })
               }
+              const createdAt = new Date().toISOString()
               const application = {
                 id: idFor('a', data.nextApplication++),
                 jobPostId: job.id,
@@ -288,7 +294,8 @@ export default function functionalTestApi() {
                 workplaceName: job.workplaceName,
                 cityArea: job.cityArea,
                 status: 'Applied',
-                createdAt: new Date().toISOString(),
+                createdAt,
+                statusUpdatedAt: createdAt,
               }
               data.workerApplications.unshift(application)
               data.applications.unshift({

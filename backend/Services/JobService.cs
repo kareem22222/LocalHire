@@ -148,11 +148,20 @@ public sealed class JobService : IJobService
                 $"Application cannot move from {application.Status} to {target}.");
 
         application.Status = target;
+        application.StatusUpdatedAt = DateTimeOffset.UtcNow;
         if (target == ApplicationStatus.Shortlisted)
             _notifications.NotifyShortlisted(application.WorkerId, jobPost);
         else
             _notifications.NotifyApplicationOutcome(application.WorkerId, jobPost, target);
-        await _db.SaveChangesAsync(ct);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConflictException(
+                "Application status changed while this decision was being processed.");
+        }
 
         var worker = await _db.Users.FirstAsync(u => u.Id == application.WorkerId, ct);
 
@@ -554,13 +563,15 @@ public sealed class JobService : IJobService
         if (existing)
             throw new ConflictException("You have already applied to this job.");
 
+        var now = DateTimeOffset.UtcNow;
         var application = new JobApplication
         {
             Id = Guid.NewGuid(),
             JobPostId = jobId,
             WorkerId = workerId,
             Status = ApplicationStatus.Applied,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = now,
+            StatusUpdatedAt = now
         };
 
         _db.JobApplications.Add(application);
@@ -579,7 +590,8 @@ public sealed class JobService : IJobService
         return new JobApplicationResponse(
             application.Id, application.JobPostId, jobPost.Title,
             jobPost.WorkplaceName, jobPost.CityArea,
-            application.Status.ToString(), application.CreatedAt);
+            application.Status.ToString(), application.CreatedAt,
+            application.StatusUpdatedAt.Value);
     }
 
     public async Task<IReadOnlyList<JobApplicationResponse>> GetMyApplicationsAsync(Guid workerId, CancellationToken ct)
@@ -589,7 +601,8 @@ public sealed class JobService : IJobService
             .Select(a => new JobApplicationResponse(
                 a.Id, a.JobPostId, a.JobPost.Title,
                 a.JobPost.WorkplaceName, a.JobPost.CityArea,
-                a.Status.ToString(), a.CreatedAt))
+                a.Status.ToString(), a.CreatedAt,
+                a.StatusUpdatedAt ?? a.CreatedAt))
             .ToListAsync(ct);
 
         return applications.OrderByDescending(a => a.CreatedAt).ToList();

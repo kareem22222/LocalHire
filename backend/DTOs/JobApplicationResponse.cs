@@ -7,5 +7,6 @@ public sealed record JobApplicationResponse(
     string WorkplaceName,
     string CityArea,
     string Status,
-    DateTimeOffset CreatedAt
+    DateTimeOffset CreatedAt,
+    DateTimeOffset StatusUpdatedAt
 );

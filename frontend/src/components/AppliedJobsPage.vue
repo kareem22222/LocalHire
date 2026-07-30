@@ -103,7 +103,7 @@ function changePage(page) {
             </div>
 
             <div class="applied-card__summary">
-              <span><strong>Latest update</strong><small>Applied {{ new Date(application.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' }) }}</small></span>
+              <span><strong>Latest update</strong><small>Updated {{ new Date(application.statusUpdatedAt || application.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' }) }}</small></span>
               <p>{{ applicationStatusDisplay(application.status).summary }}</p>
               <b class="applied-card__link">View job <span aria-hidden="true">→</span></b>
             </div>

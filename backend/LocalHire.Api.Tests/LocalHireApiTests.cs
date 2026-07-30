@@ -346,6 +346,15 @@ public sealed class LocalHireApiTests
             $"/api/hiring/jobs/{job.Id}/applications/{applied.Id}/reject", null);
         Assert.Equal(HttpStatusCode.OK, rejected.StatusCode);
         Assert.Equal("Rejected", (await rejected.Content.ReadFromJsonAsync<ApplicantResponse>())!.Status);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", appliedWorkerToken);
+        var workerApplication = Assert.Single(
+            (await client.GetFromJsonAsync<List<JobApplicationResponse>>(
+                "/api/work/applications"))!);
+        Assert.Equal("Rejected", workerApplication.Status);
+        Assert.True(workerApplication.StatusUpdatedAt >= workerApplication.CreatedAt);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", ownerToken);
         Assert.Equal(HttpStatusCode.Conflict,
             (await client.PostAsync(
                 $"/api/hiring/jobs/{job.Id}/applications/{applied.Id}/hire", null)).StatusCode);
@@ -357,6 +366,59 @@ public sealed class LocalHireApiTests
             $"/api/hiring/jobs/{job.Id}/applications/{shortlisted.Id}/hire", null);
         Assert.Equal(HttpStatusCode.OK, hired.StatusCode);
         Assert.Equal("Hired", (await hired.Content.ReadFromJsonAsync<ApplicantResponse>())!.Status);
+    }
+
+    [Fact]
+    public async Task Concurrent_terminal_decisions_allow_one_winner_and_one_conflict()
+    {
+        using var factory = new ApiFactory();
+        using var setupClient = factory.CreateClient();
+        const string employerEmail = "concurrent-employer@example.com";
+        const string workerEmail = "concurrent-worker@example.com";
+
+        await Register(setupClient, "Employer", employerEmail, "Hiring");
+        await Register(setupClient, "Worker", workerEmail, "LookingForWork");
+        var employerToken = await Login(setupClient, employerEmail, "Hiring");
+        var workerToken = await Login(setupClient, workerEmail, "LookingForWork");
+
+        setupClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", employerToken);
+        var job = (await (await setupClient.PostAsJsonAsync("/api/hiring/jobs",
+            new CreateJobPostRequest("Cashier", "Front desk", "Corner Shop", "Bandra")))
+            .Content.ReadFromJsonAsync<JobPostResponse>())!;
+
+        setupClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", workerToken);
+        var application = (await (await setupClient.PostAsync(
+            $"/api/work/jobs/{job.Id}/apply", null))
+            .Content.ReadFromJsonAsync<JobApplicationResponse>())!;
+
+        setupClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", employerToken);
+        Assert.Equal(HttpStatusCode.OK, (await setupClient.PostAsync(
+            $"/api/hiring/jobs/{job.Id}/applications/{application.Id}/shortlist", null)).StatusCode);
+
+        using var hireClient = factory.CreateClient();
+        using var rejectClient = factory.CreateClient();
+        hireClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", employerToken);
+        rejectClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", employerToken);
+        var responses = await Task.WhenAll(
+            hireClient.PostAsync(
+                $"/api/hiring/jobs/{job.Id}/applications/{application.Id}/hire", null),
+            rejectClient.PostAsync(
+                $"/api/hiring/jobs/{job.Id}/applications/{application.Id}/reject", null));
+
+        Assert.Single(responses, response => response.StatusCode == HttpStatusCode.OK);
+        Assert.Single(responses, response => response.StatusCode == HttpStatusCode.Conflict);
+
+        setupClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", workerToken);
+        var notifications = (await setupClient.GetFromJsonAsync<NotificationListResponse>(
+            "/api/notifications"))!;
+        Assert.Single(notifications.Items,
+            item => item.Type is "Hired" or "Rejected");
     }
 
     [Fact]

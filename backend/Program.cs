@@ -188,9 +188,9 @@ if (!app.Environment.IsEnvironment("Test"))
 }
 
 // --- Middleware Pipeline ---
-app.UseMiddleware<ExceptionHandlingMiddleware>();
-
 app.UseSerilogRequestLogging(options => options.ExcludeHealthChecks());
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {

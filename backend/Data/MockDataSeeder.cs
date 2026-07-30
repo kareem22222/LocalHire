@@ -214,7 +214,8 @@ public static class MockDataSeeder
                     WorkerId = workerIds[sequence % WorkerCount],
                     WorkerRole = UserRole.LookingForWork,
                     Status = ApplicationStatuses[(jobIndex + applicationIndex) % ApplicationStatuses.Length],
-                    CreatedAt = now.AddMinutes(-sequence)
+                    CreatedAt = now.AddMinutes(-sequence),
+                    StatusUpdatedAt = now.AddMinutes(-sequence)
                 });
             }
         }

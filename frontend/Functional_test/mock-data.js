@@ -142,6 +142,9 @@ export function createMockData() {
     id: id('a', index + 1), jobPostId: item.id, jobTitle: item.title, workplaceName: item.workplaceName,
     cityArea: item.cityArea, status: statuses[index % statuses.length],
     createdAt: new Date(now.getTime() - index * 3_600_000).toISOString(),
+    statusUpdatedAt: new Date(
+      now.getTime() - index * 3_600_000 + (index % statuses.length === 0 ? 0 : 1_800_000),
+    ).toISOString(),
   }))
 
   return {
