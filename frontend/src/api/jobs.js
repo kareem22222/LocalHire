@@ -47,6 +47,18 @@ export function getNearbyCandidates(params = {}) {
   return api.get('/hiring/candidates/nearby', { params })
 }
 
+export function getSavedCandidates() {
+  return api.get('/hiring/saved-candidates')
+}
+
+export function saveCandidate(workerId) {
+  return api.post(`/hiring/saved-candidates/${workerId}`)
+}
+
+export function removeSavedCandidate(workerId) {
+  return api.delete(`/hiring/saved-candidates/${workerId}`)
+}
+
 // --- Worker ---
 export function getNearbyJobs(params = {}) {
   return api.get('/work/jobs/nearby', { params })
@@ -62,4 +74,16 @@ export function applyToJob(jobId) {
 
 export function getMyApplications() {
   return api.get('/work/applications')
+}
+
+export function getSavedJobs() {
+  return api.get('/work/saved-jobs')
+}
+
+export function saveJob(jobId) {
+  return api.post(`/work/saved-jobs/${jobId}`)
+}
+
+export function removeSavedJob(jobId) {
+  return api.delete(`/work/saved-jobs/${jobId}`)
 }

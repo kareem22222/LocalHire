@@ -101,6 +101,12 @@ onBeforeUnmount(() => {
 
 const openRoles = useOpenRoles(() => props.myJobs)
 const { isSaved, add: saveCandidate } = useSavedCandidates()
+const pipelineHealth = computed(() => {
+  const applicants = openRoles.value.reduce((total, job) => total + job.applicants, 0)
+  if (!applicants) return 0
+  const shortlisted = openRoles.value.reduce((total, job) => total + job.shortlisted, 0)
+  return Math.round(shortlisted * 100 / applicants)
+})
 
 // Instant client-side refinement over whatever the backend last returned, so the
 // list narrows as the employer types even before the debounced request lands.
@@ -174,8 +180,10 @@ function openCandidate(candidate) {
         >
           <div class="hiring-progress">
             <span>Pipeline health</span>
-            <strong>88%</strong>
-            <i><b></b></i>
+            <strong>{{ pipelineHealth }}%</strong>
+            <i role="progressbar" aria-label="Pipeline health" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="pipelineHealth">
+              <b :style="{ width: `${pipelineHealth}%` }"></b>
+            </i>
           </div>
         </AnimatedCard>
 

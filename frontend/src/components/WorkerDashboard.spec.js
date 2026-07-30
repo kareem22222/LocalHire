@@ -1,6 +1,10 @@
-import { mount } from '@vue/test-utils'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import api from '../api'
+import { clearSavedJobs } from '../composables/useSavedJobs'
 import WorkerDashboard from './WorkerDashboard.vue'
+
+vi.mock('../api', () => ({ default: { get: vi.fn(), post: vi.fn(), delete: vi.fn() } }))
 
 const job = {
   id: 'job-1', title: 'Cashier', workplaceName: 'Local Mart', description: 'Handle billing',
@@ -12,6 +16,13 @@ const job = {
 afterEach(() => vi.useRealTimers())
 
 describe('WorkerDashboard', () => {
+  beforeEach(() => {
+    clearSavedJobs()
+    api.get.mockReset().mockResolvedValue({ data: [] })
+    api.post.mockReset().mockResolvedValue({})
+    api.delete.mockReset().mockResolvedValue({})
+  })
+
   it('emits every dashboard, search, job, and application action', async () => {
     vi.useFakeTimers()
     const wrapper = mount(WorkerDashboard, {
@@ -20,12 +31,18 @@ describe('WorkerDashboard', () => {
     const progress = wrapper.get('progress')
 
     expect(progress.attributes('value')).toBe('95')
+    await wrapper.setProps({ user: { profileCompletionPercent: 40 } })
+    expect(progress.attributes('value')).toBe('40')
 
     await wrapper.findAll('button').find((item) => item.text() === 'Applied jobs').trigger('click')
     await wrapper.findAll('button').find((item) => item.text() === 'Update profile').trigger('click')
     await wrapper.find('.worker-search__location').trigger('click')
     await wrapper.find('.worker-job-row__main').trigger('click')
     await wrapper.find('.worker-job-row__details').trigger('click')
+    await wrapper.findAll('button').find((item) => item.text() === 'Save job').trigger('click')
+    await flushPromises()
+    const savedButton = wrapper.findAll('button').find((item) => item.text() === 'Saved job')
+    expect(savedButton.attributes('disabled')).toBeDefined()
     await wrapper.findAll('button').find((item) => item.text() === 'Apply now').trigger('click')
 
     await wrapper.find('input[type="search"]').setValue(' Cashier ')
@@ -39,6 +56,7 @@ describe('WorkerDashboard', () => {
     expect(wrapper.emitted('open-job')).toHaveLength(2)
     expect(wrapper.find('.worker-job-row__main').attributes('href')).toBe('/work/jobs/job-1')
     expect(wrapper.emitted('apply')[0]).toEqual(['job-1'])
+    expect(api.post).toHaveBeenCalledWith('/work/saved-jobs/job-1')
     expect(wrapper.emitted('search-jobs').at(-1)[0]).toEqual({ search: 'Cashier', employmentType: 'FullTime' })
     wrapper.unmount()
   })

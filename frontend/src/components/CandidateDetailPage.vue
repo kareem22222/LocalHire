@@ -146,12 +146,12 @@ async function downloadResume() {
             <div class="candidate-detail__tags">
               <span v-if="locationSummary" class="profile-badge">{{ locationSummary }}</span>
               <span v-if="memberSince" class="profile-badge profile-badge--muted">Member since {{ memberSince }}</span>
-              <span v-if="shortlisted" class="profile-badge profile-badge--role">Shortlisted</span>
+              <span v-if="shortlisted" class="profile-badge profile-badge--role">Saved candidate</span>
             </div>
           </div>
           <div class="candidate-detail__actions">
             <button type="button" class="dash-btn dash-btn--primary" :disabled="shortlisted" @click="shortlist">
-              {{ shortlisted ? 'Shortlisted' : 'Shortlist' }}
+              {{ shortlisted ? 'Saved candidate' : 'Save candidate' }}
             </button>
             <button type="button" class="dash-btn dash-btn--outline" @click="contact">Contact</button>
             <button

@@ -150,6 +150,8 @@ export function createMockData() {
   return {
     profiles: { Hiring: profile('Hiring'), LookingForWork: profile('LookingForWork') },
     jobs, candidates, applications, workerApplications,
+    savedCandidates: {},
+    savedJobs: {},
     notifications: { Hiring: [], LookingForWork: [] },
     nextJob: jobs.length + 1,
     nextApplication: workerApplications.length + 1,

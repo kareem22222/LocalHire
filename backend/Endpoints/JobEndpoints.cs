@@ -221,6 +221,46 @@ public static class JobEndpoints
         })
         .WithName("GetNearbyCandidates");
 
+        hiringGroup.MapGet("/saved-candidates", async (
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            return Results.Ok(await jobService.GetSavedCandidateIdsAsync(userId, ct));
+        })
+        .WithName("GetSavedCandidates");
+
+        hiringGroup.MapPost("/saved-candidates/{workerId:guid}", async (
+            Guid workerId,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            await jobService.SaveCandidateAsync(workerId, userId, ct);
+            return Results.NoContent();
+        })
+        .WithName("SaveCandidate");
+
+        hiringGroup.MapDelete("/saved-candidates/{workerId:guid}", async (
+            Guid workerId,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            await jobService.RemoveSavedCandidateAsync(workerId, userId, ct);
+            return Results.NoContent();
+        })
+        .WithName("RemoveSavedCandidate");
+
         // --- Worker endpoints ---
 
         workGroup.MapGet("/jobs/nearby", async (
@@ -278,5 +318,45 @@ public static class JobEndpoints
             return Results.Ok(applications);
         })
         .WithName("GetMyApplications");
+
+        workGroup.MapGet("/saved-jobs", async (
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            return Results.Ok(await jobService.GetSavedJobIdsAsync(userId, ct));
+        })
+        .WithName("GetSavedJobs");
+
+        workGroup.MapPost("/saved-jobs/{jobId:guid}", async (
+            Guid jobId,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            await jobService.SaveJobAsync(jobId, userId, ct);
+            return Results.NoContent();
+        })
+        .WithName("SaveJob");
+
+        workGroup.MapDelete("/saved-jobs/{jobId:guid}", async (
+            Guid jobId,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            await jobService.RemoveSavedJobAsync(jobId, userId, ct);
+            return Results.NoContent();
+        })
+        .WithName("RemoveSavedJob");
     }
 }

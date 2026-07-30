@@ -123,10 +123,28 @@ public sealed class CachedJobService : IJobService
         return result;
     }
 
+    public Task<IReadOnlyList<Guid>> GetSavedCandidateIdsAsync(Guid employerId, CancellationToken ct) =>
+        _inner.GetSavedCandidateIdsAsync(employerId, ct);
+
+    public Task SaveCandidateAsync(Guid workerId, Guid employerId, CancellationToken ct) =>
+        _inner.SaveCandidateAsync(workerId, employerId, ct);
+
+    public Task RemoveSavedCandidateAsync(Guid workerId, Guid employerId, CancellationToken ct) =>
+        _inner.RemoveSavedCandidateAsync(workerId, employerId, ct);
+
     public Task<IReadOnlyList<JobApplicationResponse>> GetMyApplicationsAsync(
         Guid workerId, CancellationToken ct) =>
         GetOrCreateAsync($"worker:{workerId}:applications",
             () => _inner.GetMyApplicationsAsync(workerId, ct));
+
+    public Task<IReadOnlyList<Guid>> GetSavedJobIdsAsync(Guid workerId, CancellationToken ct) =>
+        _inner.GetSavedJobIdsAsync(workerId, ct);
+
+    public Task SaveJobAsync(Guid jobId, Guid workerId, CancellationToken ct) =>
+        _inner.SaveJobAsync(jobId, workerId, ct);
+
+    public Task RemoveSavedJobAsync(Guid jobId, Guid workerId, CancellationToken ct) =>
+        _inner.RemoveSavedJobAsync(jobId, workerId, ct);
 
     private async Task<T> GetOrCreateAsync<T>(string key, Func<Task<T>> factory)
     {

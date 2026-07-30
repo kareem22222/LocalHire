@@ -117,6 +117,7 @@ describe('AllCandidatesPage', () => {
     await wrapper.find('.candidate-card__select').trigger('click')
     await wrapper.find('.candidate-actions__ghost').trigger('click')
     await wrapper.find('.candidate-actions button').trigger('click')
+    await flushPromises()
 
     expect(push).toHaveBeenCalledWith({ name: 'candidate-detail', params: { id: candidate.id } })
     expect(push).toHaveBeenCalledWith({

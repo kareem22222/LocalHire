@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { getSavedCandidates, removeSavedCandidate, saveCandidate } from '../api/jobs.js'
+import { getSavedJobs, removeSavedJob, saveJob } from '../api/jobs.js'
 
 const saved = ref(new Set())
 let loaded = false
@@ -20,7 +20,7 @@ async function load() {
   if (loadPromise) return loadPromise
 
   const currentGeneration = generation
-  loadPromise = getSavedCandidates()
+  loadPromise = getSavedJobs()
     .then(({ data }) => {
       if (currentGeneration !== generation) return
       saved.value = new Set(data)
@@ -32,7 +32,7 @@ async function load() {
   return loadPromise
 }
 
-export function clearSavedCandidates() {
+export function clearSavedJobs() {
   generation += 1
   loaded = false
   loadPromise = null
@@ -40,43 +40,33 @@ export function clearSavedCandidates() {
   saved.value = new Set()
 }
 
-export function useSavedCandidates() {
+export function useSavedJobs() {
   void load().catch(() => {})
 
   function isSaved(id) {
     return id != null && saved.value.has(id)
   }
 
-  async function add(id) {
+  async function toggle(id) {
     if (id == null) return
     const currentGeneration = generation
     return enqueue(id, async () => {
       await load().catch(() => {})
-      if (currentGeneration !== generation || saved.value.has(id)) return
-      saved.value = new Set([...saved.value, id])
+      if (currentGeneration !== generation) return
+      const wasSaved = saved.value.has(id)
+      saved.value = wasSaved
+        ? new Set([...saved.value].filter((savedId) => savedId !== id))
+        : new Set([...saved.value, id])
       try {
-        await saveCandidate(id)
+        await (wasSaved ? removeSavedJob(id) : saveJob(id))
       } catch {
-        if (currentGeneration === generation)
-          saved.value = new Set([...saved.value].filter((savedId) => savedId !== id))
+        if (currentGeneration !== generation) return
+        saved.value = wasSaved
+          ? new Set([...saved.value, id])
+          : new Set([...saved.value].filter((savedId) => savedId !== id))
       }
     })
   }
 
-  async function remove(id) {
-    const currentGeneration = generation
-    return enqueue(id, async () => {
-      await load().catch(() => {})
-      if (currentGeneration !== generation || !saved.value.has(id)) return
-      saved.value = new Set([...saved.value].filter((savedId) => savedId !== id))
-      try {
-        await removeSavedCandidate(id)
-      } catch {
-        if (currentGeneration === generation)
-          saved.value = new Set([...saved.value, id])
-      }
-    })
-  }
-
-  return { saved, isSaved, add, remove, load }
+  return { saved, isSaved, toggle, load }
 }

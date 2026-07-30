@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { clearSavedCandidates } from '../composables/useSavedCandidates'
+import { clearSavedJobs } from '../composables/useSavedJobs'
 
 const api = axios.create({
   baseURL: '/api',
@@ -59,6 +60,7 @@ export function clearAuth() {
     // Ignore storage errors.
   }
   clearSavedCandidates()
+  clearSavedJobs()
   try {
     window.history.replaceState({}, '', '/')
   } catch {

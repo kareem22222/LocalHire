@@ -1,5 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('./jobs.js', () => ({
+  getSavedCandidates: vi.fn(() => Promise.resolve({ data: [] })),
+  saveCandidate: vi.fn(() => Promise.resolve()),
+  removeSavedCandidate: vi.fn(() => Promise.resolve()),
+  getSavedJobs: vi.fn(() => Promise.resolve({ data: [] })),
+  saveJob: vi.fn(() => Promise.resolve()),
+  removeSavedJob: vi.fn(() => Promise.resolve()),
+}))
+
 const TOKEN_STORAGE_KEY = 'localhire.accessToken'
 
 describe('api auth persistence', () => {
@@ -20,16 +29,20 @@ describe('api auth persistence', () => {
 
   it('clears account-scoped browser state on clearAuth', async () => {
     const { useSavedCandidates } = await import('../composables/useSavedCandidates.js')
+    const { useSavedJobs } = await import('../composables/useSavedJobs.js')
     const { setAuth, clearAuth } = await import('./index.js')
-    const { add, isSaved } = useSavedCandidates()
+    const candidates = useSavedCandidates()
+    const jobs = useSavedJobs()
+    await Promise.all([candidates.load(), jobs.load()])
     setAuth('token-123')
-    add('candidate-1')
+    await candidates.add('candidate-1')
+    await jobs.toggle('job-1')
     localStorage.setItem('dashboard_tab', 'profile')
     window.history.replaceState({}, '', '/hiring/roles')
     clearAuth()
     expect(localStorage.getItem(TOKEN_STORAGE_KEY)).toBeNull()
-    expect(isSaved('candidate-1')).toBe(false)
-    expect(localStorage.getItem('localhire.savedCandidates')).toBeNull()
+    expect(candidates.isSaved('candidate-1')).toBe(false)
+    expect(jobs.isSaved('job-1')).toBe(false)
     expect(localStorage.getItem('dashboard_tab')).toBeNull()
     expect(window.location.pathname).toBe('/')
   })

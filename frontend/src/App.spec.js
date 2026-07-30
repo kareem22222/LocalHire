@@ -2,7 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
-import { isAuthenticated } from './api'
+import api, { isAuthenticated } from './api'
 import confetti from 'canvas-confetti'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -53,7 +53,7 @@ function mountAppWithAuthMode(mode, router = createTestRouter()) {
         StaggeredMenu: {
           props: ['items', 'account'],
           emits: ['select'],
-          template: `<div class="fake-menu"><button class="fake-menu-profile" @click="$emit('select', { action: 'profile' })">Profile</button><button class="fake-menu-logout" @click="$emit('select', { action: 'logout' })">Sign out</button></div>`,
+          template: `<div class="fake-menu"><button v-for="item in items" :key="item.label" class="fake-menu-item" @click="$emit('select', item)">{{ item.label }}</button><button class="fake-menu-profile" @click="$emit('select', { action: 'profile' })">Profile</button><button class="fake-menu-logout" @click="$emit('select', { action: 'logout' })">Sign out</button></div>`,
         },
       },
     },
@@ -141,7 +141,35 @@ describe('App signup confetti', () => {
 describe('App authenticated menu', () => {
   beforeEach(() => {
     isAuthenticated.mockResolvedValue(true)
+    api.get.mockResolvedValue({ data: { name: 'Pat', email: 'pat@example.com', role: 'Hiring' } })
     logout.mockClear()
+  })
+
+  it('shows workers a menu link to their saved jobs', async () => {
+    api.get.mockResolvedValue({ data: { name: 'Pat', email: 'pat@example.com', role: 'LookingForWork' } })
+    const router = createTestRouter()
+    const wrapper = mountAppWithAuthMode('login', router)
+    await flushPromises()
+
+    const item = wrapper.findAll('.fake-menu-item').find((button) => button.text() === 'Saved jobs')
+    expect(item).toBeTruthy()
+    await item.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/work/saved-jobs')
+    wrapper.unmount()
+  })
+
+  it('shows employers a menu link to their saved candidates', async () => {
+    const router = createTestRouter()
+    const wrapper = mountAppWithAuthMode('login', router)
+    await flushPromises()
+
+    const item = wrapper.findAll('.fake-menu-item').find((button) => button.text() === 'Saved candidates')
+    expect(item).toBeTruthy()
+    await item.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/hiring/saved-candidates')
+    wrapper.unmount()
   })
 
   it('routes profile and sign out actions from StaggeredMenu', async () => {

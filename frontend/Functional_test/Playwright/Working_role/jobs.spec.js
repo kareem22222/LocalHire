@@ -28,6 +28,34 @@ test('shows complete job details and a safe application state', async ({ page })
   await expect(page.getByRole('button', { name: /Apply now|Applied/ })).toBeVisible()
 })
 
+test('saves a job across the list, detail page, and reload', async ({ page }) => {
+  test.slow()
+  const firstJob = page.locator('article.worker-job-row').first()
+  const jobTitle = await firstJob.getByRole('heading').textContent()
+  const jobId = (await firstJob.getByRole('link', { name: /View details/ }).getAttribute('href')).split('/').at(-1)
+  await firstJob.getByRole('button', { name: /^Save / }).click()
+  await expect(firstJob.locator('.worker-job-row__save')).toHaveText('Saved job')
+  await expect(firstJob.locator('.worker-job-row__save')).toBeDisabled()
+  const unsupportedStatuses = await page.evaluate(async (id) => {
+    const headers = { Authorization: `Bearer ${localStorage.getItem('localhire.accessToken')}` }
+    return Promise.all(['GET', 'PUT'].map((method) =>
+      fetch(`/api/work/saved-jobs/${id}`, { method, headers }).then((response) => response.status)))
+  }, jobId)
+  expect(unsupportedStatuses).toEqual([404, 404])
+
+  await firstJob.getByRole('link', { name: /View details/ }).click()
+  await expect(page.getByRole('button', { name: 'Saved job' })).toBeDisabled()
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Saved job' })).toBeDisabled()
+
+  await page.getByRole('button', { name: 'Menu' }).click()
+  await page.getByRole('button', { name: /^Saved jobs/ }).click()
+  await expect(page).toHaveURL(/\/work\/saved-jobs$/)
+  await expect(page.getByRole('heading', { name: 'Saved jobs' })).toBeVisible()
+  await expect(page.locator('article.worker-job-row').filter({ hasText: jobTitle })).toBeVisible()
+  await expect(page.locator('article.worker-job-row').filter({ hasText: jobTitle }).locator('.worker-job-row__save')).toBeDisabled()
+})
+
 test('returns from job details to the dashboard', async ({ page }) => {
   await page.locator('article.worker-job-row').first().getByRole('link', { name: 'View details →' }).click()
   await page.getByRole('button', { name: 'Back', exact: true }).click()

@@ -3,17 +3,20 @@ using System;
 using LocalHire.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace LocalHire.Api.Migrations
+namespace LocalHire.Api.Data.Migrations
 {
     [DbContext(typeof(LocalHireDbContext))]
-    partial class LocalHireDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260730053026_AddSavedCandidates")]
+    partial class AddSavedCandidates
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -240,67 +243,17 @@ namespace LocalHire.Api.Migrations
                     b.Property<Guid>("EmployerId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("EmployerRole")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("Hiring");
-
                     b.Property<Guid>("WorkerId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("WorkerRole")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("LookingForWork");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("EmployerId", "EmployerRole");
+                    b.HasIndex("WorkerId");
 
                     b.HasIndex("EmployerId", "WorkerId")
                         .IsUnique();
 
-                    b.HasIndex("WorkerId", "WorkerRole");
-
                     b.ToTable("SavedCandidates");
-                });
-
-            modelBuilder.Entity("LocalHire.Api.Models.SavedJob", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("JobPostId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("WorkerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("WorkerRole")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("LookingForWork");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("JobPostId");
-
-                    b.HasIndex("WorkerId", "JobPostId")
-                        .IsUnique();
-
-                    b.HasIndex("WorkerId", "WorkerRole");
-
-                    b.ToTable("SavedJobs");
                 });
 
             modelBuilder.Entity("LocalHire.Api.Models.User", b =>
@@ -481,15 +434,13 @@ namespace LocalHire.Api.Migrations
                 {
                     b.HasOne("LocalHire.Api.Models.User", "Employer")
                         .WithMany("SavedCandidates")
-                        .HasForeignKey("EmployerId", "EmployerRole")
-                        .HasPrincipalKey("Id", "Role")
+                        .HasForeignKey("EmployerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("LocalHire.Api.Models.User", "Worker")
                         .WithMany("SavedByEmployers")
-                        .HasForeignKey("WorkerId", "WorkerRole")
-                        .HasPrincipalKey("Id", "Role")
+                        .HasForeignKey("WorkerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -498,31 +449,9 @@ namespace LocalHire.Api.Migrations
                     b.Navigation("Worker");
                 });
 
-            modelBuilder.Entity("LocalHire.Api.Models.SavedJob", b =>
-                {
-                    b.HasOne("LocalHire.Api.Models.JobPost", "JobPost")
-                        .WithMany("SavedByWorkers")
-                        .HasForeignKey("JobPostId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("LocalHire.Api.Models.User", "Worker")
-                        .WithMany("SavedJobs")
-                        .HasForeignKey("WorkerId", "WorkerRole")
-                        .HasPrincipalKey("Id", "Role")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("JobPost");
-
-                    b.Navigation("Worker");
-                });
-
             modelBuilder.Entity("LocalHire.Api.Models.JobPost", b =>
                 {
                     b.Navigation("Applications");
-
-                    b.Navigation("SavedByWorkers");
                 });
 
             modelBuilder.Entity("LocalHire.Api.Models.User", b =>
@@ -536,8 +465,6 @@ namespace LocalHire.Api.Migrations
                     b.Navigation("SavedByEmployers");
 
                     b.Navigation("SavedCandidates");
-
-                    b.Navigation("SavedJobs");
                 });
 #pragma warning restore 612, 618
         }

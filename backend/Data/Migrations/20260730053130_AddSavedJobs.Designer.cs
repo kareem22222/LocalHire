@@ -3,17 +3,20 @@ using System;
 using LocalHire.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace LocalHire.Api.Migrations
+namespace LocalHire.Api.Data.Migrations
 {
     [DbContext(typeof(LocalHireDbContext))]
-    partial class LocalHireDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260730053130_AddSavedJobs")]
+    partial class AddSavedJobs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -240,31 +243,15 @@ namespace LocalHire.Api.Migrations
                     b.Property<Guid>("EmployerId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("EmployerRole")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("Hiring");
-
                     b.Property<Guid>("WorkerId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("WorkerRole")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("LookingForWork");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("EmployerId", "EmployerRole");
+                    b.HasIndex("WorkerId");
 
                     b.HasIndex("EmployerId", "WorkerId")
                         .IsUnique();
-
-                    b.HasIndex("WorkerId", "WorkerRole");
 
                     b.ToTable("SavedCandidates");
                 });
@@ -284,21 +271,12 @@ namespace LocalHire.Api.Migrations
                     b.Property<Guid>("WorkerId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("WorkerRole")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("LookingForWork");
-
                     b.HasKey("Id");
 
                     b.HasIndex("JobPostId");
 
                     b.HasIndex("WorkerId", "JobPostId")
                         .IsUnique();
-
-                    b.HasIndex("WorkerId", "WorkerRole");
 
                     b.ToTable("SavedJobs");
                 });
@@ -481,15 +459,13 @@ namespace LocalHire.Api.Migrations
                 {
                     b.HasOne("LocalHire.Api.Models.User", "Employer")
                         .WithMany("SavedCandidates")
-                        .HasForeignKey("EmployerId", "EmployerRole")
-                        .HasPrincipalKey("Id", "Role")
+                        .HasForeignKey("EmployerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("LocalHire.Api.Models.User", "Worker")
                         .WithMany("SavedByEmployers")
-                        .HasForeignKey("WorkerId", "WorkerRole")
-                        .HasPrincipalKey("Id", "Role")
+                        .HasForeignKey("WorkerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -508,8 +484,7 @@ namespace LocalHire.Api.Migrations
 
                     b.HasOne("LocalHire.Api.Models.User", "Worker")
                         .WithMany("SavedJobs")
-                        .HasForeignKey("WorkerId", "WorkerRole")
-                        .HasPrincipalKey("Id", "Role")
+                        .HasForeignKey("WorkerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

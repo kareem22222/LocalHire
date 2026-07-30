@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useSavedJobs } from '../composables/useSavedJobs'
 import { useJobsStore } from '../stores/jobs'
 import {
   formatEmploymentType,
@@ -14,6 +15,7 @@ import BrandLogo from './BrandLogo.vue'
 const props = defineProps({ id: { type: String, required: true } })
 const router = useRouter()
 const jobsStore = useJobsStore()
+const { isSaved: isJobSaved, toggle: toggleSavedJob } = useSavedJobs()
 const job = ref(null)
 const loading = ref(true)
 const applying = ref(false)
@@ -82,6 +84,15 @@ async function apply() {
           </div>
           <div class="worker-detail-actions">
             <button type="button" class="dash-btn worker-outline" @click="router.push('/')">Back</button>
+            <button
+              type="button"
+              class="dash-btn worker-outline"
+              :aria-pressed="isJobSaved(job.id)"
+              :disabled="isJobSaved(job.id)"
+              @click="toggleSavedJob(job.id)"
+            >
+              {{ isJobSaved(job.id) ? 'Saved job' : 'Save job' }}
+            </button>
             <button type="button" class="dash-btn worker-primary" :disabled="application || applying" @click="apply">
               {{ application ? 'Applied' : applying ? 'Applying...' : 'Apply now' }}
             </button>

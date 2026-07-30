@@ -1,16 +1,19 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import api from '../api'
+import { clearSavedJobs } from '../composables/useSavedJobs'
 import { createTestRouter } from '../test/router'
 import AllWorkerJobsPage from './AllWorkerJobsPage.vue'
 
-vi.mock('../api', () => ({ default: { get: vi.fn(), post: vi.fn(), put: vi.fn() } }))
+vi.mock('../api', () => ({ default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() } }))
 vi.mock('../utils/minimumDelay', () => ({ withMinimumDelay: (task) => task() }))
 
 describe('AllWorkerJobsPage', () => {
   beforeEach(() => {
+    clearSavedJobs()
     api.get.mockReset()
     api.post.mockReset()
+    api.delete.mockReset()
     api.post.mockResolvedValue({ data: {} })
   })
 
@@ -37,6 +40,10 @@ describe('AllWorkerJobsPage', () => {
     await flushPromises()
     expect(wrapper.findAll('.worker-job-row')).toHaveLength(1)
     expect(wrapper.text()).toContain('Page 2 of 2')
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Save job').trigger('click')
+    await flushPromises()
+    expect(api.post).toHaveBeenCalledWith('/work/saved-jobs/job-6')
 
     await wrapper.findAll('button').find((button) => button.text() === 'Apply now').trigger('click')
     await flushPromises()

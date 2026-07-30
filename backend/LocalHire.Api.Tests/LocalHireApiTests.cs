@@ -474,6 +474,36 @@ public sealed class LocalHireApiTests
             CreatedAt = DateTimeOffset.UtcNow
         });
         await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+
+        db.ChangeTracker.Clear();
+        db.SavedCandidates.Add(new SavedCandidate
+        {
+            Id = Guid.NewGuid(),
+            EmployerId = employer.Id,
+            WorkerId = employer.Id,
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+
+        db.ChangeTracker.Clear();
+        db.SavedCandidates.Add(new SavedCandidate
+        {
+            Id = Guid.NewGuid(),
+            EmployerId = worker.Id,
+            WorkerId = worker.Id,
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+
+        db.ChangeTracker.Clear();
+        db.SavedJobs.Add(new SavedJob
+        {
+            Id = Guid.NewGuid(),
+            WorkerId = employer.Id,
+            JobPostId = job.Id,
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
     }
 
     [Fact]

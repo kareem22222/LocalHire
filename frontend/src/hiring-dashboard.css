@@ -480,10 +480,15 @@
 
 .hiring-progress b {
   display: block;
-  width: 88%;
+  width: 0;
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, #07559a, #0966ad);
+  transition: width 0.25s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hiring-progress b { transition: none; }
 }
 
 .candidate-list__head {

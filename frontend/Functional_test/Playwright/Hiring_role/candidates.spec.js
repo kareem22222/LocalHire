@@ -49,12 +49,29 @@ test('shows contact details from the candidate card', async ({ page }) => {
   await expect(page.getByRole('link', { name: /@/ })).toHaveAttribute('href', /^mailto:/)
 })
 
-test('shortlists a candidate in account-scoped browser state', async ({ page }) => {
+test('saves a candidate in account-scoped state', async ({ page }) => {
+  test.slow()
   const card = page.locator('article.candidate-card').first()
-  await card.getByRole('button', { name: 'Shortlist', exact: true }).click()
-  await expect(card.getByRole('button', { name: 'Shortlisted', exact: true })).toBeDisabled()
+  const candidateName = await card.getByRole('heading').textContent()
+  await card.getByRole('button', { name: 'Save candidate', exact: true }).click()
+  await expect(card.getByRole('button', { name: 'Saved candidate', exact: true })).toBeDisabled()
+  const unsupportedStatuses = await page.evaluate(async () => {
+    const headers = { Authorization: `Bearer ${localStorage.getItem('localhire.accessToken')}` }
+    const [candidateId] = await fetch('/api/hiring/saved-candidates', { headers }).then((response) => response.json())
+    return Promise.all(['GET', 'PUT'].map((method) =>
+      fetch(`/api/hiring/saved-candidates/${candidateId}`, { method, headers }).then((response) => response.status)))
+  })
+  expect(unsupportedStatuses).toEqual([404, 404])
   await page.reload()
-  await expect(page.locator('article.candidate-card').first().getByRole('button', { name: 'Shortlisted', exact: true })).toBeDisabled()
+  await expect(page.locator('article.candidate-card').first().getByRole('button', { name: 'Saved candidate', exact: true })).toBeDisabled()
+
+  await page.getByRole('button', { name: 'Menu' }).click()
+  await page.getByRole('button', { name: /^Saved candidates/ }).click()
+  await expect(page).toHaveURL(/\/hiring\/saved-candidates$/)
+  await expect(page.getByRole('heading', { name: 'Saved candidates' })).toBeVisible()
+  const savedCard = page.locator('article.candidate-card').filter({ hasText: candidateName })
+  await expect(savedCard).toBeVisible()
+  await expect(savedCard.getByRole('button', { name: 'Saved candidate', exact: true })).toBeDisabled()
 })
 
 
