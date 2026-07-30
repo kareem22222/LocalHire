@@ -33,12 +33,33 @@ public sealed class MockDataSeederTests
         database.ChangeTracker.Clear();
 
         await MockDataSeeder.SeedAsync(database);
+        var seededApplications = await database.JobApplications
+            .OrderBy(application => application.Id)
+            .Take(2)
+            .ToListAsync();
+        seededApplications[0].StatusUpdatedAt = null;
+        var preservedStatusTimestamp = seededApplications[1].CreatedAt.AddHours(1);
+        seededApplications[1].StatusUpdatedAt = preservedStatusTimestamp;
+        await database.SaveChangesAsync();
+        database.ChangeTracker.Clear();
         await MockDataSeeder.SeedAsync(database);
 
         Assert.Equal(15, await database.Users.CountAsync(user => user.Role == UserRole.Hiring));
         Assert.Equal(35, await database.Users.CountAsync(user => user.Role == UserRole.LookingForWork));
         Assert.Equal(1_000, await database.JobPosts.CountAsync());
         Assert.Equal(10_000, await database.JobApplications.CountAsync());
+        Assert.Equal(
+            seededApplications[0].CreatedAt,
+            await database.JobApplications
+                .Where(application => application.Id == seededApplications[0].Id)
+                .Select(application => application.StatusUpdatedAt)
+                .SingleAsync());
+        Assert.Equal(
+            preservedStatusTimestamp,
+            await database.JobApplications
+                .Where(application => application.Id == seededApplications[1].Id)
+                .Select(application => application.StatusUpdatedAt)
+                .SingleAsync());
 
         var demoUsers = await database.Users
             .Where(user => user.Email == MockDataSeeder.DemoEmail)

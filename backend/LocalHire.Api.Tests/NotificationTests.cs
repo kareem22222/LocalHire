@@ -77,6 +77,64 @@ public sealed class NotificationTests
     }
 
     [Fact]
+    public async Task Outcomes_create_one_worker_notification_and_repeated_calls_create_none()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+        const string rejectedEmail = "rejected-worker@example.com";
+        const string hiredEmail = "hired-worker@example.com";
+
+        await Register(client, "Employer", EmployerEmail, "Hiring");
+        await Register(client, "Rejected Worker", rejectedEmail, "LookingForWork");
+        await Register(client, "Hired Worker", hiredEmail, "LookingForWork");
+        var employerToken = await Login(client, EmployerEmail, "Hiring");
+        var rejectedToken = await Login(client, rejectedEmail, "LookingForWork");
+        var hiredToken = await Login(client, hiredEmail, "LookingForWork");
+
+        client.DefaultRequestHeaders.Authorization = Bearer(employerToken);
+        var job = (await (await client.PostAsJsonAsync("/api/hiring/jobs",
+            new CreateJobPostRequest("Cashier", "Front desk", "Corner Shop", "Bandra")))
+            .Content.ReadFromJsonAsync<JobPostResponse>())!;
+
+        client.DefaultRequestHeaders.Authorization = Bearer(rejectedToken);
+        await client.PostAsync($"/api/work/jobs/{job.Id}/apply", null);
+        client.DefaultRequestHeaders.Authorization = Bearer(hiredToken);
+        await client.PostAsync($"/api/work/jobs/{job.Id}/apply", null);
+
+        client.DefaultRequestHeaders.Authorization = Bearer(employerToken);
+        var applicants = (await client.GetFromJsonAsync<List<ApplicantResponse>>(
+            $"/api/hiring/jobs/{job.Id}/applications"))!;
+        var rejected = applicants.Single(item => item.WorkerName == "Rejected Worker");
+        var hired = applicants.Single(item => item.WorkerName == "Hired Worker");
+
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync(
+            $"/api/hiring/jobs/{job.Id}/applications/{rejected.Id}/reject", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsync(
+            $"/api/hiring/jobs/{job.Id}/applications/{rejected.Id}/reject", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync(
+            $"/api/hiring/jobs/{job.Id}/applications/{hired.Id}/shortlist", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync(
+            $"/api/hiring/jobs/{job.Id}/applications/{hired.Id}/hire", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsync(
+            $"/api/hiring/jobs/{job.Id}/applications/{hired.Id}/hire", null)).StatusCode);
+
+        client.DefaultRequestHeaders.Authorization = Bearer(rejectedToken);
+        var rejectedNotifications = (await client.GetFromJsonAsync<NotificationListResponse>(
+            "/api/notifications"))!;
+        var rejection = Assert.Single(
+            rejectedNotifications.Items, item => item.Type == "Rejected");
+        Assert.Equal("/work/applications", rejection.Link);
+        Assert.DoesNotContain("rejected", rejection.Message, StringComparison.OrdinalIgnoreCase);
+
+        client.DefaultRequestHeaders.Authorization = Bearer(hiredToken);
+        var hiredNotifications = (await client.GetFromJsonAsync<NotificationListResponse>(
+            "/api/notifications"))!;
+        Assert.Single(hiredNotifications.Items, item => item.Type == "Shortlisted");
+        var offer = Assert.Single(hiredNotifications.Items, item => item.Type == "Hired");
+        Assert.Equal("/work/applications", offer.Link);
+    }
+
+    [Fact]
     public async Task Read_all_is_idempotent_scoped_and_requires_auth()
     {
         using var factory = new ApiFactory();

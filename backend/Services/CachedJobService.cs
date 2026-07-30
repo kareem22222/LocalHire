@@ -63,6 +63,19 @@ public sealed class CachedJobService : IJobService
         return result;
     }
 
+    public async Task<ApplicantResponse> SetApplicationStatusAsync(
+        Guid jobId,
+        Guid applicationId,
+        ApplicationStatus target,
+        Guid employerId,
+        CancellationToken ct)
+    {
+        var result = await _inner.SetApplicationStatusAsync(
+            jobId, applicationId, target, employerId, ct);
+        _version.Invalidate();
+        return result;
+    }
+
     public Task<CandidateDetailResponse> GetCandidateDetailAsync(
         Guid workerId, Guid employerId, CancellationToken ct) =>
         GetOrCreateAsync($"candidate-detail:{employerId}:{workerId}",

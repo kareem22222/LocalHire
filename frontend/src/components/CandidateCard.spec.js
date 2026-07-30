@@ -40,4 +40,26 @@ describe('CandidateCard', () => {
     expect(wrapper.text()).toContain('Location not shared')
     expect(wrapper.find('.candidate-actions button').attributes('disabled')).toBeDefined()
   })
+
+  it.each([
+    ['Applied', ['Shortlist', 'Reject', 'Contact']],
+    ['Shortlisted', ['Hire', 'Reject', 'Contact']],
+    ['Hired', []],
+    ['Rejected', []],
+  ])('shows only legal application actions for %s', (status, actions) => {
+    const wrapper = mount(CandidateCard, {
+      props: {
+        candidate: {
+          id: 'candidate-1',
+          applicationId: 'application-1',
+          name: 'Ravi Kumar',
+          status,
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain(status)
+    expect(wrapper.findAll('.candidate-actions button').map((button) => button.text()))
+      .toEqual(actions)
+  })
 })

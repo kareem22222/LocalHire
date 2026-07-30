@@ -88,16 +88,26 @@ export const useJobsStore = defineStore('jobs', () => {
     })
   }
 
-  // Persistently move an applicant into the shortlisted state. Invalidates the
-  // affected job's application cache and the employer's role list so the
-  // shortlisted counts/pages reflect the change on the next read.
-  async function shortlistApplicant(jobId, applicationId) {
-    const { data } = await jobsApi.shortlistApplicant(jobId, applicationId)
-    applicationsFetchedAt.value[jobId] = 0
+  async function updateApplicant(jobId, applicationId, request) {
+    const { data } = await request(jobId, applicationId)
+    if (applicationsByJob.value[jobId]) {
+      applicationsByJob.value[jobId] = applicationsByJob.value[jobId]
+        .map((application) => application.id === applicationId ? data : application)
+      applicationsFetchedAt.value[jobId] = Date.now()
+    }
     jobFetchedAt.value[jobId] = 0
     myJobsFetchedAt.value = 0
     return data
   }
+
+  const shortlistApplicant = (jobId, applicationId) =>
+    updateApplicant(jobId, applicationId, jobsApi.shortlistApplicant)
+
+  const rejectApplicant = (jobId, applicationId) =>
+    updateApplicant(jobId, applicationId, jobsApi.rejectApplicant)
+
+  const hireApplicant = (jobId, applicationId) =>
+    updateApplicant(jobId, applicationId, jobsApi.hireApplicant)
 
   async function loadCandidate(id, { force = false } = {}) {
     const cached = candidatesById.value[id]
@@ -227,6 +237,8 @@ export const useJobsStore = defineStore('jobs', () => {
     loadJob,
     loadJobApplications,
     shortlistApplicant,
+    rejectApplicant,
+    hireApplicant,
     loadCandidate,
     loadNearbyJobs,
     loadWorkerJob,

@@ -1,13 +1,18 @@
 <script setup>
+import { computed } from 'vue'
 import { moveSpotlight, resetSpotlight } from '../utils/spotlightCard'
 
-defineProps({
+const props = defineProps({
   candidate: { type: Object, required: true },
-  // Marks the card as already shortlisted so the button reflects the state.
   shortlisted: { type: Boolean, default: false },
+  busy: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['shortlist', 'contact', 'select'])
+const emit = defineEmits(['shortlist', 'reject', 'hire', 'contact', 'select'])
+const applicationStatus = computed(() =>
+  props.candidate.applicationId ? props.candidate.status : null)
+const canDecide = computed(() =>
+  applicationStatus.value === 'Applied' || applicationStatus.value === 'Shortlisted')
 
 function candidateLocation(candidate) {
   return [candidate.area, candidate.state].filter(Boolean).join(', ') || 'Location not shared'
@@ -45,17 +50,39 @@ function select(candidate) {
         <span v-if="candidate.distanceKm != null">{{ candidate.distanceKm }} km away</span>
         <span v-if="candidate.pincode">PIN {{ candidate.pincode }}</span>
         <span v-if="candidate.role">{{ candidate.role }}</span>
+        <span v-if="applicationStatus" class="candidate-card__status">{{ applicationStatus }}</span>
       </div>
     </div>
-    <div class="candidate-actions">
-      <button
-        type="button"
-        :disabled="shortlisted"
-        @click.stop="$emit('shortlist', candidate)"
-      >
-        {{ shortlisted ? 'Shortlisted' : 'Shortlist' }}
-      </button>
-      <button type="button" class="candidate-actions__ghost" @click.stop="$emit('contact', candidate)">Contact</button>
+    <div v-if="!applicationStatus || canDecide" class="candidate-actions">
+      <template v-if="applicationStatus">
+        <button
+          v-if="applicationStatus === 'Applied'"
+          type="button"
+          :disabled="busy"
+          @click.stop="$emit('shortlist', candidate)"
+        >Shortlist</button>
+        <button
+          v-if="applicationStatus === 'Shortlisted'"
+          type="button"
+          :disabled="busy"
+          @click.stop="$emit('hire', candidate)"
+        >Hire</button>
+        <button
+          type="button"
+          class="candidate-actions__danger"
+          :disabled="busy"
+          @click.stop="$emit('reject', candidate)"
+        >Reject</button>
+        <button type="button" class="candidate-actions__ghost" :disabled="busy" @click.stop="$emit('contact', candidate)">Contact</button>
+      </template>
+      <template v-else>
+        <button
+          type="button"
+          :disabled="shortlisted"
+          @click.stop="$emit('shortlist', candidate)"
+        >{{ shortlisted ? 'Shortlisted' : 'Shortlist' }}</button>
+        <button type="button" class="candidate-actions__ghost" @click.stop="$emit('contact', candidate)">Contact</button>
+      </template>
     </div>
   </article>
 </template>
@@ -90,6 +117,14 @@ function select(candidate) {
 .candidate-actions {
   position: relative;
   z-index: 4;
+}
+
+.candidate-actions__danger {
+  color: #a23434;
+}
+
+.candidate-card__status {
+  font-weight: 800;
 }
 
 .candidate-actions button:disabled {

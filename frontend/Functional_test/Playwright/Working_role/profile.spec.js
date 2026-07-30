@@ -1,4 +1,4 @@
-import { expect, test } from '../support/fixtures.js'
+import { expect, test, usesMockApi } from '../support/fixtures.js'
 import { openMenu } from '../support/helpers.js'
 
 async function openProfile(page) {
@@ -26,6 +26,7 @@ test('shows every worker profile section and optional resume control', async ({ 
 })
 
 test('downloads the stored resume from the worker profile', async ({ page }) => {
+  test.skip(!usesMockApi, 'Requires the mock API resume fixture.')
   await openProfile(page)
   await expect(page.getByText('demo-worker-resume.pdf')).toBeVisible()
 

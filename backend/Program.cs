@@ -122,6 +122,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 IAmazonS3 CreateS3Client(string? serviceUrl)
 {
     var accessKey = builder.Configuration["AWS:AccessKey"];
@@ -187,9 +188,9 @@ if (!app.Environment.IsEnvironment("Test"))
 }
 
 // --- Middleware Pipeline ---
-app.UseMiddleware<ExceptionHandlingMiddleware>();
-
 app.UseSerilogRequestLogging(options => options.ExcludeHealthChecks());
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {

@@ -10,6 +10,8 @@ vi.mock('../api/jobs.js', () => ({
   updateJob: vi.fn(),
   getJobApplications: vi.fn(),
   shortlistApplicant: vi.fn(),
+  rejectApplicant: vi.fn(),
+  hireApplicant: vi.fn(),
   getCandidate: vi.fn(),
   getNearbyJobs: vi.fn(),
   getWorkerJob: vi.fn(),
@@ -90,8 +92,8 @@ describe('jobs store cache', () => {
     expect(jobsApi.getNearbyJobs).toHaveBeenCalledTimes(2)
   })
 
-  it('caches applications and candidates and invalidates applications after shortlisting', async () => {
-    const applications = [{ id: 'application-1', status: 'Pending' }]
+  it('updates cached applications after shortlisting without refetching the list', async () => {
+    const applications = [{ id: 'application-1', status: 'Applied' }]
     const candidate = { id: 'candidate-1', name: 'Ravi' }
     jobsApi.getJobApplications.mockResolvedValue({ data: applications })
     jobsApi.getJob.mockResolvedValue({ data: { id: 'job-1', title: 'Cashier' } })
@@ -108,10 +110,34 @@ describe('jobs store cache', () => {
     await store.loadJobApplications('job-1')
     await store.loadJob('job-1')
 
-    expect(jobsApi.getJobApplications).toHaveBeenCalledTimes(2)
+    expect(store.applicationsByJob['job-1'][0].status).toBe('Shortlisted')
+    expect(jobsApi.getJobApplications).toHaveBeenCalledTimes(1)
     expect(jobsApi.getJob).toHaveBeenCalledTimes(2)
     expect(jobsApi.getCandidate).toHaveBeenCalledTimes(1)
     expect(jobsApi.shortlistApplicant).toHaveBeenCalledWith('job-1', 'application-1')
+  })
+
+  it('updates cached applications after reject and hire decisions', async () => {
+    jobsApi.getJobApplications.mockResolvedValue({ data: [
+      { id: 'application-1', status: 'Applied' },
+      { id: 'application-2', status: 'Shortlisted' },
+    ] })
+    jobsApi.rejectApplicant.mockResolvedValue({
+      data: { id: 'application-1', status: 'Rejected' },
+    })
+    jobsApi.hireApplicant.mockResolvedValue({
+      data: { id: 'application-2', status: 'Hired' },
+    })
+    const store = useJobsStore()
+    await store.loadJobApplications('job-1')
+
+    await store.rejectApplicant('job-1', 'application-1')
+    await store.hireApplicant('job-1', 'application-2')
+
+    expect(store.applicationsByJob['job-1'].map((item) => item.status))
+      .toEqual(['Rejected', 'Hired'])
+    expect(jobsApi.rejectApplicant).toHaveBeenCalledWith('job-1', 'application-1')
+    expect(jobsApi.hireApplicant).toHaveBeenCalledWith('job-1', 'application-2')
   })
 
   it('invalidates cached worker job details after applying', async () => {

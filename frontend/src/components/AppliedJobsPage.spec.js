@@ -12,6 +12,7 @@ describe('AppliedJobsPage', () => {
     api.get.mockResolvedValue({ data: [{
       id: 'app-1', jobPostId: 'job-1', jobTitle: 'Cashier', workplaceName: 'Corner Shop',
       cityArea: 'Bandra', status: 'Shortlisted', createdAt: '2026-07-24T00:00:00Z',
+      statusUpdatedAt: '2026-07-25T12:00:00Z',
     }] })
   })
 
@@ -23,6 +24,7 @@ describe('AppliedJobsPage', () => {
 
     expect(wrapper.text()).toContain('Applied jobs')
     expect(wrapper.text()).toContain('Shortlisted')
+    expect(wrapper.text()).toContain('Updated 25 Jul 2026')
     expect(wrapper.text()).toContain('The employer may contact you next.')
     expect(wrapper.find('.applied-hero__visual').exists()).toBe(false)
     expect(wrapper.find('.applied-card').element.tagName).toBe('A')
@@ -72,14 +74,19 @@ describe('AppliedJobsPage', () => {
     }, {
       id: 'app-3', jobPostId: 'job-3', jobTitle: 'Driver', workplaceName: 'Courier',
       cityArea: 'Mysuru', status: 'Interview', createdAt: '2026-07-24T00:00:00Z',
+    }, {
+      id: 'app-4', jobPostId: 'job-4', jobTitle: 'Cashier', workplaceName: 'Market',
+      cityArea: 'Mysuru', status: 'Rejected', createdAt: '2026-07-24T00:00:00Z',
     }] })
     const wrapper = mount(AppliedJobsPage, {
       global: { plugins: [createTestRouter()], stubs: { BrandLogo: true } },
     })
     await flushPromises()
     expect(wrapper.text()).toContain('You were selected for this role.')
+    expect(wrapper.text()).toContain('The employer did not select you for this role.')
     expect(wrapper.text()).toContain('Your application status was updated.')
     expect(wrapper.find('.applied-card').classes()).toContain('applied-card--hired')
+    expect(wrapper.findAll('.applied-card')[2].classes()).toContain('applied-card--rejected')
   })
 
   it('paginates the application journey', async () => {

@@ -21,7 +21,7 @@ const loading = ref(false)
 const error = ref('')
 const job = ref(null)
 const applicants = ref([])
-const shortlisting = ref(null)
+const deciding = ref(null)
 
 const jobId = computed(() => route.params.id)
 const isShortlistedView = computed(() => props.filter === 'shortlisted')
@@ -112,15 +112,33 @@ function contact(candidate) {
 }
 
 async function shortlist(candidate) {
-  if (candidate.status === 'Shortlisted' || shortlisting.value === candidate.applicationId) return
-  shortlisting.value = candidate.applicationId
+  if (candidate.status !== 'Applied') return
+  await decide(candidate, jobsStore.shortlistApplicant, 'Could not shortlist this candidate. Please try again.')
+}
+
+async function hire(candidate) {
+  if (candidate.status !== 'Shortlisted') return
+  await decide(candidate, jobsStore.hireApplicant, 'Could not hire this candidate. Please try again.')
+}
+
+async function reject(candidate) {
+  if (!['Applied', 'Shortlisted'].includes(candidate.status)) return
+  if (!window.confirm(`Reject ${candidate.name}? This decision cannot be undone.`)) return
+  await decide(candidate, jobsStore.rejectApplicant, 'Could not reject this candidate. Please try again.')
+}
+
+async function decide(candidate, request, message) {
+  if (deciding.value === candidate.applicationId) return
+  error.value = ''
+  deciding.value = candidate.applicationId
   try {
-    await jobsStore.shortlistApplicant(jobId.value, candidate.applicationId)
-    await load()
+    const updated = await request(jobId.value, candidate.applicationId)
+    applicants.value = applicants.value
+      .map((application) => application.id === candidate.applicationId ? updated : application)
   } catch {
-    error.value = 'Could not shortlist this candidate. Please try again.'
+    error.value = message
   } finally {
-    shortlisting.value = null
+    deciding.value = null
   }
 }
 </script>
@@ -157,8 +175,11 @@ async function shortlist(candidate) {
             :key="candidate.applicationId"
             :candidate="candidate"
             :shortlisted="candidate.status === 'Shortlisted'"
+            :busy="deciding === candidate.applicationId"
             @select="openCandidate"
             @shortlist="shortlist"
+            @hire="hire"
+            @reject="reject"
             @contact="contact"
           />
 

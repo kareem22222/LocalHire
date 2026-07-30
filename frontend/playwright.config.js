@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = path.dirname(fileURLToPath(import.meta.url))
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:8080'
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:4174'
 const browser = process.env.CI
   ? devices['Desktop Chrome']
   : {
@@ -31,10 +31,10 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
-    command: 'npm run dev -- --config Functional_test/vite.config.js',
-    url: 'http://127.0.0.1:8080/api/health',
+    command: 'npm run dev -- --config Functional_test/vite.config.js --port 4174 --strictPort',
+    url: 'http://127.0.0.1:4174/api/health',
     timeout: 60_000,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
   },
   projects: [
     {

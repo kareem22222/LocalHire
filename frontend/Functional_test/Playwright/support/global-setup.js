@@ -4,7 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const directory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../.playwright')
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:8080'
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:4174'
 // Tokens live 60 minutes. Reusing one that is about to expire makes every later
 // test render the signed-out landing page, so only reuse a token with enough
 // life left to cover a whole run.

@@ -56,3 +56,34 @@ export function formatRoleStatus(job) {
   if ((job?.applicationCount ?? 0) > 0) return 'Review applicants'
   return 'New role'
 }
+
+const APPLICATION_STATUS_DISPLAY = {
+  Applied: {
+    summary: 'Application sent. The employer has not reviewed it yet.',
+    progress: 28,
+    milestone: 'Waiting for review',
+  },
+  Shortlisted: {
+    summary: 'You were shortlisted. The employer may contact you next.',
+    progress: 64,
+    milestone: 'Shortlist reached',
+  },
+  Rejected: {
+    summary: 'The employer did not select you for this role.',
+    progress: 100,
+    milestone: 'Application closed',
+  },
+  Hired: {
+    summary: 'You were selected for this role.',
+    progress: 100,
+    milestone: 'Hired',
+  },
+}
+
+export function applicationStatusDisplay(status) {
+  return APPLICATION_STATUS_DISPLAY[status] ?? {
+    summary: 'Your application status was updated.',
+    progress: 50,
+    milestone: 'Status updated',
+  }
+}

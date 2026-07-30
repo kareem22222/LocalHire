@@ -106,6 +106,13 @@ public static class MockDataSeeder
                     || user.Id == SeedId('d', LegacyWorkerCount - 1),
                 cancellationToken))
         {
+            await database.JobApplications
+                .Where(application => application.StatusUpdatedAt == null)
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(
+                        application => application.StatusUpdatedAt,
+                        application => application.CreatedAt),
+                    cancellationToken);
             return;
         }
 
@@ -214,7 +221,8 @@ public static class MockDataSeeder
                     WorkerId = workerIds[sequence % WorkerCount],
                     WorkerRole = UserRole.LookingForWork,
                     Status = ApplicationStatuses[(jobIndex + applicationIndex) % ApplicationStatuses.Length],
-                    CreatedAt = now.AddMinutes(-sequence)
+                    CreatedAt = now.AddMinutes(-sequence),
+                    StatusUpdatedAt = now.AddMinutes(-sequence)
                 });
             }
         }

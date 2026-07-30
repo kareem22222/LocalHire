@@ -29,6 +29,18 @@ public interface IJobService
     Task<ApplicantResponse> ShortlistApplicantAsync(Guid jobId, Guid applicationId, Guid employerId, CancellationToken ct);
 
     /// <summary>
+    /// Applies a legal employer-owned application transition. Applied applications
+    /// may be shortlisted or rejected; shortlisted applications may be hired or
+    /// rejected. Hired and rejected applications are terminal.
+    /// </summary>
+    Task<ApplicantResponse> SetApplicationStatusAsync(
+        Guid jobId,
+        Guid applicationId,
+        ApplicationStatus target,
+        Guid employerId,
+        CancellationToken ct);
+
+    /// <summary>
     /// Returns profile detail for a single worker. Employers who have received
     /// an application from the worker get the full detail; other employers get
     /// a reduced detail without contact, resume, or credential data. The phone

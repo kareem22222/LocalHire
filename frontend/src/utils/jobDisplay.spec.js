@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   EMPLOYMENT_TYPE_LABELS,
+  applicationStatusDisplay,
   formatEmploymentType,
   formatExperience,
   formatJobLocation,
@@ -108,5 +109,19 @@ describe('formatRoleStatus', () => {
     expect(formatRoleStatus({})).toBe('New role')
     expect(formatRoleStatus()).toBe('New role')
     expect(formatRoleStatus(null)).toBe('New role')
+  })
+})
+
+describe('applicationStatusDisplay', () => {
+  it.each([
+    ['Applied', 28, 'Waiting for review'],
+    ['Shortlisted', 64, 'Shortlist reached'],
+    ['Rejected', 100, 'Application closed'],
+    ['Hired', 100, 'Hired'],
+  ])('describes %s with text and progress', (status, progress, milestone) => {
+    const display = applicationStatusDisplay(status)
+    expect(display.summary).toBeTruthy()
+    expect(display.progress).toBe(progress)
+    expect(display.milestone).toBe(milestone)
   })
 })
