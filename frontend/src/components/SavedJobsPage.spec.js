@@ -22,9 +22,9 @@ describe('SavedJobsPage', () => {
     api.get.mockImplementation((url) => Promise.resolve({
       data: url === '/work/saved-jobs'
         ? ['job-1', 'job-2']
-        : url === '/work/applications'
-          ? []
-          : jobs[url.split('/').at(-1)],
+        : url === '/work/saved-jobs/paged'
+          ? { items: Object.values(jobs), page: 1, pageSize: 6, totalCount: 2, totalPages: 1 }
+          : [],
     }))
     const router = createTestRouter()
     await router.push('/work/saved-jobs')
@@ -38,5 +38,8 @@ describe('SavedJobsPage', () => {
     expect(wrapper.findAll('.worker-job-row__save').every((button) => button.text() === 'Saved job')).toBe(true)
     expect(wrapper.findAll('.worker-job-row__save').every((button) => button.attributes('disabled') !== undefined)).toBe(true)
     expect(api.delete).not.toHaveBeenCalled()
+    expect(api.get).toHaveBeenCalledWith('/work/saved-jobs/paged', {
+      params: { page: 1, pageSize: 6 },
+    })
   })
 })

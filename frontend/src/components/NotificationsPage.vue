@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useNotificationsStore } from '../stores/notifications.js'
 import BrandLogo from './BrandLogo.vue'
@@ -12,12 +12,13 @@ const store = useNotificationsStore()
 const pageSize = 10
 
 const status = computed(() => route.query.status === 'read' ? 'read' : 'unread')
-const items = computed(() => status.value === 'unread' ? store.unread : store.read)
-const totalPages = computed(() => Math.ceil(items.value.length / pageSize))
-const currentPage = computed(() => Math.min(Math.max(Number.parseInt(route.query.page, 10) || 1, 1), totalPages.value || 1))
-const visibleItems = computed(() => items.value.slice((currentPage.value - 1) * pageSize, currentPage.value * pageSize))
+const items = computed(() => store.page.items)
+const totalPages = computed(() => store.page.totalPages)
+const currentPage = computed(() => Math.max(Number.parseInt(route.query.page, 10) || 1, 1))
 
-onMounted(() => store.load().catch(() => {}))
+const load = () => store.loadPage({ status: status.value, page: currentPage.value, pageSize }).catch(() => {})
+onMounted(load)
+watch([status, currentPage], load)
 
 function changeStatus(nextStatus) {
   router.push({ query: { status: nextStatus, page: undefined } })
@@ -55,7 +56,7 @@ async function selectNotification(notification) {
 
         <div class="notifications-page__tabs" role="tablist" aria-label="Notification status">
           <button v-for="itemStatus in ['unread','read']" :key="itemStatus" type="button" role="tab" :aria-selected="status === itemStatus" :class="{ active: status === itemStatus }" @click="changeStatus(itemStatus)">
-            {{ itemStatus }} <span>{{ itemStatus === 'unread' ? store.unread.length : store.read.length }}</span>
+            {{ itemStatus }} <span>{{ itemStatus === 'unread' ? store.unreadCount : store.readCount }}</span>
           </button>
         </div>
 
@@ -63,7 +64,7 @@ async function selectNotification(notification) {
         <p v-else-if="store.error && !store.items.length" class="notifications-page__state" role="alert">{{ store.error }}</p>
         <p v-else-if="!items.length" class="notifications-page__state">{{ status === 'unread' ? 'You are all caught up.' : 'No read notifications yet.' }}</p>
         <div v-else class="notifications-page__list">
-          <button v-for="notification in visibleItems" :key="notification.id" type="button" class="notifications-page__item" :class="{ unread: !notification.isRead }" @click="selectNotification(notification)">
+          <button v-for="notification in items" :key="notification.id" type="button" class="notifications-page__item" :class="{ unread: !notification.isRead }" @click="selectNotification(notification)">
             <i></i>
             <span><strong>{{ notification.title }}</strong><small>{{ notification.message }}</small><time :datetime="notification.createdAt">{{ formatTime(notification.createdAt) }}</time></span>
             <b aria-hidden="true">→</b>

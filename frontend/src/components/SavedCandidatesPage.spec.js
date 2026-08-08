@@ -17,7 +17,7 @@ describe('SavedCandidatesPage', () => {
     api.get.mockImplementation((url) => Promise.resolve({
       data: url === '/hiring/saved-candidates'
         ? ['candidate-1']
-        : { id: 'candidate-1', name: 'Ravi Kumar', role: 'Cashier', area: 'Bandra' },
+        : { items: [{ id: 'candidate-1', name: 'Ravi Kumar', role: 'Cashier', area: 'Bandra' }], page: 1, pageSize: 10, totalCount: 1, totalPages: 1 },
     }))
     const router = createTestRouter()
     await router.push('/hiring/saved-candidates')
@@ -30,5 +30,8 @@ describe('SavedCandidatesPage', () => {
     expect(wrapper.findAll('.candidate-card')).toHaveLength(1)
     const savedButton = wrapper.findAll('.candidate-actions button').find((button) => button.text() === 'Saved candidate')
     expect(savedButton.attributes('disabled')).toBeDefined()
+    expect(api.get).toHaveBeenCalledWith('/hiring/saved-candidates/paged', {
+      params: { page: 1, pageSize: 10 },
+    })
   })
 })

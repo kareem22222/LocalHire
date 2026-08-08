@@ -25,17 +25,16 @@ describe('ShortlistsPage', () => {
 
   it('shows only roles with shortlists and routes every role action', async () => {
     api.get.mockResolvedValue({
-      data: [
+      data: { items: [
         { id: 'job-1', title: 'Cashier', workplaceName: 'Corner Shop', applicationCount: 3, shortlistedCount: 2, isActive: true },
-        { id: 'job-2', title: 'Driver', applicationCount: 1, shortlistedCount: 0, isActive: true },
-      ],
+      ], page: 1, pageSize: 6, totalCount: 1, totalPages: 1 },
     })
     const wrapper = await mountPage()
     await flushPromises()
     const push = vi.spyOn(router, 'push').mockResolvedValue()
 
     expect(wrapper.findAll('.hiring-role-card')).toHaveLength(1)
-    expect(wrapper.text()).toContain('2 shortlisted across 1 role')
+    expect(wrapper.text()).toContain('1 role with shortlists')
     await wrapper.find('.hiring-role-card__icon').trigger('click')
     const stats = wrapper.findAll('.hiring-role-card__stat')
     await stats[0].trigger('click')
@@ -50,7 +49,7 @@ describe('ShortlistsPage', () => {
   })
 
   it('shows the empty state when there are no shortlisted roles', async () => {
-    api.get.mockResolvedValue({ data: [] })
+    api.get.mockResolvedValue({ data: { items: [], page: 1, pageSize: 6, totalCount: 0, totalPages: 0 } })
     const wrapper = await mountPage()
     await flushPromises()
 
@@ -58,7 +57,7 @@ describe('ShortlistsPage', () => {
   })
 
   it('shows a load error without stale or empty-state content', async () => {
-    vi.spyOn(useJobsStore(), 'loadMyJobs').mockRejectedValue(new Error('offline'))
+    vi.spyOn(useJobsStore(), 'loadEmployerJobsPage').mockRejectedValue(new Error('offline'))
     const wrapper = await mountPage()
     await flushPromises()
 
@@ -68,13 +67,21 @@ describe('ShortlistsPage', () => {
   })
 
   it('paginates roles with shortlisted candidates', async () => {
-    api.get.mockResolvedValue({ data: Array.from({ length: 7 }, (_, index) => ({
+    const roles = Array.from({ length: 7 }, (_, index) => ({
       id: `job-${index}`,
       title: `Role ${index}`,
       applicationCount: 1,
       shortlistedCount: 1,
       isActive: true,
-    })) })
+    }))
+    api.get.mockImplementation((url, options = {}) => Promise.resolve({ data:
+      url === '/hiring/jobs/paged'
+        ? {
+            items: roles.slice((options.params.page - 1) * 6, options.params.page * 6),
+            page: options.params.page, pageSize: 6, totalCount: 7, totalPages: 2,
+          }
+        : {},
+    }))
     const wrapper = await mountPage()
     await flushPromises()
 

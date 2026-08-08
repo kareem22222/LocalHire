@@ -5,19 +5,26 @@ import { useJobsStore } from './jobs.js'
 
 vi.mock('../api/jobs.js', () => ({
   getMyJobs: vi.fn(),
+  getMyJobsPaged: vi.fn(),
   getJob: vi.fn(),
   createJob: vi.fn(),
   updateJob: vi.fn(),
   getJobApplications: vi.fn(),
+  getJobApplicationsPaged: vi.fn(),
   shortlistApplicant: vi.fn(),
   rejectApplicant: vi.fn(),
   hireApplicant: vi.fn(),
   getCandidate: vi.fn(),
   getNearbyJobs: vi.fn(),
+  searchJobs: vi.fn(),
   getWorkerJob: vi.fn(),
   getNearbyCandidates: vi.fn(),
+  searchCandidates: vi.fn(),
   applyToJob: vi.fn(),
   getMyApplications: vi.fn(),
+  getMyApplicationsPaged: vi.fn(),
+  getSavedJobsPaged: vi.fn(),
+  getSavedCandidatesPaged: vi.fn(),
 }))
 
 describe('jobs store cache', () => {
@@ -72,6 +79,31 @@ describe('jobs store cache', () => {
     expect(store.candidates).toEqual([{ id: 'second' }])
     await expect(store.loadNearbyCandidates({ search: 'first' })).resolves.toEqual([{ id: 'first' }])
     expect(jobsApi.getNearbyCandidates).toHaveBeenCalledTimes(2)
+  })
+
+  it('caches worker pages separately and keeps the latest paged candidate request visible', async () => {
+    jobsApi.searchJobs.mockImplementation(({ page }) => Promise.resolve({ data: {
+      items: [{ id: `job-${page}` }], page, pageSize: 6, totalCount: 7, totalPages: 2,
+    } }))
+    const candidateRequests = {}
+    jobsApi.searchCandidates.mockImplementation(({ search, page }) =>
+      new Promise((resolve) => { candidateRequests[search] = () => resolve({ data: {
+        items: [{ id: search }], page, pageSize: 10, totalCount: 1, totalPages: 1,
+      } }) }))
+    const store = useJobsStore()
+
+    await store.loadWorkerJobsPage({ search: 'cashier', page: 1, pageSize: 6 })
+    await store.loadWorkerJobsPage({ search: 'cashier', page: 1, pageSize: 6 })
+    await store.loadWorkerJobsPage({ search: 'cashier', page: 2, pageSize: 6 })
+    expect(jobsApi.searchJobs).toHaveBeenCalledTimes(2)
+
+    const first = store.loadCandidateSearchPage({ search: 'first', page: 1, pageSize: 10 }, { force: true })
+    const second = store.loadCandidateSearchPage({ search: 'second', page: 1, pageSize: 10 }, { force: true })
+    candidateRequests.second()
+    await second
+    candidateRequests.first()
+    await first
+    expect(store.candidateSearchPage.items).toEqual([{ id: 'second' }])
   })
 
   it('updates cached employer data and invalidates nearby searches after an edit', async () => {

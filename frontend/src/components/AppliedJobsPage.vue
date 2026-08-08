@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useJobsStore } from '../stores/jobs'
 import { applicationStatusDisplay, MAX_VISIBLE_JOBS } from '../utils/jobDisplay'
@@ -16,22 +16,28 @@ const jobsStore = useJobsStore()
 const loading = ref(true)
 const error = ref('')
 
-const applications = computed(() => jobsStore.myApplications)
-const totalPages = computed(() => Math.ceil(applications.value.length / MAX_VISIBLE_JOBS))
-const currentPage = computed(() => Math.min(Math.max(Number.parseInt(route.query.page, 10) || 1, 1), totalPages.value || 1))
-const visibleApplications = computed(() => applications.value.slice((currentPage.value - 1) * MAX_VISIBLE_JOBS, currentPage.value * MAX_VISIBLE_JOBS))
-const shortlisted = computed(() => applications.value.filter((item) => item.status === 'Shortlisted').length)
-const hired = computed(() => applications.value.filter((item) => item.status === 'Hired').length)
+const applications = computed(() => jobsStore.myApplicationsPage.items)
+const totalPages = computed(() => jobsStore.myApplicationsPage.totalPages)
+const currentPage = computed(() => Math.max(Number.parseInt(route.query.page, 10) || 1, 1))
+const visibleApplications = computed(() => applications.value)
+const shortlisted = computed(() => jobsStore.myApplicationsPage.shortlistedCount || 0)
+const hired = computed(() => jobsStore.myApplicationsPage.hiredCount || 0)
 
-onMounted(async () => {
+async function load() {
+  loading.value = true
   try {
-    await jobsStore.loadMyApplications({ force: true })
+    await jobsStore.loadMyApplicationsPage({
+      page: currentPage.value, pageSize: MAX_VISIBLE_JOBS,
+    }, { force: true })
   } catch {
     error.value = 'Could not load your applications.'
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(load)
+watch(currentPage, load)
 
 function changePage(page) {
   router.push({ query: { ...route.query, page: page === 1 ? undefined : String(page) } })
@@ -57,7 +63,7 @@ function changePage(page) {
       </section>
 
       <section class="applied-metrics" aria-label="Application totals">
-        <div style="--metric-index: 0"><span>Total applications</span><strong><CountUp :to="applications.length" separator="" /></strong><i></i></div>
+        <div style="--metric-index: 0"><span>Total applications</span><strong><CountUp :to="jobsStore.myApplicationsPage.totalCount" separator="" /></strong><i></i></div>
         <div style="--metric-index: 1"><span>Shortlisted</span><strong><CountUp :to="shortlisted" separator="" /></strong><i></i></div>
         <div style="--metric-index: 2"><span>Hired</span><strong><CountUp :to="hired" separator="" /></strong><i></i></div>
       </section>
@@ -67,7 +73,7 @@ function changePage(page) {
       <section v-else-if="applications.length" class="applied-journey" aria-label="Your application timeline">
         <div class="applied-journey__head">
           <div><span class="applied-kicker">Live status</span><h2>Your journey so far</h2></div>
-          <p>{{ applications.length }} {{ applications.length === 1 ? 'role' : 'roles' }} tracked</p>
+          <p>{{ jobsStore.myApplicationsPage.totalCount }} {{ jobsStore.myApplicationsPage.totalCount === 1 ? 'role' : 'roles' }} tracked</p>
         </div>
 
         <div class="applied-list">

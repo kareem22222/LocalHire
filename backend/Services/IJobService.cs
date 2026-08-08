@@ -14,11 +14,17 @@ public interface IJobService
 
     Task<IReadOnlyList<JobPostResponse>> GetJobsForEmployerAsync(Guid employerId, CancellationToken ct);
 
+    Task<PagedResponse<JobPostResponse>> GetJobsForEmployerPagedAsync(
+        Guid employerId, string status, bool shortlistedOnly, PagingRequest paging, CancellationToken ct);
+
     Task<JobPostResponse> GetJobAsync(Guid id, Guid employerId, CancellationToken ct);
 
     Task<JobPostResponse> UpdateJobAsync(Guid id, CreateJobPostRequest request, Guid employerId, CancellationToken ct);
 
     Task<IReadOnlyList<ApplicantResponse>> GetApplicationsAsync(Guid jobId, Guid employerId, CancellationToken ct);
+
+    Task<PagedResponse<ApplicantResponse>> GetApplicationsPagedAsync(
+        Guid jobId, Guid employerId, ApplicationStatus? status, PagingRequest paging, CancellationToken ct);
 
     /// <summary>
     /// Moves a single application into the <c>Shortlisted</c> state on behalf of
@@ -61,6 +67,10 @@ public interface IJobService
         double? lat, double? lng, string? search, EmploymentType? employmentType,
         Guid workerId, CancellationToken ct);
 
+    Task<PagedResponse<JobPostResponse>> SearchJobsAsync(
+        double? lat, double? lng, string? search, EmploymentType? employmentType,
+        Guid workerId, PagingRequest paging, CancellationToken ct);
+
     Task<JobPostResponse> GetActiveJobAsync(Guid id, CancellationToken ct);
 
     /// <summary>
@@ -76,7 +86,13 @@ public interface IJobService
     /// </summary>
     Task<IReadOnlyList<CandidateResponse>> GetNearbyCandidatesAsync(double? lat, double? lng, string? search, string? role, Guid employerId, CancellationToken ct);
 
+    Task<PagedResponse<CandidateResponse>> SearchCandidatesAsync(
+        double? lat, double? lng, string? search, string? role,
+        Guid employerId, PagingRequest paging, CancellationToken ct);
+
     Task<IReadOnlyList<Guid>> GetSavedCandidateIdsAsync(Guid employerId, CancellationToken ct);
+    Task<PagedResponse<CandidateResponse>> GetSavedCandidatesPagedAsync(
+        Guid employerId, PagingRequest paging, CancellationToken ct);
     Task SaveCandidateAsync(Guid workerId, Guid employerId, CancellationToken ct);
     Task RemoveSavedCandidateAsync(Guid workerId, Guid employerId, CancellationToken ct);
 
@@ -84,7 +100,12 @@ public interface IJobService
 
     Task<IReadOnlyList<JobApplicationResponse>> GetMyApplicationsAsync(Guid workerId, CancellationToken ct);
 
+    Task<ApplicationPagedResponse> GetMyApplicationsPagedAsync(
+        Guid workerId, PagingRequest paging, CancellationToken ct);
+
     Task<IReadOnlyList<Guid>> GetSavedJobIdsAsync(Guid workerId, CancellationToken ct);
+    Task<PagedResponse<JobPostResponse>> GetSavedJobsPagedAsync(
+        Guid workerId, PagingRequest paging, CancellationToken ct);
     Task SaveJobAsync(Guid jobId, Guid workerId, CancellationToken ct);
     Task RemoveSavedJobAsync(Guid jobId, Guid workerId, CancellationToken ct);
 }

@@ -2,14 +2,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import api from './index.js'
 import {
   getCandidate,
+  getJobApplicationsPaged,
+  getMyApplicationsPaged,
+  getMyJobsPaged,
   getSavedCandidates,
   getSavedJobs,
+  getSavedCandidatesPaged,
+  getSavedJobsPaged,
   hireApplicant,
   removeSavedCandidate,
   removeSavedJob,
   rejectApplicant,
   saveCandidate,
   saveJob,
+  searchCandidates,
+  searchJobs,
   shortlistApplicant,
 } from './jobs.js'
 
@@ -46,5 +53,24 @@ describe('jobs API candidate actions', () => {
     expect(api.get).toHaveBeenCalledWith('/work/saved-jobs')
     expect(api.post).toHaveBeenCalledWith('/work/saved-jobs/job-1')
     expect(api.delete).toHaveBeenCalledWith('/work/saved-jobs/job-1')
+  })
+
+  it('calls additive paged endpoints with query parameters', () => {
+    const params = { page: 2, pageSize: 10 }
+    getMyJobsPaged(params)
+    getJobApplicationsPaged('job-1', params)
+    searchCandidates(params)
+    searchJobs(params)
+    getMyApplicationsPaged(params)
+    getSavedCandidatesPaged(params)
+    getSavedJobsPaged(params)
+
+    expect(api.get).toHaveBeenCalledWith('/hiring/jobs/paged', { params })
+    expect(api.get).toHaveBeenCalledWith('/hiring/jobs/job-1/applications/paged', { params })
+    expect(api.get).toHaveBeenCalledWith('/hiring/candidates/search', { params })
+    expect(api.get).toHaveBeenCalledWith('/work/jobs/search', { params })
+    expect(api.get).toHaveBeenCalledWith('/work/applications/paged', { params })
+    expect(api.get).toHaveBeenCalledWith('/hiring/saved-candidates/paged', { params })
+    expect(api.get).toHaveBeenCalledWith('/work/saved-jobs/paged', { params })
   })
 })

@@ -6,14 +6,20 @@ import AppliedJobsPage from './AppliedJobsPage.vue'
 
 vi.mock('../api', () => ({ default: { get: vi.fn() } }))
 
+const page = (items, current = 1, totalCount = items.length, totalPages = totalCount ? Math.ceil(totalCount / 6) : 0) => ({
+  items, page: current, pageSize: 6, totalCount, totalPages,
+  shortlistedCount: items.filter((item) => item.status === 'Shortlisted').length,
+  hiredCount: items.filter((item) => item.status === 'Hired').length,
+})
+
 describe('AppliedJobsPage', () => {
   beforeEach(() => {
     api.get.mockReset()
-    api.get.mockResolvedValue({ data: [{
+    api.get.mockResolvedValue({ data: page([{
       id: 'app-1', jobPostId: 'job-1', jobTitle: 'Cashier', workplaceName: 'Corner Shop',
       cityArea: 'Bandra', status: 'Shortlisted', createdAt: '2026-07-24T00:00:00Z',
       statusUpdatedAt: '2026-07-25T12:00:00Z',
-    }] })
+    }]) })
   })
 
   it('summarizes what happened to each application', async () => {
@@ -59,7 +65,7 @@ describe('AppliedJobsPage', () => {
     expect(failed.get('[role="alert"]').text()).toContain('Could not load')
     expect(failed.text()).not.toContain('No applications yet')
 
-    api.get.mockResolvedValueOnce({ data: [] })
+    api.get.mockResolvedValueOnce({ data: page([]) })
     const empty = mount(AppliedJobsPage, {
       global: { plugins: [createTestRouter()], stubs: { BrandLogo: true } },
     })
@@ -68,7 +74,7 @@ describe('AppliedJobsPage', () => {
   })
 
   it('counts hired applications and explains unknown statuses', async () => {
-    api.get.mockResolvedValueOnce({ data: [{
+    api.get.mockResolvedValueOnce({ data: page([{
       id: 'app-2', jobPostId: 'job-2', jobTitle: 'Helper', workplaceName: 'Workshop',
       cityArea: 'Mysuru', status: 'Hired', createdAt: '2026-07-24T00:00:00Z',
     }, {
@@ -77,7 +83,7 @@ describe('AppliedJobsPage', () => {
     }, {
       id: 'app-4', jobPostId: 'job-4', jobTitle: 'Cashier', workplaceName: 'Market',
       cityArea: 'Mysuru', status: 'Rejected', createdAt: '2026-07-24T00:00:00Z',
-    }] })
+    }]) })
     const wrapper = mount(AppliedJobsPage, {
       global: { plugins: [createTestRouter()], stubs: { BrandLogo: true } },
     })
@@ -90,14 +96,17 @@ describe('AppliedJobsPage', () => {
   })
 
   it('paginates the application journey', async () => {
-    api.get.mockResolvedValueOnce({ data: Array.from({ length: 7 }, (_, index) => ({
+    const applications = Array.from({ length: 7 }, (_, index) => ({
       id: `app-${index}`,
       jobPostId: `job-${index}`,
       jobTitle: `Role ${index}`,
       workplaceName: 'Local Shop',
       status: 'Applied',
       createdAt: '2026-07-24T00:00:00Z',
-    })) })
+    }))
+    api.get.mockImplementation((_url, { params }) => Promise.resolve({
+      data: page(applications.slice((params.page - 1) * 6, params.page * 6), params.page, 7, 2),
+    }))
     const wrapper = mount(AppliedJobsPage, {
       global: { plugins: [createTestRouter()], stubs: { BrandLogo: true } },
     })
