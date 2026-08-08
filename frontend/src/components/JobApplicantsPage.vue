@@ -20,7 +20,7 @@ const jobsStore = useJobsStore()
 const loading = ref(false)
 const error = ref('')
 const job = ref(null)
-const applicants = ref([])
+const applicants = computed(() => jobsStore.jobApplicationsPage.items)
 const deciding = ref(null)
 
 const jobId = computed(() => route.params.id)
@@ -44,15 +44,10 @@ function toCandidate(applicant) {
   }
 }
 
-const visibleApplicants = computed(() => {
-  const mapped = applicants.value.map(toCandidate)
-  return isShortlistedView.value
-    ? mapped.filter((a) => a.status === 'Shortlisted')
-    : mapped
-})
-const totalPages = computed(() => Math.ceil(visibleApplicants.value.length / MAX_VISIBLE_CANDIDATES))
-const currentPage = computed(() => Math.min(Math.max(Number.parseInt(route.query.page, 10) || 1, 1), totalPages.value || 1))
-const paginatedApplicants = computed(() => visibleApplicants.value.slice((currentPage.value - 1) * MAX_VISIBLE_CANDIDATES, currentPage.value * MAX_VISIBLE_CANDIDATES))
+const visibleApplicants = computed(() => applicants.value.map(toCandidate))
+const totalPages = computed(() => jobsStore.jobApplicationsPage.totalPages)
+const currentPage = computed(() => Math.max(Number.parseInt(route.query.page, 10) || 1, 1))
+const paginatedApplicants = computed(() => visibleApplicants.value)
 
 const heading = computed(() => {
   const roleTitle = job.value?.title ? `${job.value.title} - ` : ''
@@ -75,15 +70,17 @@ async function load() {
   loading.value = true
   error.value = ''
   job.value = null
-  applicants.value = []
   try {
-    const [jobData, applicantData] = await Promise.all([
+    const [jobData] = await Promise.all([
       jobsStore.loadJob(id).catch(() => null),
-      jobsStore.loadJobApplications(id, { force: true }),
+      jobsStore.loadJobApplicationsPage(id, {
+        status: isShortlistedView.value ? 'Shortlisted' : undefined,
+        page: currentPage.value,
+        pageSize: MAX_VISIBLE_CANDIDATES,
+      }, { force: true }),
     ])
     if (generation === loadGeneration) {
       job.value = jobData
-      applicants.value = applicantData || []
     }
   } catch {
     if (generation === loadGeneration) error.value = 'We could not load the candidates for this role.'
@@ -93,7 +90,11 @@ async function load() {
 }
 
 onMounted(load)
-watch([jobId, isShortlistedView], load)
+watch(currentPage, load)
+watch([jobId, isShortlistedView], () => {
+  if (route.query.page) router.replace({ query: { ...route.query, page: undefined } })
+  else load()
+})
 
 function changePage(page) {
   router.push({ query: { ...route.query, page: page === 1 ? undefined : String(page) } })
@@ -132,9 +133,10 @@ async function decide(candidate, request, message) {
   error.value = ''
   deciding.value = candidate.applicationId
   try {
-    const updated = await request(jobId.value, candidate.applicationId)
-    applicants.value = applicants.value
-      .map((application) => application.id === candidate.applicationId ? updated : application)
+    await request(jobId.value, candidate.applicationId)
+    await load()
+    if (!applicants.value.length && currentPage.value > 1)
+      changePage(currentPage.value - 1)
   } catch {
     error.value = message
   } finally {
@@ -159,7 +161,7 @@ async function decide(candidate, request, message) {
             <span class="hiring-kicker">{{ kicker }}</span>
             <h2>{{ heading }}</h2>
           </div>
-          <span>{{ visibleApplicants.length }} {{ isShortlistedView ? 'shortlisted' : 'applicants' }}</span>
+          <span>{{ jobsStore.jobApplicationsPage.totalCount }} {{ isShortlistedView ? 'shortlisted' : 'applicants' }}</span>
         </div>
 
         <p v-if="error" class="job-form__error" role="alert">{{ error }}</p>

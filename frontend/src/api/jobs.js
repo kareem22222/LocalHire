@@ -7,6 +7,10 @@ export function getMyJobs() {
   return api.get('/hiring/jobs')
 }
 
+export function getMyJobsPaged(params = {}) {
+  return api.get('/hiring/jobs/paged', { params })
+}
+
 export function getJob(id) {
   return api.get(`/hiring/jobs/${id}`)
 }
@@ -21,6 +25,10 @@ export function updateJob(id, payload) {
 
 export function getJobApplications(jobId) {
   return api.get(`/hiring/jobs/${jobId}/applications`)
+}
+
+export function getJobApplicationsPaged(jobId, params = {}) {
+  return api.get(`/hiring/jobs/${jobId}/applications/paged`, { params })
 }
 
 export function shortlistApplicant(jobId, applicationId) {
@@ -47,8 +55,16 @@ export function getNearbyCandidates(params = {}) {
   return api.get('/hiring/candidates/nearby', { params })
 }
 
+export function searchCandidates(params = {}) {
+  return api.get('/hiring/candidates/search', { params })
+}
+
 export function getSavedCandidates() {
   return api.get('/hiring/saved-candidates')
+}
+
+export function getSavedCandidatesPaged(params = {}) {
+  return api.get('/hiring/saved-candidates/paged', { params })
 }
 
 export function saveCandidate(workerId) {
@@ -64,6 +80,10 @@ export function getNearbyJobs(params = {}) {
   return api.get('/work/jobs/nearby', { params })
 }
 
+export function searchJobs(params = {}) {
+  return api.get('/work/jobs/search', { params })
+}
+
 export function getWorkerJob(id) {
   return api.get(`/work/jobs/${id}`)
 }
@@ -76,8 +96,16 @@ export function getMyApplications() {
   return api.get('/work/applications')
 }
 
+export function getMyApplicationsPaged(params = {}) {
+  return api.get('/work/applications/paged', { params })
+}
+
 export function getSavedJobs() {
   return api.get('/work/saved-jobs')
+}
+
+export function getSavedJobsPaged(params = {}) {
+  return api.get('/work/saved-jobs/paged', { params })
 }
 
 export function saveJob(jobId) {

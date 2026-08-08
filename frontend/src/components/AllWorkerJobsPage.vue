@@ -1,6 +1,6 @@
 <script setup>
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useJobsStore } from '../stores/jobs'
 import { useProfileStore } from '../stores/profile'
@@ -15,16 +15,15 @@ const route = useRoute()
 const router = useRouter()
 const jobsStore = useJobsStore()
 const profileStore = useProfileStore()
-const { myApplications } = storeToRefs(jobsStore)
+const { myApplications, workerJobsPage } = storeToRefs(jobsStore)
 const { profile } = storeToRefs(profileStore)
-const jobs = ref([])
 const loading = ref(true)
 const applying = ref(null)
 const error = ref('')
 
-const totalPages = computed(() => Math.ceil(jobs.value.length / MAX_VISIBLE_JOBS))
-const currentPage = computed(() => Math.min(Math.max(Number.parseInt(route.query.page, 10) || 1, 1), totalPages.value || 1))
-const visibleJobs = computed(() => jobs.value.slice((currentPage.value - 1) * MAX_VISIBLE_JOBS, currentPage.value * MAX_VISIBLE_JOBS))
+const jobs = computed(() => workerJobsPage.value.items)
+const totalPages = computed(() => workerJobsPage.value.totalPages)
+const currentPage = computed(() => Math.max(Number.parseInt(route.query.page, 10) || 1, 1))
 
 function buildParams() {
   const params = {}
@@ -34,14 +33,18 @@ function buildParams() {
   }
   if (route.query.search) params.search = route.query.search.toString()
   if (route.query.employmentType) params.employmentType = route.query.employmentType.toString()
+  params.page = currentPage.value
+  params.pageSize = MAX_VISIBLE_JOBS
   return params
 }
 
-onMounted(async () => {
+async function load() {
+  loading.value = true
+  error.value = ''
   try {
     await withMinimumDelay(async () => {
       await profileStore.fetchProfile().catch(() => {})
-      jobs.value = await jobsStore.loadNearbyJobs(buildParams(), { force: true })
+      await jobsStore.loadWorkerJobsPage(buildParams(), { force: true })
       await jobsStore.loadMyApplications()
     })
   } catch {
@@ -49,6 +52,13 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+}
+
+onMounted(load)
+watch(() => route.query.page, load)
+watch([() => route.query.search, () => route.query.employmentType], () => {
+  if (route.query.page) router.replace({ query: { ...route.query, page: undefined } })
+  else load()
 })
 
 function changePage(page) {
@@ -81,8 +91,8 @@ async function apply(jobId) {
     <p v-if="error" class="job-form__error worker-all-jobs__error" role="alert">{{ error }}</p>
     <WorkerDashboard
       list-only
-      :jobs="visibleJobs"
-      :total-jobs="jobs.length"
+      :jobs="jobs"
+      :total-jobs="workerJobsPage.totalCount"
       :applications="myApplications"
       :loading="loading"
       :applying="applying"

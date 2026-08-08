@@ -34,26 +34,33 @@ function findButtonByText(wrapper, text) {
 describe('AllCandidatesPage', () => {
   beforeEach(() => {
     api.get.mockReset()
-    api.get.mockResolvedValue({ data: [] })
+    api.get.mockImplementation((url, options = {}) => Promise.resolve({
+      data: url === '/auth/me'
+        ? {}
+        : url === '/hiring/candidates/search'
+          ? { items: [], page: options.params.page, pageSize: 10, totalCount: 0, totalPages: 0 }
+          : [],
+    }))
   })
 
   it('loads candidates with the employer coordinates and query filters', async () => {
-    api.get.mockImplementation((url) => {
+    api.get.mockImplementation((url, options = {}) => {
       if (url === '/auth/me') {
         return Promise.resolve({ data: { latitude: 12.97, longitude: 77.64 } })
       }
-      return Promise.resolve({
-        data: [
+      if (url === '/hiring/candidates/search') return Promise.resolve({
+        data: { items: [
           { id: 1, name: 'Ravi', role: 'Cashier', area: 'Indiranagar', state: 'Karnataka', pincode: '560038', distanceKm: 2, matchScore: 95 },
-        ],
+        ], page: options.params.page, pageSize: 10, totalCount: 1, totalPages: 1 },
       })
+      return Promise.resolve({ data: [] })
     })
 
     const wrapper = await mountPage({ search: '560038', role: 'Cashier' })
     await flushPromises()
 
-    expect(api.get).toHaveBeenCalledWith('/hiring/candidates/nearby', {
-      params: { lat: 12.97, lng: 77.64, search: '560038', role: 'Cashier' },
+    expect(api.get).toHaveBeenCalledWith('/hiring/candidates/search', {
+      params: { lat: 12.97, lng: 77.64, search: '560038', role: 'Cashier', page: 1, pageSize: 10 },
     })
     expect(wrapper.findAll('.candidate-card')).toHaveLength(1)
     expect(wrapper.text()).toContain('Ravi')
@@ -67,7 +74,9 @@ describe('AllCandidatesPage', () => {
     const wrapper = await mountPage({ search: 'zzz' })
     await flushPromises()
 
-    expect(api.get).toHaveBeenCalledWith('/hiring/candidates/nearby', { params: { search: 'zzz' } })
+    expect(api.get).toHaveBeenCalledWith('/hiring/candidates/search', {
+      params: { search: 'zzz', page: 1, pageSize: 10 },
+    })
     expect(wrapper.findAll('.candidate-card')).toHaveLength(0)
     expect(wrapper.text()).toContain('No talent found')
   })
@@ -79,9 +88,17 @@ describe('AllCandidatesPage', () => {
       role: 'Cashier',
       matchScore: 90,
     }))
-    api.get.mockImplementation((url) => Promise.resolve({
-      data: url === '/auth/me' ? {} : candidates,
-    }))
+    api.get.mockImplementation((url, options = {}) => {
+      if (url === '/auth/me') return Promise.resolve({ data: {} })
+      if (url === '/hiring/candidates/search') {
+        const page = options.params.page
+        return Promise.resolve({ data: {
+          items: candidates.slice((page - 1) * 10, page * 10),
+          page, pageSize: 10, totalCount: 12, totalPages: 2,
+        } })
+      }
+      return Promise.resolve({ data: [] })
+    })
 
     const wrapper = await mountPage()
     await flushPromises()
@@ -107,8 +124,10 @@ describe('AllCandidatesPage', () => {
 
   it('opens, contacts, and saves a candidate', async () => {
     const candidate = { id: 'candidate-1', name: 'Ravi', role: 'Cashier' }
-    api.get.mockImplementation((url) => Promise.resolve({
-      data: url === '/auth/me' ? {} : [candidate],
+    api.get.mockImplementation((url, options = {}) => Promise.resolve({
+      data: url === '/auth/me' ? {} : url === '/hiring/candidates/search'
+        ? { items: [candidate], page: options.params.page, pageSize: 10, totalCount: 1, totalPages: 1 }
+        : [],
     }))
     const wrapper = await mountPage()
     await flushPromises()

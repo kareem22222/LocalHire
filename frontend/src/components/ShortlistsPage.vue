@@ -1,6 +1,6 @@
 <script setup>
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useOpenRoles } from '../composables/useOpenRoles'
 import { useJobsStore } from '../stores/jobs'
@@ -13,32 +13,35 @@ import '../hiring-dashboard.css'
 const route = useRoute()
 const router = useRouter()
 const jobsStore = useJobsStore()
-const { myJobs } = storeToRefs(jobsStore)
+const { employerJobsPage } = storeToRefs(jobsStore)
 const loading = ref(false)
 const error = ref('')
 
-const openRoles = useOpenRoles(() => myJobs.value)
+const openRoles = useOpenRoles(() => employerJobsPage.value.items)
 
 // Only roles that actually have shortlisted candidates are worth reviewing here.
-const rolesWithShortlists = computed(() => openRoles.value.filter((role) => role.shortlisted > 0))
-const totalPages = computed(() => Math.ceil(rolesWithShortlists.value.length / MAX_VISIBLE_ROLES))
-const currentPage = computed(() => Math.min(Math.max(Number.parseInt(route.query.page, 10) || 1, 1), totalPages.value || 1))
-const visibleRoles = computed(() => rolesWithShortlists.value.slice((currentPage.value - 1) * MAX_VISIBLE_ROLES, currentPage.value * MAX_VISIBLE_ROLES))
-const totalShortlisted = computed(() =>
-  rolesWithShortlists.value.reduce((sum, role) => sum + role.shortlisted, 0),
-)
+const rolesWithShortlists = computed(() => openRoles.value)
+const totalPages = computed(() => employerJobsPage.value.totalPages)
+const currentPage = computed(() => Math.max(Number.parseInt(route.query.page, 10) || 1, 1))
+const visibleRoles = computed(() => rolesWithShortlists.value)
 
-onMounted(async () => {
+async function load() {
   loading.value = true
   error.value = ''
   try {
-    await jobsStore.loadMyJobs({ force: true })
+    await jobsStore.loadEmployerJobsPage({
+      status: 'open', shortlistedOnly: true,
+      page: currentPage.value, pageSize: MAX_VISIBLE_ROLES,
+    }, { force: true })
   } catch {
     error.value = 'We could not load your shortlists.'
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(load)
+watch(currentPage, load)
 
 function goBack() {
   router.push('/')
@@ -77,7 +80,7 @@ function changePage(page) {
             <span class="hiring-kicker">Shortlists</span>
             <h2>Review your shortlists</h2>
           </div>
-          <span>{{ totalShortlisted }} shortlisted across {{ rolesWithShortlists.length }} role{{ rolesWithShortlists.length === 1 ? '' : 's' }}</span>
+          <span>{{ employerJobsPage.totalCount }} role{{ employerJobsPage.totalCount === 1 ? '' : 's' }} with shortlists</span>
         </div>
 
         <div v-if="loading" class="candidate-empty">

@@ -1,6 +1,6 @@
 <script setup>
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useOpenRoles } from '../composables/useOpenRoles'
 import { useJobsStore } from '../stores/jobs'
@@ -14,25 +14,29 @@ import '../hiring-dashboard.css'
 const route = useRoute()
 const router = useRouter()
 const jobsStore = useJobsStore()
-const { myJobs } = storeToRefs(jobsStore)
+const { employerJobsPage } = storeToRefs(jobsStore)
 const loading = ref(true)
 const ROLES_PER_PAGE = 15
 
-const openRoles = useOpenRoles(() => myJobs.value)
-const totalPages = computed(() => Math.ceil(openRoles.value.length / ROLES_PER_PAGE))
-const currentPage = computed(() => Math.min(Math.max(Number.parseInt(route.query.page, 10) || 1, 1), totalPages.value || 1))
-const visibleRoles = computed(() => openRoles.value.slice((currentPage.value - 1) * ROLES_PER_PAGE, currentPage.value * ROLES_PER_PAGE))
+const openRoles = useOpenRoles(() => employerJobsPage.value.items)
+const totalPages = computed(() => employerJobsPage.value.totalPages)
+const currentPage = computed(() => Math.max(Number.parseInt(route.query.page, 10) || 1, 1))
 
-onMounted(async () => {
+async function load() {
   loading.value = true
   try {
-    await withMinimumDelay(() => jobsStore.loadMyJobs())
+    await withMinimumDelay(() => jobsStore.loadEmployerJobsPage({
+      status: 'open', page: currentPage.value, pageSize: ROLES_PER_PAGE,
+    }, { force: true }))
   } catch (error) {
     console.error('Failed to load roles.', error)
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(load)
+watch(currentPage, load)
 
 function goBack() {
   router.push('/')
@@ -71,7 +75,7 @@ function changePage(page) {
             <span class="hiring-kicker">Hiring desk</span>
             <h2>All open roles you are hiring for</h2>
           </div>
-          <span>{{ openRoles.length }} roles</span>
+          <span>{{ employerJobsPage.totalCount }} roles</span>
         </div>
 
         <SkeletonShimmer v-if="loading" variant="role" :count="Math.min(openRoles.length || ROLES_PER_PAGE, ROLES_PER_PAGE)" label="Loading roles" />
@@ -79,7 +83,7 @@ function changePage(page) {
         <template v-else>
           <div class="hiring-role-grid">
             <RoleCard
-              v-for="item in visibleRoles"
+              v-for="item in openRoles"
               :key="item.id || item.title"
               :item="item"
               action-label="View role"

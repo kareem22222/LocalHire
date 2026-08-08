@@ -96,6 +96,31 @@ public sealed class CandidateSearchTests
     }
 
     [Fact]
+    public async Task Paged_candidate_search_reaches_every_nearby_worker_and_validates_paging()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+
+        await RegisterAndAuthenticateEmployer(client);
+        SeedNearbyWorkers(factory, 65);
+
+        var first = (await client.GetFromJsonAsync<PagedResponse<CandidateResponse>>(
+            "/api/hiring/candidates/search?lat=12.97&lng=77.64&page=1&pageSize=40"))!;
+        var second = (await client.GetFromJsonAsync<PagedResponse<CandidateResponse>>(
+            "/api/hiring/candidates/search?lat=12.97&lng=77.64&page=2&pageSize=40"))!;
+
+        Assert.Equal(65, first.TotalCount);
+        Assert.Equal(2, first.TotalPages);
+        Assert.Equal(40, first.Items.Count);
+        Assert.Equal(25, second.Items.Count);
+        Assert.Empty(first.Items.Select(item => item.Id).Intersect(second.Items.Select(item => item.Id)));
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await client.GetAsync("/api/hiring/candidates/search?page=0")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await client.GetAsync("/api/hiring/candidates/search?pageSize=101")).StatusCode);
+    }
+
+    [Fact]
     public async Task Candidate_search_validates_coordinates_and_requires_hiring_role()
     {
         using var factory = new ApiFactory();

@@ -32,24 +32,24 @@ function findButtonByText(wrapper, text) {
 describe('AllRolesPage', () => {
   beforeEach(() => {
     api.get.mockReset()
-    api.get.mockResolvedValue({ data: [] })
+    api.get.mockResolvedValue({ data: { items: [], page: 1, pageSize: 15, totalCount: 0, totalPages: 0 } })
   })
 
   it('loads and renders every role the employer is hiring for', async () => {
     api.get.mockResolvedValue({
-      data: [
+      data: { items: [
         { id: 'j1', title: 'Cashier', workplaceName: 'Shop', cityArea: 'Bandra', state: 'Maharashtra', applicationCount: 4, isActive: true },
-        { id: 'j2', title: 'Driver', workplaceName: 'Depot', cityArea: 'Pune', state: 'Maharashtra', applicationCount: 0, isActive: false },
-      ],
+      ], page: 1, pageSize: 15, totalCount: 1, totalPages: 1 },
     })
 
     const wrapper = mountPage()
     await flushPromises()
 
-    expect(api.get).toHaveBeenCalledWith('/hiring/jobs')
-    expect(wrapper.findAll('.hiring-role-card')).toHaveLength(2)
-    expect(wrapper.text()).toContain('2 roles')
-    expect(wrapper.text()).toContain('Inactive')
+    expect(api.get).toHaveBeenCalledWith('/hiring/jobs/paged', {
+      params: { status: 'open', page: 1, pageSize: 15 },
+    })
+    expect(wrapper.findAll('.hiring-role-card')).toHaveLength(1)
+    expect(wrapper.text()).toContain('1 roles')
     expect(wrapper.text()).toContain('Review applicants')
   })
 
@@ -62,11 +62,15 @@ describe('AllRolesPage', () => {
   })
 
   it('loads fifteen roles per page', async () => {
-    api.get.mockResolvedValue({ data: Array.from({ length: 31 }, (_, index) => ({
+    const roles = Array.from({ length: 31 }, (_, index) => ({
       id: `j${index}`,
       title: `Role ${index}`,
       isActive: true,
-    })) })
+    }))
+    api.get.mockImplementation((_url, { params }) => Promise.resolve({ data: {
+      items: roles.slice((params.page - 1) * 15, params.page * 15),
+      page: params.page, pageSize: 15, totalCount: 31, totalPages: 3,
+    } }))
     const wrapper = mountPage()
     await flushPromises()
 
@@ -111,9 +115,9 @@ describe('AllRolesPage', () => {
 
   it('navigates to a role detail page from the view controls', async () => {
     api.get.mockResolvedValue({
-      data: [
+      data: { items: [
         { id: 'j1', title: 'Cashier', workplaceName: 'Shop', cityArea: 'Bandra', state: 'Maharashtra', applicationCount: 4, isActive: true },
-      ],
+      ], page: 1, pageSize: 15, totalCount: 1, totalPages: 1 },
     })
 
     const wrapper = mountPage()

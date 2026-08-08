@@ -17,16 +17,16 @@ const route = useRoute()
 const router = useRouter()
 const jobsStore = useJobsStore()
 const profileStore = useProfileStore()
-const { candidates } = storeToRefs(jobsStore)
+const { candidateSearchPage } = storeToRefs(jobsStore)
 const { profile } = storeToRefs(profileStore)
 const { isSaved, add: saveCandidate } = useSavedCandidates()
 const loading = ref(true)
 
 const searchTerm = computed(() => (route.query.search ?? '').toString())
 const roleTerm = computed(() => (route.query.role ?? '').toString())
-const totalPages = computed(() => Math.ceil(candidates.value.length / MAX_VISIBLE_CANDIDATES))
-const currentPage = computed(() => Math.min(Math.max(Number.parseInt(route.query.page, 10) || 1, 1), totalPages.value || 1))
-const visibleCandidates = computed(() => candidates.value.slice((currentPage.value - 1) * MAX_VISIBLE_CANDIDATES, currentPage.value * MAX_VISIBLE_CANDIDATES))
+const candidates = computed(() => candidateSearchPage.value.items)
+const totalPages = computed(() => candidateSearchPage.value.totalPages)
+const currentPage = computed(() => Math.max(Number.parseInt(route.query.page, 10) || 1, 1))
 
 const heading = computed(() => {
   const parts = []
@@ -46,6 +46,8 @@ function buildParams() {
   }
   if (searchTerm.value) params.search = searchTerm.value
   if (roleTerm.value) params.role = roleTerm.value
+  params.page = currentPage.value
+  params.pageSize = MAX_VISIBLE_CANDIDATES
   return params
 }
 
@@ -54,7 +56,7 @@ async function load() {
   try {
     await withMinimumDelay(async () => {
       await profileStore.fetchProfile().catch(() => {})
-      await jobsStore.loadNearbyCandidates(buildParams(), { force: true })
+      await jobsStore.loadCandidateSearchPage(buildParams(), { force: true })
     })
   } catch {
   } finally {
@@ -63,7 +65,11 @@ async function load() {
 }
 
 onMounted(load)
-watch([searchTerm, roleTerm], load)
+watch(currentPage, load)
+watch([searchTerm, roleTerm], () => {
+  if (route.query.page) router.replace({ query: { ...route.query, page: undefined } })
+  else load()
+})
 
 function goBack() {
   router.push('/')
@@ -102,14 +108,14 @@ function changePage(page) {
             <span class="hiring-kicker">Recommended</span>
             <h2>{{ heading }}</h2>
           </div>
-          <span>{{ candidates.length }} results</span>
+          <span>{{ candidateSearchPage.totalCount }} results</span>
         </div>
 
         <SkeletonShimmer v-if="loading" label="Searching talent" />
 
         <template v-else>
           <CandidateCard
-            v-for="candidate in visibleCandidates"
+            v-for="candidate in candidates"
             :key="candidate.id"
             :candidate="candidate"
             :shortlisted="isSaved(candidate.id)"

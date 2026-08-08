@@ -60,6 +60,33 @@ public static class JobEndpoints
         })
         .WithName("GetMyJobPosts");
 
+        hiringGroup.MapGet("/jobs/paged", async (
+            int? page,
+            int? pageSize,
+            string? status,
+            bool? shortlistedOnly,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            var pagingErrors = PagingRequest.Validate(page, pageSize, out var paging);
+            if (pagingErrors.Count > 0)
+                return Results.ValidationProblem(pagingErrors);
+
+            var normalizedStatus = status?.Trim().ToLowerInvariant() ?? "all";
+            if (normalizedStatus is not ("all" or "open" or "closed"))
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["status"] = ["Status must be all, open, or closed."]
+                });
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            return Results.Ok(await jobService.GetJobsForEmployerPagedAsync(
+                userId, normalizedStatus, shortlistedOnly == true, paging, ct));
+        })
+        .WithName("GetMyJobPostsPaged");
+
         hiringGroup.MapGet("/jobs/{id:guid}", async (
             Guid id,
             ClaimsPrincipal user,
@@ -107,6 +134,38 @@ public static class JobEndpoints
             return Results.Ok(applications);
         })
         .WithName("GetJobApplications");
+
+        hiringGroup.MapGet("/jobs/{id:guid}/applications/paged", async (
+            Guid id,
+            int? page,
+            int? pageSize,
+            string? status,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            var pagingErrors = PagingRequest.Validate(page, pageSize, out var paging);
+            if (pagingErrors.Count > 0)
+                return Results.ValidationProblem(pagingErrors);
+
+            ApplicationStatus? parsedStatus = null;
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                if (!Enum.TryParse<ApplicationStatus>(status, true, out var value)
+                    || !Enum.IsDefined(value))
+                    return Results.ValidationProblem(new Dictionary<string, string[]>
+                    {
+                        ["status"] = ["Status is not a valid application status."]
+                    });
+                parsedStatus = value;
+            }
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            return Results.Ok(await jobService.GetApplicationsPagedAsync(
+                id, userId, parsedStatus, paging, ct));
+        })
+        .WithName("GetJobApplicationsPaged");
 
         hiringGroup.MapPost("/jobs/{jobId:guid}/applications/{applicationId:guid}/shortlist", async (
             Guid jobId,
@@ -221,6 +280,31 @@ public static class JobEndpoints
         })
         .WithName("GetNearbyCandidates");
 
+        hiringGroup.MapGet("/candidates/search", async (
+            int? page,
+            int? pageSize,
+            double? lat,
+            double? lng,
+            string? search,
+            string? role,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            var pagingErrors = PagingRequest.Validate(page, pageSize, out var paging);
+            if (pagingErrors.Count > 0)
+                return Results.ValidationProblem(pagingErrors);
+            var coordinateError = EndpointHelpers.ValidateCoordinatePair(lat, lng);
+            if (coordinateError is not null)
+                return coordinateError;
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            return Results.Ok(await jobService.SearchCandidatesAsync(
+                lat, lng, search, role, userId, paging, ct));
+        })
+        .WithName("SearchCandidates");
+
         hiringGroup.MapGet("/saved-candidates", async (
             ClaimsPrincipal user,
             IJobService jobService,
@@ -232,6 +316,23 @@ public static class JobEndpoints
             return Results.Ok(await jobService.GetSavedCandidateIdsAsync(userId, ct));
         })
         .WithName("GetSavedCandidates");
+
+        hiringGroup.MapGet("/saved-candidates/paged", async (
+            int? page,
+            int? pageSize,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            var pagingErrors = PagingRequest.Validate(page, pageSize, out var paging);
+            if (pagingErrors.Count > 0)
+                return Results.ValidationProblem(pagingErrors);
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            return Results.Ok(await jobService.GetSavedCandidatesPagedAsync(userId, paging, ct));
+        })
+        .WithName("GetSavedCandidatesPaged");
 
         hiringGroup.MapPost("/saved-candidates/{workerId:guid}", async (
             Guid workerId,
@@ -285,6 +386,31 @@ public static class JobEndpoints
         })
         .WithName("GetNearbyJobs");
 
+        workGroup.MapGet("/jobs/search", async (
+            int? page,
+            int? pageSize,
+            double? lat,
+            double? lng,
+            string? search,
+            EmploymentType? employmentType,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            var pagingErrors = PagingRequest.Validate(page, pageSize, out var paging);
+            if (pagingErrors.Count > 0)
+                return Results.ValidationProblem(pagingErrors);
+            var coordinateError = EndpointHelpers.ValidateCoordinatePair(lat, lng);
+            if (coordinateError is not null)
+                return coordinateError;
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            return Results.Ok(await jobService.SearchJobsAsync(
+                lat, lng, search, employmentType, userId, paging, ct));
+        })
+        .WithName("SearchWorkerJobs");
+
         workGroup.MapGet("/jobs/{id:guid}", async (
             Guid id,
             IJobService jobService,
@@ -319,6 +445,23 @@ public static class JobEndpoints
         })
         .WithName("GetMyApplications");
 
+        workGroup.MapGet("/applications/paged", async (
+            int? page,
+            int? pageSize,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            var pagingErrors = PagingRequest.Validate(page, pageSize, out var paging);
+            if (pagingErrors.Count > 0)
+                return Results.ValidationProblem(pagingErrors);
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            return Results.Ok(await jobService.GetMyApplicationsPagedAsync(userId, paging, ct));
+        })
+        .WithName("GetMyApplicationsPaged");
+
         workGroup.MapGet("/saved-jobs", async (
             ClaimsPrincipal user,
             IJobService jobService,
@@ -330,6 +473,23 @@ public static class JobEndpoints
             return Results.Ok(await jobService.GetSavedJobIdsAsync(userId, ct));
         })
         .WithName("GetSavedJobs");
+
+        workGroup.MapGet("/saved-jobs/paged", async (
+            int? page,
+            int? pageSize,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            var pagingErrors = PagingRequest.Validate(page, pageSize, out var paging);
+            if (pagingErrors.Count > 0)
+                return Results.ValidationProblem(pagingErrors);
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            return Results.Ok(await jobService.GetSavedJobsPagedAsync(userId, paging, ct));
+        })
+        .WithName("GetSavedJobsPaged");
 
         workGroup.MapPost("/saved-jobs/{jobId:guid}", async (
             Guid jobId,

@@ -1,8 +1,7 @@
 <script setup>
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useSavedJobs } from '../composables/useSavedJobs'
 import { useJobsStore } from '../stores/jobs'
 import { MAX_VISIBLE_JOBS } from '../utils/jobDisplay'
 import BrandLogo from './BrandLogo.vue'
@@ -13,33 +12,31 @@ import '../hiring-dashboard.css'
 const route = useRoute()
 const router = useRouter()
 const jobsStore = useJobsStore()
-const { myApplications } = storeToRefs(jobsStore)
-const { saved, load: loadSavedJobs } = useSavedJobs()
-const jobs = ref([])
+const { myApplications, savedJobsPage } = storeToRefs(jobsStore)
 const loading = ref(true)
 const applying = ref(null)
 const error = ref('')
 
-const savedJobs = computed(() => jobs.value.filter((job) => saved.value.has(job.id)))
-const totalPages = computed(() => Math.ceil(savedJobs.value.length / MAX_VISIBLE_JOBS))
-const currentPage = computed(() => Math.min(Math.max(Number.parseInt(route.query.page, 10) || 1, 1), totalPages.value || 1))
-const visibleJobs = computed(() => savedJobs.value.slice((currentPage.value - 1) * MAX_VISIBLE_JOBS, currentPage.value * MAX_VISIBLE_JOBS))
+const savedJobs = computed(() => savedJobsPage.value.items)
+const totalPages = computed(() => savedJobsPage.value.totalPages)
+const currentPage = computed(() => Math.max(Number.parseInt(route.query.page, 10) || 1, 1))
 
-onMounted(async () => {
+async function load() {
+  loading.value = true
   try {
-    await loadSavedJobs()
-    const [jobResults] = await Promise.all([
-      Promise.allSettled([...saved.value].map((id) => jobsStore.loadWorkerJob(id))),
+    await Promise.all([
+      jobsStore.loadSavedJobsPage({ page: currentPage.value, pageSize: MAX_VISIBLE_JOBS }, { force: true }),
       jobsStore.loadMyApplications().catch(() => []),
     ])
-    jobs.value = jobResults.filter((result) => result.status === 'fulfilled').map((result) => result.value)
-    if (jobResults.some((result) => result.status === 'rejected')) error.value = 'Some saved jobs are no longer available.'
   } catch {
     error.value = 'We could not load your saved jobs.'
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(load)
+watch(currentPage, load)
 
 function changePage(page) {
   router.push({ query: { page: page === 1 ? undefined : String(page) } })
@@ -75,8 +72,8 @@ async function apply(jobId) {
       list-title="Saved jobs"
       empty-title="No saved jobs yet"
       empty-text="Save a role from the jobs list or job details to find it here."
-      :jobs="visibleJobs"
-      :total-jobs="savedJobs.length"
+      :jobs="savedJobs"
+      :total-jobs="savedJobsPage.totalCount"
       :applications="myApplications"
       :loading="loading"
       :applying="applying"

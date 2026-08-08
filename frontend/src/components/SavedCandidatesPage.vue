@@ -1,7 +1,6 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useSavedCandidates } from '../composables/useSavedCandidates'
 import { useJobsStore } from '../stores/jobs'
 import { MAX_VISIBLE_CANDIDATES } from '../utils/jobDisplay'
 import BrandLogo from './BrandLogo.vue'
@@ -13,28 +12,28 @@ import '../hiring-dashboard.css'
 const route = useRoute()
 const router = useRouter()
 const jobsStore = useJobsStore()
-const { saved, load: loadSavedCandidates } = useSavedCandidates()
-const candidates = ref([])
 const loading = ref(true)
 const error = ref('')
 
-const savedCandidates = computed(() => candidates.value.filter((candidate) => saved.value.has(candidate.id)))
-const totalPages = computed(() => Math.ceil(savedCandidates.value.length / MAX_VISIBLE_CANDIDATES))
-const currentPage = computed(() => Math.min(Math.max(Number.parseInt(route.query.page, 10) || 1, 1), totalPages.value || 1))
-const visibleCandidates = computed(() => savedCandidates.value.slice((currentPage.value - 1) * MAX_VISIBLE_CANDIDATES, currentPage.value * MAX_VISIBLE_CANDIDATES))
+const savedCandidates = computed(() => jobsStore.savedCandidatesPage.items)
+const totalPages = computed(() => jobsStore.savedCandidatesPage.totalPages)
+const currentPage = computed(() => Math.max(Number.parseInt(route.query.page, 10) || 1, 1))
 
-onMounted(async () => {
+async function load() {
+  loading.value = true
   try {
-    await loadSavedCandidates()
-    const results = await Promise.allSettled([...saved.value].map((id) => jobsStore.loadCandidate(id)))
-    candidates.value = results.filter((result) => result.status === 'fulfilled').map((result) => result.value)
-    if (results.some((result) => result.status === 'rejected')) error.value = 'Some saved candidates are no longer available.'
+    await jobsStore.loadSavedCandidatesPage({
+      page: currentPage.value, pageSize: MAX_VISIBLE_CANDIDATES,
+    }, { force: true })
   } catch {
     error.value = 'We could not load your saved candidates.'
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(load)
+watch(currentPage, load)
 
 function openCandidate(candidate, contact = false) {
   router.push({
@@ -66,13 +65,13 @@ function changePage(page) {
             <span class="hiring-kicker">Saved for later</span>
             <h2>Saved candidates</h2>
           </div>
-          <span>{{ savedCandidates.length }} results</span>
+          <span>{{ jobsStore.savedCandidatesPage.totalCount }} results</span>
         </div>
 
         <SkeletonShimmer v-if="loading" label="Loading saved candidates" />
         <template v-else>
           <CandidateCard
-            v-for="candidate in visibleCandidates"
+            v-for="candidate in savedCandidates"
             :key="candidate.id"
             :candidate="candidate"
             shortlisted

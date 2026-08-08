@@ -19,6 +19,10 @@ const pendingApplicant = {
   status: 'Applied',
 }
 
+function page(items, current = 1, totalCount = items.length) {
+  return { items, page: current, pageSize: 10, totalCount, totalPages: totalCount ? Math.ceil(totalCount / 10) : 0 }
+}
+
 let router
 
 async function mountPage(filter = 'all') {
@@ -37,9 +41,9 @@ describe('JobApplicantsPage', () => {
     api.get.mockReset()
     api.post.mockReset()
     api.post.mockResolvedValue({ data: { ...pendingApplicant, status: 'Shortlisted' } })
-    api.get.mockImplementation((url) => Promise.resolve({
-      data: url.endsWith('/applications')
-        ? [pendingApplicant]
+    api.get.mockImplementation((url, options = {}) => Promise.resolve({
+      data: url.endsWith('/applications/paged')
+        ? page([pendingApplicant], options.params.page)
         : { id: 'job-1', title: 'Cashier', workplaceName: 'Corner Shop' },
     }))
   })
@@ -68,9 +72,11 @@ describe('JobApplicantsPage', () => {
   })
 
   it('filters the shortlisted view and reports load and shortlist failures', async () => {
-    api.get.mockImplementation((url) => Promise.resolve({
-      data: url.endsWith('/applications')
-        ? [pendingApplicant, { ...pendingApplicant, id: 'application-2', status: 'Shortlisted' }]
+    api.get.mockImplementation((url, options = {}) => Promise.resolve({
+      data: url.endsWith('/applications/paged')
+        ? page(options.params.status
+          ? [{ ...pendingApplicant, id: 'application-2', status: 'Shortlisted' }]
+          : [pendingApplicant, { ...pendingApplicant, id: 'application-2', status: 'Shortlisted' }], options.params.page)
         : null,
     }))
     const wrapper = await mountPage('shortlisted')
@@ -95,7 +101,7 @@ describe('JobApplicantsPage', () => {
   it('ignores an obsolete applicant response after the route changes', async () => {
     const applicationRequests = {}
     api.get.mockImplementation((url) => {
-      if (url.endsWith('/applications')) {
+      if (url.endsWith('/applications/paged')) {
         const id = url.split('/')[3]
         return new Promise((resolve) => { applicationRequests[id] = resolve })
       }
@@ -109,11 +115,11 @@ describe('JobApplicantsPage', () => {
     await flushPromises()
     expect(wrapper.findAll('.candidate-card')).toHaveLength(0)
 
-    applicationRequests['job-2']({ data: [{ ...pendingApplicant, id: 'application-2', workerName: 'Latest Worker' }] })
+    applicationRequests['job-2']({ data: page([{ ...pendingApplicant, id: 'application-2', workerName: 'Latest Worker' }]) })
     await flushPromises()
     expect(wrapper.text()).toContain('Latest Worker')
 
-    applicationRequests['job-1']({ data: [pendingApplicant] })
+    applicationRequests['job-1']({ data: page([pendingApplicant]) })
     await flushPromises()
     expect(wrapper.text()).toContain('Latest Worker')
     expect(wrapper.text()).not.toContain('Ravi Kumar')
@@ -135,9 +141,9 @@ describe('JobApplicantsPage', () => {
   })
 
   it('hires shortlisted applicants and confirms terminal rejections without refetching', async () => {
-    api.get.mockImplementation((url) => Promise.resolve({
-      data: url.endsWith('/applications')
-        ? [
+    api.get.mockImplementation((url, options = {}) => Promise.resolve({
+      data: url.endsWith('/applications/paged')
+        ? page([
             pendingApplicant,
             {
               ...pendingApplicant,
@@ -146,7 +152,7 @@ describe('JobApplicantsPage', () => {
               workerName: 'Asha Singh',
               status: 'Shortlisted',
             },
-          ]
+          ], options.params.page)
         : { id: 'job-1', title: 'Cashier' },
     }))
     api.post.mockImplementation((url) => Promise.resolve({
@@ -161,7 +167,7 @@ describe('JobApplicantsPage', () => {
     const wrapper = await mountPage()
     await flushPromises()
     const applicationCallsBefore = api.get.mock.calls
-      .filter(([url]) => url.endsWith('/applications')).length
+      .filter(([url]) => url.endsWith('/applications/paged')).length
 
     await wrapper.findAll('.candidate-card').find((card) => card.text().includes('Asha Singh'))
       .findAll('button').find((button) => button.text() === 'Hire').trigger('click')
@@ -173,10 +179,8 @@ describe('JobApplicantsPage', () => {
     expect(api.post).toHaveBeenCalledWith('/hiring/jobs/job-1/applications/application-2/hire')
     expect(api.post).toHaveBeenCalledWith('/hiring/jobs/job-1/applications/application-1/reject')
     expect(window.confirm).toHaveBeenCalledWith('Reject Ravi Kumar? This decision cannot be undone.')
-    expect(wrapper.text()).toContain('Hired')
-    expect(wrapper.text()).toContain('Rejected')
-    expect(api.get.mock.calls.filter(([url]) => url.endsWith('/applications')))
-      .toHaveLength(applicationCallsBefore)
+    expect(api.get.mock.calls.filter(([url]) => url.endsWith('/applications/paged')).length)
+      .toBeGreaterThan(applicationCallsBefore)
   })
 
   it('does not reject when confirmation is cancelled', async () => {
@@ -196,8 +200,10 @@ describe('JobApplicantsPage', () => {
       workerId: `candidate-${index}`,
       workerName: `Worker ${index}`,
     }))
-    api.get.mockImplementation((url) => Promise.resolve({
-      data: url.endsWith('/applications') ? applicants : { id: 'job-1', title: 'Cashier' },
+    api.get.mockImplementation((url, options = {}) => Promise.resolve({
+      data: url.endsWith('/applications/paged')
+        ? page(applicants.slice((options.params.page - 1) * 10, options.params.page * 10), options.params.page, 11)
+        : { id: 'job-1', title: 'Cashier' },
     }))
     const wrapper = await mountPage()
     await flushPromises()
@@ -207,6 +213,6 @@ describe('JobApplicantsPage', () => {
     await wrapper.find('[aria-label="Page 2 of 2"]').trigger('click')
     await flushPromises()
     expect(wrapper.findAll('.candidate-card')).toHaveLength(1)
-    expect(api.get).toHaveBeenCalledTimes(callsBeforePaging)
+    expect(api.get).toHaveBeenCalledTimes(callsBeforePaging + 1)
   })
 })

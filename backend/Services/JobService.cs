@@ -55,6 +55,47 @@ public sealed class JobService : IJobService
             .ToList();
     }
 
+    public async Task<PagedResponse<JobPostResponse>> GetJobsForEmployerPagedAsync(
+        Guid employerId, string status, bool shortlistedOnly, PagingRequest paging, CancellationToken ct)
+    {
+        var query = _db.JobPosts.Where(job => job.EmployerId == employerId);
+        query = status switch
+        {
+            "open" => query.Where(job => job.IsActive),
+            "closed" => query.Where(job => !job.IsActive),
+            _ => query
+        };
+        if (shortlistedOnly)
+            query = query.Where(job => job.Applications.Any(application =>
+                application.Status == ApplicationStatus.Shortlisted));
+
+        var totalCount = await query.CountAsync(ct);
+        var projected = query.Select(job => new
+        {
+            Job = job,
+            Count = job.Applications.Count,
+            Shortlisted = job.Applications.Count(application =>
+                application.Status == ApplicationStatus.Shortlisted)
+        });
+        var rows = IsSqlite
+            ? (await projected.ToListAsync(ct))
+                .OrderByDescending(item => item.Job.CreatedAt)
+                .ThenBy(item => item.Job.Id)
+                .Skip(paging.Skip)
+                .Take(paging.PageSize)
+                .ToList()
+            : await projected
+                .OrderByDescending(item => item.Job.CreatedAt)
+                .ThenBy(item => item.Job.Id)
+                .Skip(paging.Skip)
+                .Take(paging.PageSize)
+                .ToListAsync(ct);
+
+        return PagedResponse<JobPostResponse>.Create(
+            rows.Select(item => JobMapper.ToResponse(
+                item.Job, item.Count, item.Shortlisted)).ToList(), paging, totalCount);
+    }
+
     public async Task<JobPostResponse> GetJobAsync(Guid id, Guid employerId, CancellationToken ct)
     {
         var result = await _db.JobPosts
@@ -121,6 +162,46 @@ public sealed class JobService : IJobService
             .ToListAsync(ct);
 
         return applications.OrderByDescending(a => a.AppliedAt).ToList();
+    }
+
+    public async Task<PagedResponse<ApplicantResponse>> GetApplicationsPagedAsync(
+        Guid jobId, Guid employerId, ApplicationStatus? status,
+        PagingRequest paging, CancellationToken ct)
+    {
+        if (!await _db.JobPosts.AnyAsync(
+                job => job.Id == jobId && job.EmployerId == employerId, ct))
+            throw new NotFoundException(JobPostNotFoundMessage);
+
+        var query = _db.JobApplications.Where(application => application.JobPostId == jobId);
+        if (status is not null)
+            query = query.Where(application => application.Status == status);
+
+        var totalCount = await query.CountAsync(ct);
+        var projected = query.Select(application => new ApplicantResponse(
+            application.Id,
+            application.WorkerId,
+            application.Worker.Name,
+            application.Worker.JobTitle,
+            application.Worker.CityArea,
+            application.Worker.State,
+            application.Worker.Pincode,
+            application.Status.ToString(),
+            application.CreatedAt));
+        var items = IsSqlite
+            ? (await projected.ToListAsync(ct))
+                .OrderByDescending(item => item.AppliedAt)
+                .ThenBy(item => item.Id)
+                .Skip(paging.Skip)
+                .Take(paging.PageSize)
+                .ToList()
+            : await projected
+                .OrderByDescending(item => item.AppliedAt)
+                .ThenBy(item => item.Id)
+                .Skip(paging.Skip)
+                .Take(paging.PageSize)
+                .ToListAsync(ct);
+
+        return PagedResponse<ApplicantResponse>.Create(items, paging, totalCount);
     }
 
     public Task<ApplicantResponse> ShortlistApplicantAsync(Guid jobId, Guid applicationId, Guid employerId, CancellationToken ct)
@@ -292,6 +373,67 @@ public sealed class JobService : IJobService
             .ToList();
     }
 
+    public async Task<PagedResponse<JobPostResponse>> SearchJobsAsync(
+        double? lat, double? lng, string? search, EmploymentType? employmentType,
+        Guid workerId, PagingRequest paging, CancellationToken ct)
+    {
+        var term = search?.Trim();
+        var hasSearch = !string.IsNullOrEmpty(term);
+        var query = ApplyJobFilters(_db.JobPosts.Where(job => job.IsActive), term, employmentType);
+
+        if (!hasSearch && lat is null)
+            query = await ApplyWorkerStateDefaultAsync(query, workerId, ct);
+
+        if (lat is not null && lng is not null)
+        {
+            if (!hasSearch)
+                query = ApplyJobBoundingBox(query, lat.Value, lng.Value);
+
+            // ponytail: filtered in-memory distance sort; use PostGIS if measured volume makes it expensive.
+            var matched = await query
+                .Select(job => new { Job = job, Count = job.Applications.Count })
+                .ToListAsync(ct);
+            var ranked = matched
+                .Select(item => new
+                {
+                    item.Job,
+                    item.Count,
+                    Distance = GeoCalculator.HaversineDistance(
+                        lat.Value, lng.Value, item.Job.Latitude, item.Job.Longitude)
+                })
+                .Where(item => hasSearch || item.Distance <= NearbyRadiusKm)
+                .OrderBy(item => item.Distance)
+                .ThenByDescending(item => item.Job.CreatedAt)
+                .ThenBy(item => item.Job.Id)
+                .ToList();
+
+            return PagedResponse<JobPostResponse>.Create(
+                ranked.Skip(paging.Skip).Take(paging.PageSize)
+                    .Select(item => JobMapper.ToResponse(item.Job, item.Count)).ToList(),
+                paging, ranked.Count);
+        }
+
+        var totalCount = await query.CountAsync(ct);
+        var projected = query.Select(job => new { Job = job, Count = job.Applications.Count });
+        var page = IsSqlite
+            ? (await projected.ToListAsync(ct))
+                .OrderByDescending(item => item.Job.CreatedAt)
+                .ThenBy(item => item.Job.Id)
+                .Skip(paging.Skip)
+                .Take(paging.PageSize)
+                .ToList()
+            : await projected
+                .OrderByDescending(item => item.Job.CreatedAt)
+                .ThenBy(item => item.Job.Id)
+                .Skip(paging.Skip)
+                .Take(paging.PageSize)
+                .ToListAsync(ct);
+
+        return PagedResponse<JobPostResponse>.Create(
+            page.Select(item => JobMapper.ToResponse(item.Job, item.Count)).ToList(),
+            paging, totalCount);
+    }
+
     private static IQueryable<JobPost> ApplyJobBoundingBox(
         IQueryable<JobPost> query, double lat, double lng)
     {
@@ -394,6 +536,65 @@ public sealed class JobService : IJobService
 
         return RankCandidates(
             matchedWorkers.OrderByDescending(u => u.CreatedAt).ToList(), lat, lng);
+    }
+
+    public async Task<PagedResponse<CandidateResponse>> SearchCandidatesAsync(
+        double? lat, double? lng, string? search, string? role,
+        Guid employerId, PagingRequest paging, CancellationToken ct)
+    {
+        var term = search?.Trim();
+        var hasSearch = !string.IsNullOrEmpty(term);
+        var query = ApplyCandidateFilters(
+            _db.Users.Where(user => user.Role == UserRole.LookingForWork), term, role);
+
+        if (!hasSearch && lat is null)
+            query = await ApplyEmployerStateDefaultAsync(query, employerId, ct);
+
+        if (lat is not null && lng is not null)
+        {
+            if (!hasSearch)
+                query = ApplyBoundingBox(query, lat.Value, lng.Value);
+
+            // ponytail: filtered in-memory distance sort; use PostGIS if measured volume makes it expensive.
+            var ranked = (await query.ToListAsync(ct))
+                .Select(user => new
+                {
+                    User = user,
+                    Distance = GeoCalculator.HaversineDistance(
+                        lat.Value, lng.Value, user.Latitude, user.Longitude)
+                })
+                .Where(item => hasSearch || item.Distance <= NearbyRadiusKm)
+                .OrderBy(item => item.Distance)
+                .ThenByDescending(item => item.User.CreatedAt)
+                .ThenBy(item => item.User.Id)
+                .ToList();
+
+            return PagedResponse<CandidateResponse>.Create(
+                ranked.Skip(paging.Skip).Take(paging.PageSize)
+                    .Select(item => ToCandidateResponse(
+                        item.User, item.Distance >= double.MaxValue ? null : item.Distance))
+                    .ToList(),
+                paging, ranked.Count);
+        }
+
+        var totalCount = await query.CountAsync(ct);
+        var workers = IsSqlite
+            ? (await query.ToListAsync(ct))
+                .OrderByDescending(user => user.CreatedAt)
+                .ThenBy(user => user.Id)
+                .Skip(paging.Skip)
+                .Take(paging.PageSize)
+                .ToList()
+            : await query
+                .OrderByDescending(user => user.CreatedAt)
+                .ThenBy(user => user.Id)
+                .Skip(paging.Skip)
+                .Take(paging.PageSize)
+                .ToListAsync(ct);
+
+        return PagedResponse<CandidateResponse>.Create(
+            workers.Select(user => ToCandidateResponse(user, null)).ToList(),
+            paging, totalCount);
     }
 
     /// <summary>
@@ -560,6 +761,31 @@ public sealed class JobService : IJobService
             .Select(savedCandidate => savedCandidate.WorkerId)
             .ToListAsync(ct);
 
+    public async Task<PagedResponse<CandidateResponse>> GetSavedCandidatesPagedAsync(
+        Guid employerId, PagingRequest paging, CancellationToken ct)
+    {
+        var query = _db.SavedCandidates.Where(item => item.EmployerId == employerId);
+        var totalCount = await query.CountAsync(ct);
+        var rows = IsSqlite
+            ? (await query.Include(item => item.Worker).ToListAsync(ct))
+                .OrderByDescending(item => item.CreatedAt)
+                .ThenBy(item => item.Id)
+                .Skip(paging.Skip)
+                .Take(paging.PageSize)
+                .ToList()
+            : await query
+                .Include(item => item.Worker)
+                .OrderByDescending(item => item.CreatedAt)
+                .ThenBy(item => item.Id)
+                .Skip(paging.Skip)
+                .Take(paging.PageSize)
+                .ToListAsync(ct);
+
+        return PagedResponse<CandidateResponse>.Create(
+            rows.Select(item => ToCandidateResponse(item.Worker, null)).ToList(),
+            paging, totalCount);
+    }
+
     public async Task SaveCandidateAsync(
         Guid workerId, Guid employerId, CancellationToken ct)
     {
@@ -660,12 +886,78 @@ public sealed class JobService : IJobService
         return applications.OrderByDescending(a => a.CreatedAt).ToList();
     }
 
+    public async Task<ApplicationPagedResponse> GetMyApplicationsPagedAsync(
+        Guid workerId, PagingRequest paging, CancellationToken ct)
+    {
+        var query = _db.JobApplications.Where(application => application.WorkerId == workerId);
+        var totalCount = await query.CountAsync(ct);
+        var projected = query.Select(application => new JobApplicationResponse(
+            application.Id, application.JobPostId, application.JobPost.Title,
+            application.JobPost.WorkplaceName, application.JobPost.CityArea,
+            application.Status.ToString(), application.CreatedAt,
+            application.StatusUpdatedAt ?? application.CreatedAt));
+        var items = IsSqlite
+            ? (await projected.ToListAsync(ct))
+                .OrderByDescending(item => item.CreatedAt)
+                .ThenBy(item => item.Id)
+                .Skip(paging.Skip)
+                .Take(paging.PageSize)
+                .ToList()
+            : await projected
+                .OrderByDescending(item => item.CreatedAt)
+                .ThenBy(item => item.Id)
+                .Skip(paging.Skip)
+                .Take(paging.PageSize)
+                .ToListAsync(ct);
+
+        var shortlistedCount = await query.CountAsync(
+            application => application.Status == ApplicationStatus.Shortlisted, ct);
+        var hiredCount = await query.CountAsync(
+            application => application.Status == ApplicationStatus.Hired, ct);
+        var totalPages = totalCount == 0
+            ? 0
+            : (totalCount - 1) / paging.PageSize + 1;
+        return new ApplicationPagedResponse(
+            items, paging.Page, paging.PageSize, totalCount, totalPages,
+            shortlistedCount, hiredCount);
+    }
+
     public async Task<IReadOnlyList<Guid>> GetSavedJobIdsAsync(
         Guid workerId, CancellationToken ct) =>
         await _db.SavedJobs
             .Where(savedJob => savedJob.WorkerId == workerId)
             .Select(savedJob => savedJob.JobPostId)
             .ToListAsync(ct);
+
+    public async Task<PagedResponse<JobPostResponse>> GetSavedJobsPagedAsync(
+        Guid workerId, PagingRequest paging, CancellationToken ct)
+    {
+        var query = _db.SavedJobs.Where(item => item.WorkerId == workerId);
+        var totalCount = await query.CountAsync(ct);
+        var projected = query.Select(item => new
+        {
+            Saved = item,
+            Job = item.JobPost,
+            Count = item.JobPost.Applications.Count
+        });
+        var rows = IsSqlite
+            ? (await projected.ToListAsync(ct))
+                .OrderByDescending(item => item.Saved.CreatedAt)
+                .ThenBy(item => item.Saved.Id)
+                .Skip(paging.Skip)
+                .Take(paging.PageSize)
+                .ToList()
+            : await projected
+                .OrderByDescending(item => item.Saved.CreatedAt)
+                .ThenBy(item => item.Saved.Id)
+                .Skip(paging.Skip)
+                .Take(paging.PageSize)
+                .ToListAsync(ct);
+
+        return PagedResponse<JobPostResponse>.Create(
+            rows.Select(item => JobMapper.ToResponse(item.Job, item.Count)).ToList(),
+            paging, totalCount);
+    }
 
     public async Task SaveJobAsync(Guid jobId, Guid workerId, CancellationToken ct)
     {
@@ -707,4 +999,7 @@ public sealed class JobService : IJobService
         _db.SavedJobs.Remove(savedJob);
         await _db.SaveChangesAsync(ct);
     }
+
+    private bool IsSqlite =>
+        _db.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite";
 }
