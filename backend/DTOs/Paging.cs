@@ -4,6 +4,9 @@ public sealed record PagingRequest(int Page, int PageSize)
 {
     public int Skip => (int)Math.Min((long)(Page - 1) * PageSize, int.MaxValue);
 
+    public int TotalPages(int totalCount) =>
+        totalCount == 0 ? 0 : (totalCount - 1) / PageSize + 1;
+
     public static Dictionary<string, string[]> Validate(
         int? page, int? pageSize, out PagingRequest request)
     {
@@ -28,7 +31,13 @@ public sealed record PagedResponse<T>(
     public static PagedResponse<T> Create(
         IReadOnlyList<T> items, PagingRequest paging, int totalCount) =>
         new(items, paging.Page, paging.PageSize, totalCount,
-            totalCount == 0 ? 0 : (totalCount - 1) / paging.PageSize + 1);
+            paging.TotalPages(totalCount));
+}
+
+public enum JobStatusFilter
+{
+    Open,
+    Closed
 }
 
 public sealed record NotificationPagedResponse(

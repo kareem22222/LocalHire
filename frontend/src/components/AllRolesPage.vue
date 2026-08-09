@@ -75,7 +75,7 @@ function changePage(page) {
             <span class="hiring-kicker">Hiring desk</span>
             <h2>All open roles you are hiring for</h2>
           </div>
-          <span>{{ employerJobsPage.totalCount }} roles</span>
+          <span>{{ employerJobsPage.totalCount }} {{ employerJobsPage.totalCount === 1 ? 'role' : 'roles' }}</span>
         </div>
 
         <SkeletonShimmer v-if="loading" variant="role" :count="Math.min(openRoles.length || ROLES_PER_PAGE, ROLES_PER_PAGE)" label="Loading roles" />

@@ -33,7 +33,10 @@ function formatTime(value) {
 }
 
 async function selectNotification(notification) {
-  if (!notification.isRead) await store.markRead(notification.id)
+  const lastPage = !notification.isRead && await store.markRead(notification.id)
+  if (!notification.link && lastPage && currentPage.value > lastPage) {
+    await router.replace({ query: { ...route.query, page: lastPage === 1 ? undefined : String(lastPage) } })
+  }
   if (notification.link) await router.push(notification.link)
 }
 </script>

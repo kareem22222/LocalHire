@@ -20,6 +20,15 @@ function labelCount(label) {
   return Number(label.match(/\d+/)[0])
 }
 
+function paged(items, request, pageSize = 10) {
+  const current = Number(new URL(request.url()).searchParams.get('page')) || 1
+  return {
+    items: items.slice((current - 1) * pageSize, current * pageSize),
+    page: current, pageSize, totalCount: items.length,
+    totalPages: items.length ? Math.ceil(items.length / pageSize) : 0,
+  }
+}
+
 // Opens a role that still has at least one applicant who is not shortlisted yet.
 // Shortlisting is permanent, so earlier runs gradually use up a role's applicants.
 async function openApplicantsWithOpenCandidates(page) {
@@ -160,7 +169,9 @@ test('shows the applicants count and paginates long applicant lists', async ({ p
     status: 'Applied',
     appliedAt: new Date(2026, 0, index + 1).toISOString(),
   }))
-  await page.route('**/api/hiring/jobs/*/applications', (route) => route.fulfill({ json: applicants }))
+  await page.route('**/api/hiring/jobs/*/applications/paged*', (route) => route.fulfill({
+    json: paged(applicants, route.request()),
+  }))
   await openApplicants(page)
   const cards = page.locator('article.candidate-card')
   await expect(cards).toHaveCount(10)
@@ -174,7 +185,9 @@ test('shows the applicants count and paginates long applicant lists', async ({ p
 })
 
 test('shows the empty state for a role with no applicants', async ({ page }) => {
-  await page.route('**/api/hiring/jobs/*/applications', (route) => route.fulfill({ json: [] }))
+  await page.route('**/api/hiring/jobs/*/applications/paged*', (route) => route.fulfill({
+    json: paged([], route.request()),
+  }))
   await page.goto('/hiring/jobs/00000000-0000-0000-0000-000000000000/applicants')
   await expect(page.getByText('Nothing here yet')).toBeVisible()
   await expect(page.getByText('No one has applied to this role yet.')).toBeVisible()
@@ -183,7 +196,9 @@ test('shows the empty state for a role with no applicants', async ({ page }) => 
 })
 
 test('explains an empty shortlist for a role', async ({ page }) => {
-  await page.route('**/api/hiring/jobs/*/applications', (route) => route.fulfill({ json: [] }))
+  await page.route('**/api/hiring/jobs/*/applications/paged*', (route) => route.fulfill({
+    json: paged([], route.request()),
+  }))
   await page.goto('/hiring/jobs/00000000-0000-0000-0000-000000000000/shortlisted')
   await expect(page.getByText('No candidates shortlisted yet. Open the applicants list and shortlist the ones you like.')).toBeVisible()
 })

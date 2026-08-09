@@ -121,6 +121,23 @@ public sealed class CachedJobServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Distinct_raw_coordinates_do_not_share_a_cache_entry()
+    {
+        var employer = Employer("employer", "Karnataka");
+        var worker = Worker("worker", "Karnataka", 12.97, 77.64);
+        _db.Users.AddRange(employer, worker);
+        await _db.SaveChangesAsync();
+
+        Assert.Single(await _service.GetNearbyCandidatesAsync(
+            12.9701, 77.6401, null, null, employer.Id, CancellationToken.None));
+        _db.Users.Remove(worker);
+        await _db.SaveChangesAsync();
+
+        Assert.Empty(await _service.GetNearbyCandidatesAsync(
+            12.9702, 77.6402, null, null, employer.Id, CancellationToken.None));
+    }
+
+    [Fact]
     public async Task Default_candidate_searches_remain_scoped_to_the_employer_state()
     {
         var firstEmployer = Employer("first", "Karnataka");

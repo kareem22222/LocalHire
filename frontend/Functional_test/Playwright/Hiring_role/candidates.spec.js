@@ -15,6 +15,15 @@ function stubbedCandidates(total) {
   }))
 }
 
+function paged(items, request, pageSize = 10) {
+  const current = Number(new URL(request.url()).searchParams.get('page')) || 1
+  return {
+    items: items.slice((current - 1) * pageSize, current * pageSize),
+    page: current, pageSize, totalCount: items.length,
+    totalPages: items.length ? Math.ceil(items.length / pageSize) : 0,
+  }
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/hiring/candidates')
   await expect(page.getByRole('heading', { name: 'All talent near your business' })).toBeVisible()
@@ -76,7 +85,9 @@ test('saves a candidate in account-scoped state', async ({ page }) => {
 
 
 test('paginates the talent list by ten and honours a deep-linked page', async ({ page }) => {
-  await page.route('**/api/hiring/candidates/nearby*', (route) => route.fulfill({ json: stubbedCandidates(25) }))
+  await page.route('**/api/hiring/candidates/search*', (route) => route.fulfill({
+    json: paged(stubbedCandidates(25), route.request()),
+  }))
 
   await page.goto('/hiring/candidates?page=3')
   const cards = page.locator('article.candidate-card')
@@ -98,9 +109,9 @@ test('paginates the talent list by ten and honours a deep-linked page', async ({
 
 test('keeps the search term in the heading and the request', async ({ page }) => {
   const requests = []
-  await page.route('**/api/hiring/candidates/nearby*', (route) => {
+  await page.route('**/api/hiring/candidates/search*', (route) => {
     requests.push(route.request().url())
-    return route.fulfill({ json: stubbedCandidates(3) })
+    return route.fulfill({ json: paged(stubbedCandidates(3), route.request()) })
   })
 
   await page.goto('/hiring/candidates?search=Indiranagar&role=Store%20Associate')

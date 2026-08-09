@@ -38,6 +38,24 @@ export async function stubNotifications(page, items) {
 
   await page.route('**/api/notifications', (route) => route.fulfill({ json: list() }))
 
+  await page.route('**/api/notifications/paged*', (route) => {
+    const url = new URL(route.request().url())
+    const status = url.searchParams.get('status') || 'all'
+    const pageNumber = Number(url.searchParams.get('page')) || 1
+    const pageSize = Number(url.searchParams.get('pageSize')) || 20
+    const filtered = state.filter((item) => status === 'all'
+      || (status === 'read' ? item.isRead : !item.isRead))
+    return route.fulfill({ json: {
+      items: filtered.slice((pageNumber - 1) * pageSize, pageNumber * pageSize),
+      page: pageNumber,
+      pageSize,
+      totalCount: filtered.length,
+      totalPages: filtered.length ? Math.ceil(filtered.length / pageSize) : 0,
+      unreadCount: state.filter((item) => !item.isRead).length,
+      readCount: state.filter((item) => item.isRead).length,
+    } })
+  })
+
   await page.route('**/api/notifications/*/read', (route) => {
     const id = new URL(route.request().url()).pathname.split('/').at(-2)
     const item = state.find((entry) => entry.id === id)

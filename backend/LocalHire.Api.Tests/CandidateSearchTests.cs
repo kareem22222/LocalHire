@@ -121,6 +121,22 @@ public sealed class CandidateSearchTests
     }
 
     [Fact]
+    public async Task Coordinate_text_search_caps_the_ranked_candidate_set()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+        await RegisterAndAuthenticateEmployer(client);
+        SeedNearbyWorkers(factory, 205);
+
+        var result = (await client.GetFromJsonAsync<PagedResponse<CandidateResponse>>(
+            "/api/hiring/candidates/search?lat=12.97&lng=77.64&search=Nearby&page=1&pageSize=100"))!;
+
+        Assert.Equal(200, result.TotalCount);
+        Assert.Equal(2, result.TotalPages);
+        Assert.Equal(100, result.Items.Count);
+    }
+
+    [Fact]
     public async Task Candidate_search_validates_coordinates_and_requires_hiring_role()
     {
         using var factory = new ApiFactory();

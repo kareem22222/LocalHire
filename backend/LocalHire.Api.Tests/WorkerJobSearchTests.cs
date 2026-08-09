@@ -77,6 +77,39 @@ public sealed class WorkerJobSearchTests
         Assert.Equal("Bengaluru Cashier", detail.Title);
     }
 
+    [Fact]
+    public async Task Coordinate_text_search_caps_the_ranked_candidate_set()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<LocalHireDbContext>()
+            .UseSqlite(connection)
+            .Options;
+        await using var db = new LocalHireDbContext(options);
+        await db.Database.EnsureCreatedAsync();
+
+        var worker = User("worker", UserRole.LookingForWork, "Karnataka");
+        var employer = User("employer", UserRole.Hiring, "Karnataka");
+        db.Users.AddRange(worker, employer);
+        db.JobPosts.AddRange(Enumerable.Range(0, 205).Select(index =>
+        {
+            var job = Job(employer.Id, $"Ranked Role {index}", "Bengaluru", "Karnataka", EmploymentType.FullTime);
+            job.Latitude = 12.97 + index * 0.0001;
+            job.Longitude = 77.64;
+            return job;
+        }));
+        await db.SaveChangesAsync();
+
+        var service = new JobService(db, new CandidateAccessPolicy(db), new NotificationService(db));
+        var result = await service.SearchJobsAsync(
+            12.97, 77.64, "Ranked", null, worker.Id,
+            new PagingRequest(1, 100), CancellationToken.None);
+
+        Assert.Equal(200, result.TotalCount);
+        Assert.Equal(2, result.TotalPages);
+        Assert.Equal(100, result.Items.Count);
+    }
+
     private static User User(string name, UserRole role, string state) => new()
     {
         Id = Guid.NewGuid(),

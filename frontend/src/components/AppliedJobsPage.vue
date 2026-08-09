@@ -19,12 +19,12 @@ const error = ref('')
 const applications = computed(() => jobsStore.myApplicationsPage.items)
 const totalPages = computed(() => jobsStore.myApplicationsPage.totalPages)
 const currentPage = computed(() => Math.max(Number.parseInt(route.query.page, 10) || 1, 1))
-const visibleApplications = computed(() => applications.value)
 const shortlisted = computed(() => jobsStore.myApplicationsPage.shortlistedCount || 0)
 const hired = computed(() => jobsStore.myApplicationsPage.hiredCount || 0)
 
 async function load() {
   loading.value = true
+  error.value = ''
   try {
     await jobsStore.loadMyApplicationsPage({
       page: currentPage.value, pageSize: MAX_VISIBLE_JOBS,
@@ -78,7 +78,7 @@ function changePage(page) {
 
         <div class="applied-list">
           <a
-            v-for="(application, index) in visibleApplications"
+            v-for="(application, index) in applications"
             :key="application.id"
             class="applied-card spotlight-card spotlight-card--worker"
             :class="`applied-card--${application.status.toLowerCase()}`"

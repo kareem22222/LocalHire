@@ -82,8 +82,14 @@ public static class JobEndpoints
             if (!user.TryGetUserId(out var userId))
                 return Results.Unauthorized();
 
+            var statusFilter = normalizedStatus switch
+            {
+                "open" => JobStatusFilter.Open,
+                "closed" => JobStatusFilter.Closed,
+                _ => (JobStatusFilter?)null
+            };
             return Results.Ok(await jobService.GetJobsForEmployerPagedAsync(
-                userId, normalizedStatus, shortlistedOnly == true, paging, ct));
+                userId, statusFilter, shortlistedOnly == true, paging, ct));
         })
         .WithName("GetMyJobPostsPaged");
 

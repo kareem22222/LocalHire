@@ -56,7 +56,7 @@ async function load() {
   try {
     await withMinimumDelay(async () => {
       await profileStore.fetchProfile().catch(() => {})
-      await jobsStore.loadCandidateSearchPage(buildParams(), { force: true })
+      await jobsStore.loadCandidateSearchPage(buildParams())
     })
   } catch {
   } finally {
@@ -66,9 +66,11 @@ async function load() {
 
 onMounted(load)
 watch(currentPage, load)
-watch([searchTerm, roleTerm], () => {
-  if (route.query.page) router.replace({ query: { ...route.query, page: undefined } })
-  else load()
+watch([searchTerm, roleTerm], async () => {
+  if (!route.query.page) return load()
+  const wasFirstPage = currentPage.value === 1
+  await router.replace({ query: { ...route.query, page: undefined } })
+  if (wasFirstPage) load()
 })
 
 function goBack() {

@@ -49,6 +49,42 @@ const jobResponse = (data, job) => {
   }
 }
 
+const pageResponse = (items, url, extra = {}) => {
+  const page = Math.max(Number.parseInt(url.searchParams.get('page'), 10) || 1, 1)
+  const pageSize = Math.max(Number.parseInt(url.searchParams.get('pageSize'), 10) || 20, 1)
+  return {
+    items: items.slice((page - 1) * pageSize, page * pageSize),
+    page,
+    pageSize,
+    totalCount: items.length,
+    totalPages: items.length ? Math.ceil(items.length / pageSize) : 0,
+    ...extra,
+  }
+}
+
+const filteredCandidates = (data, url) => {
+  const search = (url.searchParams.get('search') || '').toLowerCase()
+  const role = (url.searchParams.get('role') || '').toLowerCase()
+  return data.candidates
+    .filter((candidate) => !search || [
+      candidate.name, candidate.role, candidate.area, candidate.state, candidate.pincode,
+    ].some((value) => value?.toLowerCase().includes(search)))
+    .filter((candidate) => !role || candidate.role.toLowerCase() === role)
+    .map(candidateListItem)
+}
+
+const filteredJobs = (data, url) => {
+  const search = (url.searchParams.get('search') || '').toLowerCase()
+  const employmentType = url.searchParams.get('employmentType') || ''
+  return data.jobs
+    .filter((job) => job.isActive)
+    .filter((job) => !search || [
+      job.title, job.workplaceName, job.cityArea, job.state, job.pincode,
+    ].some((value) => value?.toLowerCase().includes(search)))
+    .filter((job) => !employmentType || job.employmentType === employmentType)
+    .map((job) => jobResponse(data, job))
+}
+
 const candidateListItem = ({ email, createdAt, professionalSummary, experienceYears, education,
   skills, languages, hasResume, workPreferences, workHistory, educationHistory, skillDetails,
   languageDetails, credentials, gender, dateOfBirth, addressLine, ...candidate }) => candidate
@@ -141,6 +177,12 @@ export default function functionalTestApi() {
               return json(response, 200, data.savedCandidates[employerId] || [])
             }
 
+            if (path === '/hiring/saved-candidates/paged' && method === 'GET') {
+              const saved = data.savedCandidates[employerId] || []
+              return json(response, 200, pageResponse(
+                data.candidates.filter((candidate) => saved.includes(candidate.id)).map(candidateListItem), url))
+            }
+
             const savedCandidateMatch = path.match(/^\/hiring\/saved-candidates\/([0-9a-f-]+)$/)
             if (savedCandidateMatch && (method === 'POST' || method === 'DELETE')) {
               const saved = data.savedCandidates[employerId] ||= []
@@ -154,6 +196,17 @@ export default function functionalTestApi() {
 
             if (path === '/hiring/jobs' && method === 'GET') {
               return json(response, 200, data.jobs.map((job) => jobResponse(data, job)))
+            }
+
+            if (path === '/hiring/jobs/paged' && method === 'GET') {
+              const status = url.searchParams.get('status') || 'all'
+              const shortlistedOnly = url.searchParams.get('shortlistedOnly') === 'true'
+              const jobs = data.jobs
+                .filter((job) => job.employerId === employerId)
+                .filter((job) => status === 'all' || (status === 'open' ? job.isActive : !job.isActive))
+                .map((job) => jobResponse(data, job))
+                .filter((job) => !shortlistedOnly || job.shortlistedCount > 0)
+              return json(response, 200, pageResponse(jobs, url))
             }
 
             if (path === '/hiring/jobs' && method === 'POST') {
@@ -173,15 +226,11 @@ export default function functionalTestApi() {
             }
 
             if (path === '/hiring/candidates/nearby' && method === 'GET') {
-              const search = (url.searchParams.get('search') || '').toLowerCase()
-              const role = (url.searchParams.get('role') || '').toLowerCase()
-              const candidates = data.candidates
-                .filter((candidate) => !search || [
-                  candidate.name, candidate.role, candidate.area, candidate.state, candidate.pincode,
-                ].some((value) => value?.toLowerCase().includes(search)))
-                .filter((candidate) => !role || candidate.role.toLowerCase() === role)
-                .map(candidateListItem)
-              return json(response, 200, candidates)
+              return json(response, 200, filteredCandidates(data, url))
+            }
+
+            if (path === '/hiring/candidates/search' && method === 'GET') {
+              return json(response, 200, pageResponse(filteredCandidates(data, url), url))
             }
 
             const candidateResumeMatch = path.match(/^\/hiring\/candidates\/([0-9a-f-]+)\/resume$/)
@@ -262,6 +311,16 @@ export default function functionalTestApi() {
               return json(response, 200, items)
             }
 
+            const pagedApplicationsMatch = path.match(/^\/hiring\/jobs\/([0-9a-f-]+)\/applications\/paged$/)
+            if (pagedApplicationsMatch && method === 'GET') {
+              const status = (url.searchParams.get('status') || '').toLowerCase()
+              const items = data.applications
+                .filter((item) => item.jobId === pagedApplicationsMatch[1])
+                .filter((item) => !status || item.status.toLowerCase() === status)
+                .map((item) => applicantResponse(data, item))
+              return json(response, 200, pageResponse(items, url))
+            }
+
             const jobMatch = path.match(/^\/hiring\/jobs\/([0-9a-f-]+)$/)
             if (jobMatch) {
               const index = data.jobs.findIndex((item) => item.id === jobMatch[1])
@@ -282,6 +341,12 @@ export default function functionalTestApi() {
               return json(response, 200, data.savedJobs[workerId] || [])
             }
 
+            if (path === '/work/saved-jobs/paged' && method === 'GET') {
+              const saved = data.savedJobs[workerId] || []
+              return json(response, 200, pageResponse(
+                data.jobs.filter((job) => saved.includes(job.id)).map((job) => jobResponse(data, job)), url))
+            }
+
             const savedJobMatch = path.match(/^\/work\/saved-jobs\/([0-9a-f-]+)$/)
             if (savedJobMatch && (method === 'POST' || method === 'DELETE')) {
               const saved = data.savedJobs[workerId] ||= []
@@ -294,20 +359,22 @@ export default function functionalTestApi() {
             }
 
             if (path === '/work/jobs/nearby' && method === 'GET') {
-              const search = (url.searchParams.get('search') || '').toLowerCase()
-              const employmentType = url.searchParams.get('employmentType') || ''
-              const jobs = data.jobs
-                .filter((job) => job.isActive)
-                .filter((job) => !search || [
-                  job.title, job.workplaceName, job.cityArea, job.state, job.pincode,
-                ].some((value) => value?.toLowerCase().includes(search)))
-                .filter((job) => !employmentType || job.employmentType === employmentType)
-                .map((job) => jobResponse(data, job))
-              return json(response, 200, jobs)
+              return json(response, 200, filteredJobs(data, url))
+            }
+
+            if (path === '/work/jobs/search' && method === 'GET') {
+              return json(response, 200, pageResponse(filteredJobs(data, url), url))
             }
 
             if (path === '/work/applications' && method === 'GET') {
               return json(response, 200, data.workerApplications)
+            }
+
+            if (path === '/work/applications/paged' && method === 'GET') {
+              return json(response, 200, pageResponse(data.workerApplications, url, {
+                shortlistedCount: data.workerApplications.filter((item) => item.status === 'Shortlisted').length,
+                hiredCount: data.workerApplications.filter((item) => item.status === 'Hired').length,
+              }))
             }
 
             const applyMatch = path.match(/^\/work\/jobs\/([0-9a-f-]+)\/apply$/)
@@ -351,6 +418,19 @@ export default function functionalTestApi() {
             if (!role) return
             const items = data.notifications[role]
             return json(response, 200, { items, unreadCount: items.filter((item) => !item.isRead).length })
+          }
+
+          if (path === '/notifications/paged' && method === 'GET') {
+            const role = authorize(request, response)
+            if (!role) return
+            const allItems = data.notifications[role]
+            const status = url.searchParams.get('status') || 'all'
+            const items = allItems.filter((item) => status === 'all'
+              || (status === 'read' ? item.isRead : !item.isRead))
+            return json(response, 200, pageResponse(items, url, {
+              unreadCount: allItems.filter((item) => !item.isRead).length,
+              readCount: allItems.filter((item) => item.isRead).length,
+            }))
           }
 
           if (path === '/notifications/read-all' && method === 'PUT') {

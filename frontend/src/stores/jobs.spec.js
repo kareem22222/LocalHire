@@ -81,6 +81,24 @@ describe('jobs store cache', () => {
     expect(jobsApi.getNearbyCandidates).toHaveBeenCalledTimes(2)
   })
 
+  it('keeps nearby and paged candidate requests independent', async () => {
+    let resolveNearby
+    let resolveSearch
+    jobsApi.getNearbyCandidates.mockReturnValue(new Promise((resolve) => { resolveNearby = resolve }))
+    jobsApi.searchCandidates.mockReturnValue(new Promise((resolve) => { resolveSearch = resolve }))
+    const store = useJobsStore()
+
+    const nearby = store.loadNearbyCandidates({ search: 'driver' }, { force: true })
+    const search = store.loadCandidateSearchPage({ search: 'driver', page: 1 }, { force: true })
+    resolveSearch({ data: { items: [{ id: 'search' }], page: 1, pageSize: 20, totalCount: 1, totalPages: 1 } })
+    await search
+    resolveNearby({ data: [{ id: 'nearby' }] })
+    await nearby
+
+    expect(store.candidates).toEqual([{ id: 'nearby' }])
+    expect(store.candidateSearchPage.items).toEqual([{ id: 'search' }])
+  })
+
   it('caches worker pages separately and keeps the latest paged candidate request visible', async () => {
     jobsApi.searchJobs.mockImplementation(({ page }) => Promise.resolve({ data: {
       items: [{ id: `job-${page}` }], page, pageSize: 6, totalCount: 7, totalPages: 2,
@@ -122,6 +140,26 @@ describe('jobs store cache', () => {
     expect(store.myJobs[0].title).toBe('Senior Cashier')
     expect(store.jobsById['job-1'].title).toBe('Senior Cashier')
     expect(jobsApi.getNearbyJobs).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not restore a stale paged response after a mutation', async () => {
+    const requests = []
+    jobsApi.getMyJobsPaged.mockImplementation(() => new Promise((resolve) => requests.push(resolve)))
+    jobsApi.updateJob.mockResolvedValue({ data: { id: 'job-1', title: 'Updated' } })
+    const store = useJobsStore()
+    const params = { status: 'open', page: 1 }
+
+    const stale = store.loadEmployerJobsPage(params)
+    await store.updateJob('job-1', { title: 'Updated' })
+    const fresh = store.loadEmployerJobsPage(params)
+    expect(jobsApi.getMyJobsPaged).toHaveBeenCalledTimes(2)
+
+    requests[1]({ data: { items: [{ id: 'job-1', title: 'Updated' }], page: 1, pageSize: 20, totalCount: 1, totalPages: 1 } })
+    await fresh
+    requests[0]({ data: { items: [{ id: 'job-1', title: 'Old' }], page: 1, pageSize: 20, totalCount: 1, totalPages: 1 } })
+    await stale
+
+    expect(store.employerJobsPage.items[0].title).toBe('Updated')
   })
 
   it('updates cached applications after shortlisting without refetching the list', async () => {

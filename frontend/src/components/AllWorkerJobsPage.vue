@@ -55,10 +55,12 @@ async function load() {
 }
 
 onMounted(load)
-watch(() => route.query.page, load)
-watch([() => route.query.search, () => route.query.employmentType], () => {
-  if (route.query.page) router.replace({ query: { ...route.query, page: undefined } })
-  else load()
+watch(currentPage, load)
+watch([() => route.query.search, () => route.query.employmentType], async () => {
+  if (!route.query.page) return load()
+  const wasFirstPage = currentPage.value === 1
+  await router.replace({ query: { ...route.query, page: undefined } })
+  if (wasFirstPage) load()
 })
 
 function changePage(page) {

@@ -5,6 +5,7 @@ import { useNotificationsStore } from './notifications.js'
 
 vi.mock('../api/notifications.js', () => ({
   getNotifications: vi.fn(),
+  getNotificationsPaged: vi.fn(),
   markNotificationRead: vi.fn(),
   markAllNotificationsRead: vi.fn(),
 }))
@@ -62,5 +63,20 @@ describe('notifications store', () => {
     expect(store.items.map(({ id }) => id)).toEqual(['notification-2', 'notification-1'])
     expect(store.items[1].isRead).toBe(true)
     expect(store.unreadCount).toBe(0)
+  })
+
+  it('recalculates unread page metadata after removing an item', async () => {
+    notificationsApi.getNotificationsPaged.mockResolvedValue({ data: {
+      items: [{ ...unreadItem }], page: 2, pageSize: 1, totalCount: 2, totalPages: 2,
+      unreadCount: 2, readCount: 0,
+    } })
+    notificationsApi.markNotificationRead.mockResolvedValue({ data: { ...unreadItem, isRead: true } })
+    const store = useNotificationsStore()
+    await store.loadPage({ status: 'unread', page: 2, pageSize: 1 })
+
+    const lastPage = await store.markRead(unreadItem.id)
+
+    expect(store.page).toMatchObject({ items: [], totalCount: 1, totalPages: 1 })
+    expect(lastPage).toBe(1)
   })
 })
