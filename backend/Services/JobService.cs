@@ -169,18 +169,27 @@ public sealed class JobService : IJobService
             query = query.Where(application => application.Status == status);
 
         var totalCount = await query.CountAsync(ct);
-        var projected = query.Select(application => new ApplicantResponse(
-            application.Id,
-            application.WorkerId,
-            application.Worker.Name,
-            application.Worker.JobTitle,
-            application.Worker.CityArea,
-            application.Worker.State,
-            application.Worker.Pincode,
-            application.Status.ToString(),
-            application.CreatedAt));
-        var items = await PageAsync(
-            projected, item => item.AppliedAt, item => item.Id, paging, ct);
+        // Order and page the entity query, then project. Ordering a query that
+        // already projects into ApplicantResponse cannot be translated to SQL,
+        // because the sort key is a property of an object the query constructs.
+        var applications = await PageAsync(
+            query.Include(application => application.Worker),
+            application => application.CreatedAt,
+            application => application.Id,
+            paging,
+            ct);
+        var items = applications
+            .Select(application => new ApplicantResponse(
+                application.Id,
+                application.WorkerId,
+                application.Worker.Name,
+                application.Worker.JobTitle,
+                application.Worker.CityArea,
+                application.Worker.State,
+                application.Worker.Pincode,
+                application.Status.ToString(),
+                application.CreatedAt))
+            .ToList();
 
         return PagedResponse<ApplicantResponse>.Create(items, paging, totalCount);
     }
@@ -843,13 +852,20 @@ public sealed class JobService : IJobService
     {
         var query = _db.JobApplications.Where(application => application.WorkerId == workerId);
         var totalCount = await query.CountAsync(ct);
-        var projected = query.Select(application => new JobApplicationResponse(
-            application.Id, application.JobPostId, application.JobPost.Title,
-            application.JobPost.WorkplaceName, application.JobPost.CityArea,
-            application.Status.ToString(), application.CreatedAt,
-            application.StatusUpdatedAt ?? application.CreatedAt));
-        var items = await PageAsync(
-            projected, item => item.CreatedAt, item => item.Id, paging, ct);
+        // Same reason as GetApplicationsPagedAsync: sort the entities, then map.
+        var applications = await PageAsync(
+            query.Include(application => application.JobPost),
+            application => application.CreatedAt,
+            application => application.Id,
+            paging,
+            ct);
+        var items = applications
+            .Select(application => new JobApplicationResponse(
+                application.Id, application.JobPostId, application.JobPost.Title,
+                application.JobPost.WorkplaceName, application.JobPost.CityArea,
+                application.Status.ToString(), application.CreatedAt,
+                application.StatusUpdatedAt ?? application.CreatedAt))
+            .ToList();
 
         var shortlistedCount = await query.CountAsync(
             application => application.Status == ApplicationStatus.Shortlisted, ct);

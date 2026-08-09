@@ -29,6 +29,11 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       MockData__SeedOnStartup: "true"
+      # Lets integration-tests/ rebuild the schema and clear caches per scenario.
+      # Local development only - deployed environments never set this.
+      TestSupport__Enabled: ${TEST_SUPPORT_ENABLED:-true}
+      # Production keeps the 5-per-minute default; a full behave run needs headroom.
+      Auth__RateLimit__PermitLimit: ${AUTH_RATE_LIMIT_PERMITS:-1000}
       Jwt__Secret: ${JWT_SECRET:?Set JWT_SECRET in .env}
       AWS__S3Bucket: ${AWS_S3_BUCKET:-localhire-resumes-dev}
       AWS__Region: ${AWS_REGION:-ap-south-2}

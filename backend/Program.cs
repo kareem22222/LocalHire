@@ -97,6 +97,11 @@ builder.Services.AddAuthorization(options =>
 // --- Rate Limiting ---
 if (!builder.Environment.IsEnvironment("Test"))
 {
+    // Defaults match production intent (5 attempts per minute per IP). The
+    // integration stack raises the limit so a whole behave run is not throttled.
+    var authPermitLimit = builder.Configuration.GetValue<int?>("Auth:RateLimit:PermitLimit") ?? 5;
+    var authWindowSeconds = builder.Configuration.GetValue<int?>("Auth:RateLimit:WindowSeconds") ?? 60;
+
     builder.Services.AddRateLimiter(options =>
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -106,8 +111,8 @@ if (!builder.Environment.IsEnvironment("Test"))
                 partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                 factory: _ => new FixedWindowRateLimiterOptions
                 {
-                    PermitLimit = 5,
-                    Window = TimeSpan.FromMinutes(1),
+                    PermitLimit = authPermitLimit,
+                    Window = TimeSpan.FromSeconds(authWindowSeconds),
                     QueueLimit = 0,
                     QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                     AutoReplenishment = true
@@ -273,6 +278,14 @@ app.MapJobEndpoints();
 
 // --- Notification Endpoints ---
 app.MapNotificationEndpoints();
+
+// --- Test support (integration suite only; never mapped in Production) ---
+if (TestSupportEndpoints.IsEnabled(app.Configuration, app.Environment))
+{
+    app.Logger.LogWarning(
+        "Test-support endpoints are enabled at /api/test-support. They drop and rebuild the database on request.");
+    app.MapTestSupportEndpoints();
+}
 
 app.MapFallbackToFile("index.html");
 

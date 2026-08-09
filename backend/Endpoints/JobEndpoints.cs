@@ -258,7 +258,9 @@ public static class JobEndpoints
             if (string.IsNullOrWhiteSpace(bucket))
                 return Results.Problem("AWS:S3Bucket is not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
 
-            return Results.Ok(await EndpointHelpers.CreateResumeDownloadAsync(s3, bucket, resume));
+            return Results.Ok(await EndpointHelpers.CreateResumeDownloadAsync(
+                s3, bucket, resume,
+                configuration["AWS:PublicServiceUrl"] ?? configuration["AWS:ServiceUrl"]));
         })
         .WithName("DownloadCandidateResume")
         .Produces<ResumeDownloadResponse>()
