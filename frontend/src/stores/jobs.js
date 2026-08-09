@@ -7,7 +7,7 @@ const JOBS_TTL_MS = 2 * 60 * 1000
 function nearbyKey(params = {}) {
   const location = params.lat == null || params.lng == null
     ? 'all'
-    : `${Number(params.lat).toFixed(3)},${Number(params.lng).toFixed(3)}`
+    : `${Number(params.lat)},${Number(params.lng)}`
   const term = (params.search || '').trim().toLowerCase()
   const employmentType = (params.employmentType || '').trim().toLowerCase()
   return `${location}|${term}|${employmentType}`
@@ -16,7 +16,7 @@ function nearbyKey(params = {}) {
 function candidatesKey(params = {}) {
   const location = params.lat == null || params.lng == null
     ? 'all'
-    : `${Number(params.lat).toFixed(3)},${Number(params.lng).toFixed(3)}`
+    : `${Number(params.lat)},${Number(params.lng)}`
   const term = (params.search || '').trim().toLowerCase()
   const role = (params.role || '').trim().toLowerCase()
   return `${location}|${term}|${role}`
@@ -59,9 +59,15 @@ export const useJobsStore = defineStore('jobs', () => {
   const savedCandidatesPage = ref(emptyPage())
   const pagedCache = new Map()
   const pending = new Map()
-  let latestCandidatesRequest = 0
+  let pagedGeneration = 0
+  let latestNearbyCandidatesRequest = 0
+  let latestCandidateSearchRequest = 0
+  let latestEmployerJobsRequest = 0
   let latestJobApplicationsRequest = 0
   let latestWorkerJobsRequest = 0
+  let latestMyApplicationsPageRequest = 0
+  let latestSavedJobsPageRequest = 0
+  let latestSavedCandidatesPageRequest = 0
 
   function runOnce(key, request) {
     if (pending.has(key)) return pending.get(key)
@@ -76,7 +82,9 @@ export const useJobsStore = defineStore('jobs', () => {
       if (assign()) target.value = cached.data
       return cached.data
     }
-    const data = await runOnce(key, async () => (await request()).data)
+    const generation = pagedGeneration
+    const data = await runOnce(`${generation}:${key}`, async () => (await request()).data)
+    if (generation !== pagedGeneration) return data
     pagedCache.set(key, { data, fetchedAt: Date.now() })
     if (assign()) target.value = data
     return data
@@ -120,9 +128,11 @@ export const useJobsStore = defineStore('jobs', () => {
     })
   }
 
-  function loadEmployerJobsPage(params = {}, options = {}) {
+  function loadEmployerJobsPage(params = {}, { force = false } = {}) {
+    const requestToken = ++latestEmployerJobsRequest
     return loadPaged(`employer-jobs:${paramsKey(params)}`,
-      () => jobsApi.getMyJobsPaged(params), employerJobsPage, options)
+      () => jobsApi.getMyJobsPaged(params), employerJobsPage,
+      { force, assign: () => requestToken === latestEmployerJobsRequest })
   }
 
   function loadJobApplicationsPage(jobId, params = {}, { force = false } = {}) {
@@ -144,7 +154,7 @@ export const useJobsStore = defineStore('jobs', () => {
       items: jobApplicationsPage.value.items
         .map((application) => application.id === applicationId ? data : application),
     }
-    pagedCache.clear()
+    invalidatePaged()
     jobFetchedAt.value[jobId] = 0
     myJobsFetchedAt.value = 0
     return data
@@ -212,7 +222,7 @@ export const useJobsStore = defineStore('jobs', () => {
   }
 
   async function loadNearbyCandidates(params = {}, { force = false } = {}) {
-    const requestToken = ++latestCandidatesRequest
+    const requestToken = ++latestNearbyCandidatesRequest
     const key = candidatesKey(params)
     const cached = candidatesByKey.value[key]
     if (!force && cached && isFresh(cached.fetchedAt)) {
@@ -224,16 +234,16 @@ export const useJobsStore = defineStore('jobs', () => {
       candidatesByKey.value[key] = { data, fetchedAt: Date.now() }
       return data
     })
-    if (requestToken === latestCandidatesRequest) candidates.value = data
+    if (requestToken === latestNearbyCandidatesRequest) candidates.value = data
     return data
   }
 
   async function loadCandidateSearchPage(params = {}, { force = false } = {}) {
-    const requestToken = ++latestCandidatesRequest
+    const requestToken = ++latestCandidateSearchRequest
     const data = await loadPaged(
       `candidate-search:${candidatesKey(params)}:${params.page || 1}:${params.pageSize || 20}`,
       () => jobsApi.searchCandidates(params), candidateSearchPage,
-      { force, assign: () => requestToken === latestCandidatesRequest },
+      { force, assign: () => requestToken === latestCandidateSearchRequest },
     )
     return data
   }
@@ -248,19 +258,30 @@ export const useJobsStore = defineStore('jobs', () => {
     })
   }
 
-  function loadMyApplicationsPage(params = {}, options = {}) {
+  function loadMyApplicationsPage(params = {}, { force = false } = {}) {
+    const requestToken = ++latestMyApplicationsPageRequest
     return loadPaged(`my-applications-page:${paramsKey(params)}`,
-      () => jobsApi.getMyApplicationsPaged(params), myApplicationsPage, options)
+      () => jobsApi.getMyApplicationsPaged(params), myApplicationsPage,
+      { force, assign: () => requestToken === latestMyApplicationsPageRequest })
   }
 
-  function loadSavedJobsPage(params = {}, options = {}) {
+  function loadSavedJobsPage(params = {}, { force = false } = {}) {
+    const requestToken = ++latestSavedJobsPageRequest
     return loadPaged(`saved-jobs-page:${paramsKey(params)}`,
-      () => jobsApi.getSavedJobsPaged(params), savedJobsPage, options)
+      () => jobsApi.getSavedJobsPaged(params), savedJobsPage,
+      { force, assign: () => requestToken === latestSavedJobsPageRequest })
   }
 
-  function loadSavedCandidatesPage(params = {}, options = {}) {
+  function loadSavedCandidatesPage(params = {}, { force = false } = {}) {
+    const requestToken = ++latestSavedCandidatesPageRequest
     return loadPaged(`saved-candidates-page:${paramsKey(params)}`,
-      () => jobsApi.getSavedCandidatesPaged(params), savedCandidatesPage, options)
+      () => jobsApi.getSavedCandidatesPaged(params), savedCandidatesPage,
+      { force, assign: () => requestToken === latestSavedCandidatesPageRequest })
+  }
+
+  function invalidatePaged() {
+    pagedGeneration++
+    pagedCache.clear()
   }
 
   async function createJob(payload) {
@@ -272,7 +293,7 @@ export const useJobsStore = defineStore('jobs', () => {
       myJobsFetchedAt.value = Date.now()
     }
     nearbyJobsByLocation.value = {}
-    pagedCache.clear()
+    invalidatePaged()
     return data
   }
 
@@ -285,7 +306,7 @@ export const useJobsStore = defineStore('jobs', () => {
       myJobsFetchedAt.value = Date.now()
     }
     nearbyJobsByLocation.value = {}
-    pagedCache.clear()
+    invalidatePaged()
     return data
   }
 
@@ -293,13 +314,14 @@ export const useJobsStore = defineStore('jobs', () => {
     const { data } = await jobsApi.applyToJob(jobId)
     myApplicationsFetchedAt.value = 0
     nearbyJobsByLocation.value = {}
-    pagedCache.clear()
+    invalidatePaged()
     applicationsFetchedAt.value[jobId] = 0
     jobFetchedAt.value[jobId] = 0
     return data
   }
 
   function clear() {
+    invalidatePaged()
     myJobs.value = []
     myJobsFetchedAt.value = 0
     jobsById.value = {}
@@ -311,9 +333,14 @@ export const useJobsStore = defineStore('jobs', () => {
     nearbyJobsByLocation.value = {}
     candidates.value = []
     candidatesByKey.value = {}
-    latestCandidatesRequest++
+    latestNearbyCandidatesRequest++
+    latestCandidateSearchRequest++
+    latestEmployerJobsRequest++
     latestJobApplicationsRequest++
     latestWorkerJobsRequest++
+    latestMyApplicationsPageRequest++
+    latestSavedJobsPageRequest++
+    latestSavedCandidatesPageRequest++
     myApplications.value = []
     myApplicationsFetchedAt.value = 0
     workerJobsPage.value = emptyPage()
@@ -323,7 +350,6 @@ export const useJobsStore = defineStore('jobs', () => {
     myApplicationsPage.value = emptyPage()
     savedJobsPage.value = emptyPage()
     savedCandidatesPage.value = emptyPage()
-    pagedCache.clear()
     pending.clear()
   }
 

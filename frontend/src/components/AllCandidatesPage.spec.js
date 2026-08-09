@@ -31,6 +31,10 @@ function findButtonByText(wrapper, text) {
   return wrapper.findAll('button').find((button) => button.text() === text)
 }
 
+const page = (items = [], current = 1, totalCount = items.length, totalPages = totalCount ? Math.ceil(totalCount / 10) : 0) => ({
+  items, page: current, pageSize: 10, totalCount, totalPages,
+})
+
 describe('AllCandidatesPage', () => {
   beforeEach(() => {
     api.get.mockReset()
@@ -38,7 +42,7 @@ describe('AllCandidatesPage', () => {
       data: url === '/auth/me'
         ? {}
         : url === '/hiring/candidates/search'
-          ? { items: [], page: options.params.page, pageSize: 10, totalCount: 0, totalPages: 0 }
+          ? page([], options.params.page)
           : [],
     }))
   })
@@ -49,9 +53,9 @@ describe('AllCandidatesPage', () => {
         return Promise.resolve({ data: { latitude: 12.97, longitude: 77.64 } })
       }
       if (url === '/hiring/candidates/search') return Promise.resolve({
-        data: { items: [
+        data: page([
           { id: 1, name: 'Ravi', role: 'Cashier', area: 'Indiranagar', state: 'Karnataka', pincode: '560038', distanceKm: 2, matchScore: 95 },
-        ], page: options.params.page, pageSize: 10, totalCount: 1, totalPages: 1 },
+        ], options.params.page),
       })
       return Promise.resolve({ data: [] })
     })
@@ -81,6 +85,19 @@ describe('AllCandidatesPage', () => {
     expect(wrapper.text()).toContain('No talent found')
   })
 
+  it('reloads changed filters when the URL explicitly contains page one', async () => {
+    await mountPage({ page: '1' })
+    await flushPromises()
+
+    await router.push({ path: '/hiring/candidates', query: { search: 'driver', page: '1' } })
+    await flushPromises()
+
+    expect(router.currentRoute.value.query.page).toBeUndefined()
+    expect(api.get).toHaveBeenCalledWith('/hiring/candidates/search', {
+      params: { search: 'driver', page: 1, pageSize: 10 },
+    })
+  })
+
   it('shows the full result count while rendering at most ten candidates', async () => {
     const candidates = Array.from({ length: 12 }, (_, index) => ({
       id: index,
@@ -91,11 +108,10 @@ describe('AllCandidatesPage', () => {
     api.get.mockImplementation((url, options = {}) => {
       if (url === '/auth/me') return Promise.resolve({ data: {} })
       if (url === '/hiring/candidates/search') {
-        const page = options.params.page
-        return Promise.resolve({ data: {
-          items: candidates.slice((page - 1) * 10, page * 10),
-          page, pageSize: 10, totalCount: 12, totalPages: 2,
-        } })
+        const current = options.params.page
+        return Promise.resolve({
+          data: page(candidates.slice((current - 1) * 10, current * 10), current, 12, 2),
+        })
       }
       return Promise.resolve({ data: [] })
     })
@@ -126,7 +142,7 @@ describe('AllCandidatesPage', () => {
     const candidate = { id: 'candidate-1', name: 'Ravi', role: 'Cashier' }
     api.get.mockImplementation((url, options = {}) => Promise.resolve({
       data: url === '/auth/me' ? {} : url === '/hiring/candidates/search'
-        ? { items: [candidate], page: options.params.page, pageSize: 10, totalCount: 1, totalPages: 1 }
+        ? page([candidate], options.params.page)
         : [],
     }))
     const wrapper = await mountPage()

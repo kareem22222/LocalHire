@@ -1,5 +1,14 @@
 import { expect, test } from '../support/fixtures.js'
 
+function paged(items, request, pageSize = 6) {
+  const current = Number(new URL(request.url()).searchParams.get('page')) || 1
+  return {
+    items: items.slice((current - 1) * pageSize, current * pageSize),
+    page: current, pageSize, totalCount: items.length,
+    totalPages: items.length ? Math.ceil(items.length / pageSize) : 0,
+  }
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/work/jobs')
   await expect(page.getByRole('heading', { name: 'Roles for you' })).toBeVisible()
@@ -94,7 +103,9 @@ test('paginates six roles per page and honours a deep-linked page', async ({ pag
     salaryPeriod: 'Monthly',
     applicationCount: 0,
   }))
-  await page.route('**/api/work/jobs/nearby*', (route) => route.fulfill({ json: jobs }))
+  await page.route('**/api/work/jobs/search*', (route) => route.fulfill({
+    json: paged(jobs, route.request()),
+  }))
 
   await page.goto('/work/jobs?page=3')
   const rows = page.locator('article.worker-job-row')
@@ -111,7 +122,7 @@ test('paginates six roles per page and honours a deep-linked page', async ({ pag
 
 test('keeps the employment type filter in the request', async ({ page }) => {
   const requests = []
-  await page.route('**/api/work/jobs/nearby*', (route) => {
+  await page.route('**/api/work/jobs/search*', (route) => {
     requests.push(route.request().url())
     return route.fallback()
   })

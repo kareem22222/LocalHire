@@ -15,7 +15,8 @@ public interface IJobService
     Task<IReadOnlyList<JobPostResponse>> GetJobsForEmployerAsync(Guid employerId, CancellationToken ct);
 
     Task<PagedResponse<JobPostResponse>> GetJobsForEmployerPagedAsync(
-        Guid employerId, string status, bool shortlistedOnly, PagingRequest paging, CancellationToken ct);
+        Guid employerId, JobStatusFilter? status, bool shortlistedOnly,
+        PagingRequest paging, CancellationToken ct);
 
     Task<JobPostResponse> GetJobAsync(Guid id, Guid employerId, CancellationToken ct);
 

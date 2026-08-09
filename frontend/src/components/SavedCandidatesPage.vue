@@ -21,6 +21,7 @@ const currentPage = computed(() => Math.max(Number.parseInt(route.query.page, 10
 
 async function load() {
   loading.value = true
+  error.value = ''
   try {
     await jobsStore.loadSavedCandidatesPage({
       page: currentPage.value, pageSize: MAX_VISIBLE_CANDIDATES,

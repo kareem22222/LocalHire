@@ -6,10 +6,9 @@ import AppliedJobsPage from './AppliedJobsPage.vue'
 
 vi.mock('../api', () => ({ default: { get: vi.fn() } }))
 
-const page = (items, current = 1, totalCount = items.length, totalPages = totalCount ? Math.ceil(totalCount / 6) : 0) => ({
+const page = (items, current = 1, totalCount = items.length, totalPages = totalCount ? Math.ceil(totalCount / 6) : 0, shortlistedCount = 0, hiredCount = 0) => ({
   items, page: current, pageSize: 6, totalCount, totalPages,
-  shortlistedCount: items.filter((item) => item.status === 'Shortlisted').length,
-  hiredCount: items.filter((item) => item.status === 'Hired').length,
+  shortlistedCount, hiredCount,
 })
 
 describe('AppliedJobsPage', () => {
@@ -19,7 +18,7 @@ describe('AppliedJobsPage', () => {
       id: 'app-1', jobPostId: 'job-1', jobTitle: 'Cashier', workplaceName: 'Corner Shop',
       cityArea: 'Bandra', status: 'Shortlisted', createdAt: '2026-07-24T00:00:00Z',
       statusUpdatedAt: '2026-07-25T12:00:00Z',
-    }]) })
+    }], 1, 1, 1, 1, 0) })
   })
 
   it('summarizes what happened to each application', async () => {
@@ -83,7 +82,7 @@ describe('AppliedJobsPage', () => {
     }, {
       id: 'app-4', jobPostId: 'job-4', jobTitle: 'Cashier', workplaceName: 'Market',
       cityArea: 'Mysuru', status: 'Rejected', createdAt: '2026-07-24T00:00:00Z',
-    }]) })
+    }], 1, 3, 1, 0, 1) })
     const wrapper = mount(AppliedJobsPage, {
       global: { plugins: [createTestRouter()], stubs: { BrandLogo: true } },
     })
@@ -105,7 +104,7 @@ describe('AppliedJobsPage', () => {
       createdAt: '2026-07-24T00:00:00Z',
     }))
     api.get.mockImplementation((_url, { params }) => Promise.resolve({
-      data: page(applications.slice((params.page - 1) * 6, params.page * 6), params.page, 7, 2),
+      data: page(applications.slice((params.page - 1) * 6, params.page * 6), params.page, 7, 2, 0, 0),
     }))
     const wrapper = mount(AppliedJobsPage, {
       global: { plugins: [createTestRouter()], stubs: { BrandLogo: true } },

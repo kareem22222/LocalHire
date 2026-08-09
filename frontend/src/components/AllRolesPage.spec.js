@@ -49,7 +49,7 @@ describe('AllRolesPage', () => {
       params: { status: 'open', page: 1, pageSize: 15 },
     })
     expect(wrapper.findAll('.hiring-role-card')).toHaveLength(1)
-    expect(wrapper.text()).toContain('1 roles')
+    expect(wrapper.text()).toContain('1 role')
     expect(wrapper.text()).toContain('Review applicants')
   })
 

@@ -79,11 +79,15 @@ export const useNotificationsStore = defineStore('notifications', () => {
     if (pageIndex >= 0) {
       if (wasUnread) readCount.value += 1
       if (pageStatus === 'unread') {
+        const totalCount = Math.max(0, page.value.totalCount - 1)
+        const totalPages = totalCount === 0 ? 0 : Math.ceil(totalCount / page.value.pageSize)
         page.value = {
           ...page.value,
           items: page.value.items.filter((notification) => notification.id !== id),
-          totalCount: Math.max(0, page.value.totalCount - 1),
+          totalCount,
+          totalPages,
         }
+        return Math.max(totalPages, 1)
       } else {
         page.value.items[pageIndex] = data
       }

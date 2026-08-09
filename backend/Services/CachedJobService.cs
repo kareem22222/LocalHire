@@ -39,7 +39,7 @@ public sealed class CachedJobService : IJobService
             () => _inner.GetJobsForEmployerAsync(employerId, ct));
 
     public Task<PagedResponse<JobPostResponse>> GetJobsForEmployerPagedAsync(
-        Guid employerId, string status, bool shortlistedOnly,
+        Guid employerId, JobStatusFilter? status, bool shortlistedOnly,
         PagingRequest paging, CancellationToken ct) =>
         GetOrCreateAsync(
             $"employer:{employerId}:jobs:{status}:{shortlistedOnly}:{paging.Page}:{paging.PageSize}",
@@ -106,10 +106,8 @@ public sealed class CachedJobService : IJobService
         double? lat, double? lng, string? search, EmploymentType? employmentType,
         Guid workerId, CancellationToken ct)
     {
-        var location = lat is null || lng is null
-            ? "all"
-            : $"{lat.Value.ToString("F3", CultureInfo.InvariantCulture)}:{lng.Value.ToString("F3", CultureInfo.InvariantCulture)}";
-        var term = string.IsNullOrWhiteSpace(search) ? string.Empty : search.Trim().ToLowerInvariant();
+        var location = LocationKey(lat, lng);
+        var term = Normalized(search);
         var scope = location == "all" && term.Length == 0 ? workerId.ToString() : "global";
         return GetOrCreateAsync($"nearby:{scope}:{location}:{term}:{employmentType}",
             () => _inner.GetNearbyJobsAsync(lat, lng, search, employmentType, workerId, ct));
@@ -134,11 +132,9 @@ public sealed class CachedJobService : IJobService
     public Task<IReadOnlyList<CandidateResponse>> GetNearbyCandidatesAsync(
         double? lat, double? lng, string? search, string? role, Guid employerId, CancellationToken ct)
     {
-        var location = lat is null || lng is null
-            ? "all"
-            : $"{lat.Value.ToString("F3", CultureInfo.InvariantCulture)}:{lng.Value.ToString("F3", CultureInfo.InvariantCulture)}";
-        var term = string.IsNullOrWhiteSpace(search) ? string.Empty : search.Trim().ToLowerInvariant();
-        var roleKey = string.IsNullOrWhiteSpace(role) ? string.Empty : role.Trim().ToLowerInvariant();
+        var location = LocationKey(lat, lng);
+        var term = Normalized(search);
+        var roleKey = Normalized(role);
         var scope = location == "all" && term.Length == 0 ? employerId.ToString() : "global";
         return GetOrCreateAsync($"candidates:{scope}:{location}:{term}:{roleKey}",
             () => _inner.GetNearbyCandidatesAsync(lat, lng, search, role, employerId, ct));
@@ -221,7 +217,7 @@ public sealed class CachedJobService : IJobService
     private static string LocationKey(double? lat, double? lng) =>
         lat is null || lng is null
             ? "all"
-            : $"{lat.Value.ToString("F3", CultureInfo.InvariantCulture)}:{lng.Value.ToString("F3", CultureInfo.InvariantCulture)}";
+            : $"{lat.Value.ToString("R", CultureInfo.InvariantCulture)}:{lng.Value.ToString("R", CultureInfo.InvariantCulture)}";
 
     private static string Normalized(string? value) =>
         string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim().ToLowerInvariant();

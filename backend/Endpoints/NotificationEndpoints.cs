@@ -110,12 +110,8 @@ public static class NotificationEndpoints
                         notification.CreatedAt,
                         notification.ReadAt))
                     .ToListAsync(ct);
-            var totalPages = totalCount == 0
-                ? 0
-                : (totalCount - 1) / paging.PageSize + 1;
-
             return Results.Ok(new NotificationPagedResponse(
-                items, paging.Page, paging.PageSize, totalCount, totalPages,
+                items, paging.Page, paging.PageSize, totalCount, paging.TotalPages(totalCount),
                 unreadCount, readCount));
         })
         .WithName("GetNotificationsPaged");
