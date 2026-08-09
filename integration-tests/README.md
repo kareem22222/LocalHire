@@ -13,6 +13,8 @@ unaffected.
 
 - [What a scenario guarantees](#what-a-scenario-guarantees)
 - [Quick start](#quick-start)
+- [Environment variables](#environment-variables)
+- [Watching a run](#watching-a-run)
 - [Running](#running)
 - [Configuration](#configuration)
 - [The mock data](#the-mock-data)
@@ -85,6 +87,74 @@ pip install -r integration-tests/requirements.txt
 cd integration-tests && behave
 ```
 
+## Environment variables
+
+**None are required.** `behave.ini` already points at the ports
+`docker-compose.yml` publishes (API 8080, PostgreSQL 5433, LocalStack 4566), and
+the seeded accounts all use the password in `test_password`. Create the venv,
+install, run.
+
+The stack itself needs the repository-root `.env` you already use for
+`docker compose` (`JWT_SECRET`, and `LOCALSTACK_AUTH_TOKEN` plus
+`AWS_SERVICE_URL` / `AWS_PUBLIC_SERVICE_URL` if you want the resume scenarios).
+
+Two variables are optional, for the test run itself:
+
+| Variable | Effect when unset |
+| --- | --- |
+| `JWT_SECRET` | The one `@jwt_secret` scenario (a correctly signed but expired token) skips itself with a printed reason. Set it to the same value the API runs with to enable it. |
+| `AUTH_RATE_LIMIT_PERMITS` | Only used when you deliberately run `@rate_limit`; see [Tags](#tags). |
+
+```powershell
+# optional, enables the expired-token scenario
+$env:JWT_SECRET = "the same value as the API's Jwt__Secret"
+```
+
+Any setting can also be overridden by an environment variable named
+`LOCALHIRE_<KEY>` (see [Configuration](#configuration)), which is how CI points
+the suite at a different host without editing files.
+
+## Watching a run
+
+There is no headed mode: the browser suite is gone, so there is no browser to
+open. The equivalent of watching it happen is the live HTTP trace, which prints
+every request and response as the steps execute:
+
+```powershell
+behave -D verbose_http=true features/hiring_applications.feature
+```
+
+```text
+  When the employer shortlists the application of worker 2 on job "J01"
+    -> POST http://localhost:8080/api/hiring/jobs/c000...0001/applications/a000...0002/shortlist  [bearer B9cKoe9c]
+    <- 200 {"id":"a000...0002","workerName":"Test Worker 02","status":"Shortlisted",...}
+  Then the response status code is 200
+```
+
+Bearer tokens and passwords are redacted, and bodies are trimmed to one line.
+
+Other ways to follow a run:
+
+```powershell
+# step-by-step names as they execute (this is the default formatter)
+behave -f pretty
+
+# stop at the first failure and leave the failing data in the database
+behave --stop -D verbose_http=true
+
+# watch what the API itself is doing, from WSL
+docker compose logs -f api
+
+# poke at the same stack by hand while it is up
+#   the app          http://localhost:8080
+#   Swagger          http://localhost:8080/swagger
+```
+
+Because nothing is cleaned up after a scenario, the rows a failing scenario left
+behind are still in PostgreSQL until the next `@db` scenario runs — so
+`--stop` plus `psql`/pgAdmin on `localhost:5433` is the closest thing to a
+breakpoint.
+
 ## Running
 
 ```powershell
@@ -135,6 +205,7 @@ Everything lives in `behave.ini` under `[behave.userdata]`. Override per run wit
 | `db_host` / `db_port` | `localhost` / `5433` | PostgreSQL published by compose |
 | `db_name` / `db_username` / `db_password` | `localhire_dev` / `localhire_admin` / `localhire_dev_password` | database credentials |
 | `reset_mode` | `recreate` | `recreate` or `truncate` |
+| `verbose_http` | `false` | print every request and response as it happens |
 | `s3_endpoint_url` | `http://localhost:4566` | LocalStack edge port |
 | `s3_bucket` | `localhire-resumes-dev` | resume bucket |
 | `test_password` | `LocalHire1!` | password every seeded account shares |
