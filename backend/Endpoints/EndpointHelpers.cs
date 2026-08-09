@@ -42,7 +42,7 @@ internal static class EndpointHelpers
         };
 
     public static async Task<ResumeDownloadResponse> CreateResumeDownloadAsync(
-        IAmazonS3 s3, string bucket, ResumeFileReference resume)
+        IAmazonS3 s3, string bucket, ResumeFileReference resume, string? endpointUrl = null)
     {
         var disposition = new ContentDispositionHeaderValue("attachment")
         {
@@ -61,7 +61,27 @@ internal static class EndpointHelpers
                 ContentDisposition = disposition.ToString(),
             },
         });
-        return new ResumeDownloadResponse(url, resume.FileName);
+        return new ResumeDownloadResponse(NormalizeScheme(url, endpointUrl), resume.FileName);
+    }
+
+    /// <summary>
+    /// Signs the link with the scheme of the configured endpoint.
+    /// </summary>
+    /// <remarks>
+    /// The SDK presigns https even when <c>AWS:ServiceUrl</c> is a plain-http
+    /// endpoint, which makes a LocalStack download fail certificate validation.
+    /// Real S3 has no <c>ServiceUrl</c>, so this only affects custom endpoints.
+    /// The signature covers the host and query string, not the scheme, so
+    /// swapping it keeps the link valid.
+    /// </remarks>
+    internal static string NormalizeScheme(string url, string? endpointUrl)
+    {
+        if (string.IsNullOrWhiteSpace(endpointUrl)
+            || !endpointUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+            || !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            return url;
+
+        return string.Concat("http://", url.AsSpan("https://".Length));
     }
 
     /// <summary>

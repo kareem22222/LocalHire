@@ -22,6 +22,11 @@ public static class S3ConfigFactory
         {
             config.ServiceURL = serviceUrl;
             config.ForcePathStyle = true;
+
+            // Presigned URLs are built from the configured scheme, not from
+            // ServiceURL, so an http endpoint (LocalStack) would otherwise be
+            // signed as https and fail TLS verification on download.
+            config.UseHttp = serviceUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase);
         }
         else
         {

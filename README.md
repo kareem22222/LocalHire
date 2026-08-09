@@ -310,17 +310,28 @@ cd backend
 dotnet test .\LocalHire.Api.slnx
 ```
 
-### Functional browser tests (Playwright)
+### Functional integration tests (behave)
 
-The Playwright suite opens the real application in Chromium/Chrome and tests
-the hiring and working roles separately. It runs headlessly in GitHub Actions
-on every push and pull request through `.github/workflows/e2e.yml`.
+`integration-tests/` holds Gherkin scenarios that run against the real stack —
+the API, PostgreSQL, and LocalStack S3 from `docker compose`. Nothing is mocked.
+Every scenario tagged `@db` first asks the API to drop the `public` schema and
+re-run every EF Core migration, then reseeds the mock data and clears the API's
+caches, so each scenario starts from tables built from scratch and cannot
+conflict with another. `@s3` scenarios also empty the resume bucket. The suite
+runs on `ubuntu-latest` for every push and pull request through
+`.github/workflows/integration-tests.yml`.
 
 ```text
-frontend/Functional_test/Playwright/
-|-- Hiring_role/       # one spec file per employer feature/scenario
-|-- Working_role/      # one spec file per worker feature/scenario
-`-- support/           # shared login state and small navigation helpers
+integration-tests/
+|-- behave.ini            # settings, overridable with -D or LOCALHIRE_* env vars
+|-- requirements.txt
+`-- features/
+    |-- *.feature         # auth, access control, profile, resume, hiring, worker, notifications
+    |-- steps/            # reusable given/when/then library
+    |-- layers/           # per-run and per-scenario setup
+    |-- clients/          # API, PostgreSQL, S3, test-support clients
+    |-- repositories/     # one per table
+    `-- utils/            # mock data, assertions, id resolvers
 ```
 
 When Docker runs inside WSL, use two terminals and replace the repository-root
@@ -334,56 +345,54 @@ wsl
 
 ```bash
 cd /mnt/c/path/to/LocalHire
-sudo docker compose up --build
+docker compose --profile localstack up --build
 ```
 
-Wait for `http://127.0.0.1:8080/api/health` to become healthy. Keep that
-terminal running.
+Wait for `http://localhost:8080/api/health` to become healthy. Keep that
+terminal running. Drop `--profile localstack` if you have no LocalStack Pro
+token; the resume scenarios then skip themselves.
 
 Terminal 2 - PowerShell:
 
 ```powershell
-Set-Location C:\path\to\LocalHire\frontend
-npm ci
-$env:PLAYWRIGHT_BASE_URL = "http://127.0.0.1:8080"
+Set-Location C:\path\to\LocalHire\integration-tests
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 
-# Fast default: runs browsers in the background
-npm run test:e2e
+# Full suite: schema rebuilt from scratch before every scenario
+.\.venv\Scripts\python.exe -m behave
 
-# Visible browser: opens Chromium full screen at 75% scale while the tests run
-npm run test:e2e:headed
-
-# Interactive Playwright test explorer
-npm run test:e2e:ui
+# Faster loop: empty the tables instead of rebuilding the schema
+.\.venv\Scripts\python.exe -m behave -D reset_mode=truncate
 ```
 
-> **Warning:** With `PLAYWRIGHT_BASE_URL` set, lifecycle, application,
-> shortlisting, and profile tests modify that backend's data. Use an isolated
-> local/test environment, not a shared deployment.
+WSL2 forwards published ports to Windows, so the API (8080), PostgreSQL (5433),
+and LocalStack (4566) are reachable from PowerShell with no extra setup.
 
 Useful focused runs:
 
 ```powershell
 # One role
-npm run test:e2e -- --project="Hiring role"
-npm run test:e2e -- --project="Working role"
+.\.venv\Scripts\python.exe -m behave --tags=hiring
+.\.venv\Scripts\python.exe -m behave --tags=worker
 
 # One feature file
-npm run test:e2e -- Functional_test/Playwright/Hiring_role/candidates.spec.js
+.\.venv\Scripts\python.exe -m behave features\hiring_candidates.feature
 
-# Debug one feature in a visible browser
-npm run test:e2e -- Functional_test/Playwright/Working_role/jobs.spec.js --headed --debug
+# One scenario, stopping on the first failure
+.\.venv\Scripts\python.exe -m behave --name "A worker applies to an open role" --stop
 ```
 
-Local headed runs use full-screen Chromium at 75% scale; GitHub Actions remains
-headless. The setup signs in once per role and reuses an ignored storage-state file, which
-keeps the suite fast and below the authentication rate limit. To add coverage,
-create a new `*.spec.js` file in the matching role folder. Failed runs retain a
-trace and screenshot; GitHub Actions uploads the HTML report and test results.
+> **Warning:** a run deletes every row in the target database. Use an isolated
+> local stack, never a shared deployment. The reset routes exist only when the
+> API runs with `TestSupport__Enabled=true`, which `docker-compose.yml` sets for
+> local development and no deployed environment sets.
 
-If Playwright's browser is not installed on a machine without Google Chrome,
-run `npx playwright install chromium` once. The normal local `--headed` run
-opens a visible browser; the default run and GitHub Actions remain headless.
+The seeded fixture is 2 employers, 12 workers, 19 jobs and 96 applications, all
+with fixed ids; scenarios extend it with `Given` steps such as
+`Given the employer has 25 open jobs`. See
+[integration-tests/README.md](integration-tests/README.md) for the full data
+table, the step catalogue, tags, and troubleshooting.
 
 ## Code coverage (SonarCloud)
 
