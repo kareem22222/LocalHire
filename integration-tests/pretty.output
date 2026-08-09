@@ -1,0 +1,202 @@
+@auth
+Feature: Registration, sign-in, and identity # features/auth.feature:2
+  Converted from the Hiring_role and Working_role authentication and
+  access-control browser specs. The browser assertions about dialogs and focus
+  traps have no server-side meaning; what mattered - who gets a session, who is
+  refused, and what the refusal says - is asserted here against the real API.
+  @db
+  Scenario: An employer signs in with the correct password           # features/auth.feature:10
+    Given the mock data is in place                                  # features/steps/given_steps.py:22
+    When a client signs in as the employer with the correct password # features/steps/when_steps.py:87
+    Then the response status code is 200                             # features/steps/then_steps.py:43
+    And the response field "token" is present                        # features/steps/then_steps.py:82
+
+  @db
+  Scenario: A worker signs in with the correct password            # features/auth.feature:17
+    Given the mock data is in place                                # features/steps/given_steps.py:22
+    When a client signs in as the worker with the correct password # features/steps/when_steps.py:87
+    Then the response status code is 200                           # features/steps/then_steps.py:43
+    And the response field "token" is present                      # features/steps/then_steps.py:82
+
+  @db
+  Scenario: The signed-in employer reads their own identity     # features/auth.feature:24
+    Given the mock data is in place                             # features/steps/given_steps.py:22
+    When the employer sends a GET request to "auth/me"          # features/steps/when_steps.py:48
+    Then the response status code is 200                        # features/steps/then_steps.py:43
+    And the response field "name" is "Demo Employer"            # features/steps/then_steps.py:67
+    And the response field "email" is "employer@localhire.test" # features/steps/then_steps.py:67
+    And the response field "role" is "Hiring"                   # features/steps/then_steps.py:67
+
+  @db
+  Scenario: The signed-in worker reads their own identity  # features/auth.feature:33
+    Given the mock data is in place                        # features/steps/given_steps.py:22
+    When the worker sends a GET request to "auth/me"       # features/steps/when_steps.py:48
+    Then the response status code is 200                   # features/steps/then_steps.py:43
+    And the response field "name" is "Demo Worker"         # features/steps/then_steps.py:67
+    And the response field "role" is "LookingForWork"      # features/steps/then_steps.py:67
+    And the response field "isProfileComplete" is "true"   # features/steps/then_steps.py:67
+
+  @db
+  Scenario: A wrong password is refused                                                                       # features/auth.feature:42
+    Given the mock data is in place                                                                           # features/steps/given_steps.py:22
+    When a client signs in with email "employer@localhire.test", password "WrongPassword1!" and role "Hiring" # features/steps/when_steps.py:80
+    Then the response status code is 401                                                                      # features/steps/then_steps.py:43
+    And the response body contains the error "Invalid email, password, or role"                               # features/steps/then_steps.py:194
+
+  @db
+  Scenario: An unknown email is refused with the same message as a wrong password                       # features/auth.feature:49
+    Given the mock data is in place                                                                     # features/steps/given_steps.py:22
+    When a client signs in with email "nobody@localhire.test", password "LocalHire1!" and role "Hiring" # features/steps/when_steps.py:80
+    Then the response status code is 401                                                                # features/steps/then_steps.py:43
+    And the response body contains the error "Invalid email, password, or role"                         # features/steps/then_steps.py:194
+
+  @db
+  Scenario: Signing in with the wrong role for an existing account is refused                                     # features/auth.feature:56
+    Given the mock data is in place                                                                               # features/steps/given_steps.py:22
+    When a client signs in with email "employer@localhire.test", password "LocalHire1!" and role "LookingForWork" # features/steps/when_steps.py:80
+    Then the response status code is 401                                                                          # features/steps/then_steps.py:43
+
+  @db
+  Scenario Outline: Sign-in input is validated before any credential check -- @1.1             # features/auth.feature:70
+    Given the mock data is in place                                                            # features/steps/given_steps.py:22
+    When a client signs in with email "not-an-email", password "LocalHire1!" and role "Hiring" # features/steps/when_steps.py:80
+    Then the response status code is 400                                                       # features/steps/then_steps.py:43
+    And the response reports a validation error for "Email"                                    # features/steps/then_steps.py:199
+
+  @db
+  Scenario Outline: Sign-in input is validated before any credential check -- @1.2   # features/auth.feature:71
+    Given the mock data is in place                                                  # features/steps/given_steps.py:22
+    When a client signs in with email "", password "LocalHire1!" and role "Hiring"   # features/steps/when_steps.py:80
+    Then the response status code is 400                                             # features/steps/then_steps.py:43
+    And the response reports a validation error for "Email"                          # features/steps/then_steps.py:199
+
+  @db
+  Scenario Outline: Sign-in input is validated before any credential check -- @1.3             # features/auth.feature:72
+    Given the mock data is in place                                                            # features/steps/given_steps.py:22
+    When a client signs in with email "employer@localhire.test", password "" and role "Hiring" # features/steps/when_steps.py:80
+    Then the response status code is 400                                                       # features/steps/then_steps.py:43
+    And the response reports a validation error for "Password"                                 # features/steps/then_steps.py:199
+
+  @db
+  Scenario Outline: Sign-in input is validated before any credential check -- @1.4                  # features/auth.feature:73
+    Given the mock data is in place                                                                 # features/steps/given_steps.py:22
+    When a client signs in with email "employer@localhire.test", password "LocalHire1!" and role "" # features/steps/when_steps.py:80
+    Then the response status code is 400                                                            # features/steps/then_steps.py:43
+    And the response reports a validation error for "Role"                                          # features/steps/then_steps.py:199
+
+  @db
+  Scenario Outline: Sign-in input is validated before any credential check -- @1.5                         # features/auth.feature:74
+    Given the mock data is in place                                                                        # features/steps/given_steps.py:22
+    When a client signs in with email "employer@localhire.test", password "LocalHire1!" and role "Manager" # features/steps/when_steps.py:80
+    Then the response status code is 400                                                                   # features/steps/then_steps.py:43
+    And the response reports a validation error for "Role"                                                 # features/steps/then_steps.py:199
+
+  @db
+  Scenario: A new worker account is created and stored                                                                                      # features/auth.feature:77
+    Given the mock data is in place                                                                                                         # features/steps/given_steps.py:22
+    When a client registers with name "Fresh Worker", email "fresh.worker@localhire.test", password "LocalHire1!" and role "LookingForWork" # features/steps/when_steps.py:96
+    Then the response status code is 201                                                                                                    # features/steps/then_steps.py:43
+    And the response field "token" is present                                                                                               # features/steps/then_steps.py:82
+    And table "Users" has 15 rows                                                                                                           # features/steps/then_steps.py:267
+
+  @db
+  Scenario: Registering an email and role that already exist is refused                                                     # features/auth.feature:85
+    Given the mock data is in place                                                                                         # features/steps/given_steps.py:22
+    When a client registers with name "Copy Cat", email "employer@localhire.test", password "LocalHire1!" and role "Hiring" # features/steps/when_steps.py:96
+    Then the response status code is 409                                                                                    # features/steps/then_steps.py:43
+    And the response body contains the error "already exists"                                                               # features/steps/then_steps.py:194
+    And table "Users" has 14 rows                                                                                           # features/steps/then_steps.py:267
+
+  @db
+  Scenario: The same email may be used once per role                                                                                               # features/auth.feature:93
+    Given the mock data is in place                                                                                                                # features/steps/given_steps.py:22
+    When a client registers with name "Demo Employer As Worker", email "employer@localhire.test", password "LocalHire1!" and role "LookingForWork" # features/steps/when_steps.py:96
+    Then the response status code is 201                                                                                                           # features/steps/then_steps.py:43
+    And table "Users" has 15 rows                                                                                                                  # features/steps/then_steps.py:267
+
+  @db
+  Scenario Outline: Registration input is validated -- @1.1                                                    # features/auth.feature:109
+    Given the mock data is in place                                                                            # features/steps/given_steps.py:22
+    When a client registers with name "", email "new@localhire.test", password "LocalHire1!" and role "Hiring" # features/steps/when_steps.py:96
+    Then the response status code is 400                                                                       # features/steps/then_steps.py:43
+    And the response reports a validation error for "Name"                                                     # features/steps/then_steps.py:199
+    And table "Users" has 14 rows                                                                              # features/steps/then_steps.py:267
+
+  @db
+  Scenario Outline: Registration input is validated -- @1.2                                                      # features/auth.feature:110
+    Given the mock data is in place                                                                              # features/steps/given_steps.py:22
+    When a client registers with name "New User", email "not-an-email", password "LocalHire1!" and role "Hiring" # features/steps/when_steps.py:96
+    Then the response status code is 400                                                                         # features/steps/then_steps.py:43
+    And the response reports a validation error for "Email"                                                      # features/steps/then_steps.py:199
+    And table "Users" has 14 rows                                                                                # features/steps/then_steps.py:267
+
+  @db
+  Scenario Outline: Registration input is validated -- @1.3                                                        # features/auth.feature:111
+    Given the mock data is in place                                                                                # features/steps/given_steps.py:22
+    When a client registers with name "New User", email "new@localhire.test", password "short1!" and role "Hiring" # features/steps/when_steps.py:96
+    Then the response status code is 400                                                                           # features/steps/then_steps.py:43
+    And the response reports a validation error for "Password"                                                     # features/steps/then_steps.py:199
+    And table "Users" has 14 rows                                                                                  # features/steps/then_steps.py:267
+
+  @db
+  Scenario Outline: Registration input is validated -- @1.4                                                            # features/auth.feature:112
+    Given the mock data is in place                                                                                    # features/steps/given_steps.py:22
+    When a client registers with name "New User", email "new@localhire.test", password "localhire1!" and role "Hiring" # features/steps/when_steps.py:96
+    Then the response status code is 400                                                                               # features/steps/then_steps.py:43
+    And the response reports a validation error for "Password"                                                         # features/steps/then_steps.py:199
+    And table "Users" has 14 rows                                                                                      # features/steps/then_steps.py:267
+
+  @db
+  Scenario Outline: Registration input is validated -- @1.5                                                            # features/auth.feature:113
+    Given the mock data is in place                                                                                    # features/steps/given_steps.py:22
+    When a client registers with name "New User", email "new@localhire.test", password "LOCALHIRE1!" and role "Hiring" # features/steps/when_steps.py:96
+    Then the response status code is 400                                                                               # features/steps/then_steps.py:43
+    And the response reports a validation error for "Password"                                                         # features/steps/then_steps.py:199
+    And table "Users" has 14 rows                                                                                      # features/steps/then_steps.py:267
+
+  @db
+  Scenario Outline: Registration input is validated -- @1.6                                                             # features/auth.feature:114
+    Given the mock data is in place                                                                                     # features/steps/given_steps.py:22
+    When a client registers with name "New User", email "new@localhire.test", password "LocalHirePwd" and role "Hiring" # features/steps/when_steps.py:96
+    Then the response status code is 400                                                                                # features/steps/then_steps.py:43
+    And the response reports a validation error for "Password"                                                          # features/steps/then_steps.py:199
+    And table "Users" has 14 rows                                                                                       # features/steps/then_steps.py:267
+
+  @db
+  Scenario Outline: Registration input is validated -- @1.7                                                            # features/auth.feature:115
+    Given the mock data is in place                                                                                    # features/steps/given_steps.py:22
+    When a client registers with name "New User", email "new@localhire.test", password "LocalHire11" and role "Hiring" # features/steps/when_steps.py:96
+    Then the response status code is 400                                                                               # features/steps/then_steps.py:43
+    And the response reports a validation error for "Password"                                                         # features/steps/then_steps.py:199
+    And table "Users" has 14 rows                                                                                      # features/steps/then_steps.py:267
+
+  @db
+  Scenario Outline: Registration input is validated -- @1.8                                                                # features/auth.feature:116
+    Given the mock data is in place                                                                                        # features/steps/given_steps.py:22
+    When a client registers with name "New User", email "new@localhire.test", password "LocalHire1!" and role "Supervisor" # features/steps/when_steps.py:96
+    Then the response status code is 400                                                                                   # features/steps/then_steps.py:43
+    And the response reports a validation error for "Role"                                                                 # features/steps/then_steps.py:199
+    And table "Users" has 14 rows                                                                                          # features/steps/then_steps.py:267
+
+  Scenario: A request without a token is rejected                  # features/auth.feature:118
+    When a client sends a GET request to "auth/me" without a token # features/steps/when_steps.py:72
+    Then the response status code is 401                           # features/steps/then_steps.py:43
+
+  @db
+  Scenario: A structurally invalid token is rejected  # features/auth.feature:123
+    Given the mock data is in place                   # features/steps/given_steps.py:22
+    When invalid sends a GET request to "auth/me"     # features/steps/when_steps.py:48
+    Then the response status code is 401              # features/steps/then_steps.py:43
+
+  @db @jwt_secret
+  Scenario: A correctly signed but expired token is rejected  # features/auth.feature:129
+    Given the mock data is in place                           # features/steps/given_steps.py:22
+    When expired sends a GET request to "auth/me"             # features/steps/when_steps.py:48
+    Then the response status code is 401                      # features/steps/then_steps.py:43
+
+  @db @rate_limit
+  Scenario: Repeated sign-in attempts are rate limited                    # features/auth.feature:135
+    Given the mock data is in place                                       # None
+    When a client sends enough sign-in attempts to exhaust the rate limit # None
+    Then the response status code is 429                                  # None
+

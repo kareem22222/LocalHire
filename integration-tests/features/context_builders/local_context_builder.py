@@ -12,7 +12,7 @@ from features.repositories.notification_repository import NotificationRepository
 from features.repositories.saved_candidate_repository import SavedCandidateRepository
 from features.repositories.saved_job_repository import SavedJobRepository
 from features.repositories.user_repository import UserRepository
-from features.utils.util import get_int_setting, get_setting
+from features.utils.util import as_bool, get_int_setting, get_setting
 
 
 class LocalContextBuilder(ContextBuilder):
@@ -22,6 +22,7 @@ class LocalContextBuilder(ContextBuilder):
         context.api_client = ApiClient(
             context.base_url,
             get_int_setting(context, "request_timeout_seconds", 60),
+            trace=as_bool(get_setting(context, "verbose_http", "false")),
         )
 
     def add_test_support_client(self):

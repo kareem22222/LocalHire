@@ -8,15 +8,32 @@ pattern the rest of the suite is built around.
 import json as json_module
 from urllib.parse import urlencode
 
+import re
+
 import requests
 
 from features.utils.util import wait_until
 
+TRACE_BODY_LIMIT = 400
+#: Keep bearer tokens out of a trace that may be pasted into an issue or CI log.
+SECRET_PATTERN = re.compile(r'("(?:token|password)"\s*:\s*")[^"]*(")')
+
+
+def _shorten(text, limit=TRACE_BODY_LIMIT):
+    """One-line, console-safe, secret-free excerpt of a request or response body."""
+    if not text:
+        return "(empty)"
+    collapsed = " ".join(str(text).split())
+    redacted = SECRET_PATTERN.sub(r"\1<redacted>\2", collapsed)
+    excerpt = redacted[:limit] + ("..." if len(redacted) > limit else "")
+    return excerpt.encode("ascii", "backslashreplace").decode("ascii")
+
 
 class ApiClient:
-    def __init__(self, base_url, timeout_seconds=60):
+    def __init__(self, base_url, timeout_seconds=60, trace=False):
         self.base_url = base_url.rstrip("/") + "/"
         self.timeout_seconds = timeout_seconds
+        self.trace = trace
         self.session = requests.Session()
         self.response = None
         self.last_request = None
@@ -120,4 +137,18 @@ class ApiClient:
             timeout=self.timeout_seconds,
         )
         self.last_request = (method, url)
+        if self.trace:
+            self.__trace(method, url, request_headers, data, files)
         return self.response
+
+    def __trace(self, method, url, headers, data, files):
+        """Print the call so a run can be followed live (``-D verbose_http=true``)."""
+        actor = "anonymous"
+        if "Authorization" in headers:
+            actor = "bearer " + headers["Authorization"].split(" ")[-1][-8:]
+        print(f"    -> {method} {url}  [{actor}]")
+        if data:
+            print(f"       body {_shorten(data)}")
+        if files:
+            print(f"       files {list(files)}")
+        print(f"    <- {self.response.status_code} {_shorten(self.response.text)}")
