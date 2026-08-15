@@ -7,7 +7,7 @@ name: AWS Cost Control (Start/Stop RDS + EB)
 #   1. Manually (Actions -> Run workflow): pick "action" (stop/start) and
 #      "target" (dev / prod / both) from the dropdowns.
 #   2. Automatically on a schedule:
-#        - 21:00 IST (15:30 UTC) -> STOP  dev + prod
+#        - 21:00 IST (15:30 UTC) -> STOP dev
 #      Starting is intentionally manual-only; there is no automatic start.
 #
 # GUARDS (manual runs only; the schedule runs unattended):
@@ -46,7 +46,7 @@ on:
         required: true
         default: ap-south-2
   schedule:
-    - cron: '30 15 * * *'   # 21:00 IST -> STOP dev + prod
+    - cron: '30 15 * * *'   # 21:00 IST -> STOP dev
 
 permissions:
   contents: read
@@ -78,7 +78,7 @@ jobs:
               "30 15 * * *") ACTION="stop" ;;
               *) echo "Unrecognized schedule '$SCHEDULE'." >&2; exit 1 ;;
             esac
-            TARGETS="dev prod"
+            TARGETS="dev"
           else
             ACTION="$IN_ACTION"
             case "$IN_TARGET" in
