@@ -310,6 +310,26 @@ export const useJobsStore = defineStore('jobs', () => {
     return data
   }
 
+  async function setJobActive(id, isActive) {
+    const { data } = await jobsApi.setJobActive(id, isActive)
+    jobsById.value[id] = data
+    jobFetchedAt.value[id] = Date.now()
+    myJobs.value = myJobs.value.map((job) => job.id === id ? data : job)
+    myJobsFetchedAt.value = 0
+    nearbyJobsByLocation.value = {}
+    invalidatePaged()
+    return data
+  }
+
+  function invalidateDiscovery() {
+    candidatesById.value = {}
+    candidateFetchedAt.value = {}
+    candidates.value = []
+    candidatesByKey.value = {}
+    nearbyJobsByLocation.value = {}
+    invalidatePaged()
+  }
+
   async function applyToJob(jobId) {
     const { data } = await jobsApi.applyToJob(jobId)
     myApplicationsFetchedAt.value = 0
@@ -387,7 +407,9 @@ export const useJobsStore = defineStore('jobs', () => {
     loadSavedCandidatesPage,
     createJob,
     updateJob,
+    setJobActive,
     applyToJob,
+    invalidateDiscovery,
     clear,
   }
 })

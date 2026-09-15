@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using LocalHire.Api.Data;
 using LocalHire.Api.DTOs;
 using LocalHire.Api.Models;
@@ -34,6 +35,10 @@ public sealed class CandidateAccessTests
             var db = scope.ServiceProvider.GetRequiredService<LocalHireDbContext>();
             var worker = db.Users.Single(user => user.Email == "worker@example.com");
             worker.AddressLine = "12 Private Road";
+            worker.Gender = "Female";
+            worker.DateOfBirth = new DateOnly(1995, 5, 20);
+            worker.Latitude = 19.076;
+            worker.Longitude = 72.878;
             worker.ResumeKey = "resumes/worker.pdf";
             worker.Credentials = [new CredentialEntry { Name = "Retail Basics", Issuer = "Skills Centre" }];
             db.SaveChanges();
@@ -55,12 +60,35 @@ public sealed class CandidateAccessTests
         client.DefaultRequestHeaders.Authorization = Bearer(await Login(client, "other@example.com", "Hiring"));
         var reducedResponse = await client.GetAsync($"/api/hiring/candidates/{workerId}");
         Assert.Equal(HttpStatusCode.OK, reducedResponse.StatusCode);
-        var reduced = (await reducedResponse.Content.ReadFromJsonAsync<CandidateDetailResponse>())!;
+        var reducedJson = await reducedResponse.Content.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(reducedJson);
+        Assert.False(document.RootElement.TryGetProperty("gender", out _));
+        Assert.False(document.RootElement.TryGetProperty("dateOfBirth", out _));
+        Assert.False(document.RootElement.TryGetProperty("latitude", out _));
+        Assert.False(document.RootElement.TryGetProperty("longitude", out _));
+        var reduced = JsonSerializer.Deserialize<CandidateDetailResponse>(reducedJson,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
         Assert.False(reduced.HasApplied);
         Assert.Null(reduced.Email);
         Assert.Null(reduced.AddressLine);
         Assert.False(reduced.HasResume);
         Assert.Null(reduced.Credentials);
+
+        client.DefaultRequestHeaders.Authorization = Bearer(await Login(client, "worker@example.com", "LookingForWork"));
+        var hidden = await client.PutAsJsonAsync("/api/me/profile",
+            new UpdateProfileRequest("Worker", null, null, null, null, null, null, null,
+                IsDiscoverable: false));
+        Assert.Equal(HttpStatusCode.OK, hidden.StatusCode);
+
+        client.DefaultRequestHeaders.Authorization = Bearer(await Login(client, "other@example.com", "Hiring"));
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await client.GetAsync($"/api/hiring/candidates/{workerId}")).StatusCode);
+        var search = await client.GetStringAsync("/api/hiring/candidates/nearby?search=Worker");
+        Assert.DoesNotContain(workerId.ToString(), search, StringComparison.OrdinalIgnoreCase);
+
+        client.DefaultRequestHeaders.Authorization = Bearer(await Login(client, "owner@example.com", "Hiring"));
+        Assert.Equal(HttpStatusCode.OK,
+            (await client.GetAsync($"/api/hiring/candidates/{workerId}")).StatusCode);
 
         Assert.Equal(HttpStatusCode.NotFound,
             (await client.GetAsync($"/api/hiring/candidates/{Guid.NewGuid()}")).StatusCode);

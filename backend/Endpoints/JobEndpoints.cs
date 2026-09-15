@@ -127,6 +127,20 @@ public static class JobEndpoints
         })
         .WithName("UpdateJobPost");
 
+        hiringGroup.MapPatch("/jobs/{id:guid}/status", async (
+            Guid id,
+            UpdateJobStatusRequest request,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+
+            return Results.Ok(await jobService.SetJobActiveAsync(id, request.IsActive, userId, ct));
+        })
+        .WithName("SetJobStatus");
+
         hiringGroup.MapGet("/jobs/{id:guid}/applications", async (
             Guid id,
             ClaimsPrincipal user,
@@ -421,9 +435,14 @@ public static class JobEndpoints
 
         workGroup.MapGet("/jobs/{id:guid}", async (
             Guid id,
+            ClaimsPrincipal user,
             IJobService jobService,
             CancellationToken ct) =>
-            Results.Ok(await jobService.GetActiveJobAsync(id, ct)))
+        {
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+            return Results.Ok(await jobService.GetWorkerJobAsync(id, userId, ct));
+        })
         .WithName("GetWorkerJob");
 
         workGroup.MapPost("/jobs/{id:guid}/apply", async (

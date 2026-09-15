@@ -15,13 +15,17 @@ const props = defineProps({
   kicker: { type: String, default: 'Hiring desk' },
   canEdit: { type: Boolean, default: false },
   cancelable: { type: Boolean, default: false },
+  jobActive: { type: Boolean, default: true },
+  statusChanging: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['update:jobForm', 'submit', 'back', 'edit', 'cancel'])
+const emit = defineEmits(['update:jobForm', 'submit', 'back', 'edit', 'cancel', 'status'])
 
 const pincodeStatus = ref('idle')
 const pincodeError = ref('')
 const areaOptions = ref([])
+const workplaceLocationStatus = ref('idle')
+const workplaceLocationError = ref('')
 let pincodeRequestId = 0
 
 const employmentTypeOptions = [
@@ -86,7 +90,49 @@ function updateJobForm(patch) {
 }
 
 function updateJobFormField(field, event) {
-  updateJobForm({ [field]: event.target.value })
+  const patch = { [field]: event.target.value }
+  if (['pincode', 'state', 'cityArea'].includes(field)) {
+    Object.assign(patch, {
+      latitude: null,
+      longitude: null,
+      locationSource: null,
+      workplaceConfirmed: false,
+    })
+    workplaceLocationStatus.value = 'idle'
+    workplaceLocationError.value = ''
+  }
+  updateJobForm(patch)
+}
+
+function updateWorkplaceConfirmation(confirmed) {
+  updateJobForm(confirmed
+    ? { workplaceConfirmed: true }
+    : { workplaceConfirmed: false, latitude: null, longitude: null, locationSource: null })
+}
+
+function captureWorkplaceLocation() {
+  workplaceLocationError.value = ''
+  if (!navigator.geolocation) {
+    workplaceLocationStatus.value = 'error'
+    workplaceLocationError.value = 'Location is unavailable. You can still publish with the area and pincode.'
+    return
+  }
+  workplaceLocationStatus.value = 'loading'
+  navigator.geolocation.getCurrentPosition(
+    ({ coords }) => {
+      updateJobForm({
+        latitude: Math.round(coords.latitude * 1000) / 1000,
+        longitude: Math.round(coords.longitude * 1000) / 1000,
+        locationSource: 'Device',
+      })
+      workplaceLocationStatus.value = 'done'
+    },
+    () => {
+      workplaceLocationStatus.value = 'error'
+      workplaceLocationError.value = 'We could not get the workplace location. You can still publish with the area and pincode.'
+    },
+    { enableHighAccuracy: false, timeout: 10000 },
+  )
 }
 
 watch(
@@ -99,7 +145,7 @@ watch(
       return
     }
 
-    updateJobForm({ state: '', cityArea: '', latitude: null, longitude: null })
+    updateJobForm({ state: '', cityArea: '', latitude: null, longitude: null, locationSource: null, workplaceConfirmed: false })
     areaOptions.value = []
     pincodeError.value = ''
 
@@ -161,6 +207,9 @@ watch(
           Cancel
         </button>
         <button type="button" class="dash-btn dash-btn--outline post-job-page__back" @click="emit('back')">Back</button>
+        <button v-if="canEdit" type="button" class="dash-btn dash-btn--outline" :disabled="statusChanging" @click="emit('status', !jobActive)">
+          {{ statusChanging ? 'Updating...' : jobActive ? 'Close vacancy' : 'Reopen vacancy' }}
+        </button>
       </div>
     </div>
 
@@ -206,6 +255,24 @@ watch(
         <input v-else id="job-city-area" :value="props.jobForm.cityArea" placeholder="" :aria-invalid="!!props.fieldErrors.cityArea" @input="updateJobFormField('cityArea', $event)" />
         <span v-if="props.fieldErrors.cityArea" class="job-form__error-text">{{ props.fieldErrors.cityArea }}</span>
         <span v-if="areaOptions.length > 1" class="job-form__hint">Choose the nearest area for this role.</span>
+      </div>
+
+      <div class="job-form__field job-form__workplace-location">
+        <label class="job-form__confirmation">
+          <input
+            type="checkbox"
+            :checked="props.jobForm.workplaceConfirmed"
+            @change="updateWorkplaceConfirmation($event.target.checked)"
+          />
+          I am at the workplace and confirm this device location belongs to this job.
+        </label>
+        <button type="button" class="dash-btn dash-btn--outline" :disabled="!props.jobForm.workplaceConfirmed || workplaceLocationStatus === 'loading'" @click="captureWorkplaceLocation">
+          {{ workplaceLocationStatus === 'loading' ? 'Getting workplace location...' : 'Use this workplace location' }}
+        </button>
+        <span v-if="props.jobForm.locationSource === 'Device'" class="job-form__hint" role="status">Workplace location saved at approximate 100 m precision.</span>
+        <span v-else class="job-form__hint">Without a confirmed location, the role is shown as distance unavailable within the selected state.</span>
+        <span v-if="props.fieldErrors.locationSource" class="job-form__error-text">{{ props.fieldErrors.locationSource }}</span>
+        <span v-if="workplaceLocationError" class="job-form__error-text" role="alert">{{ workplaceLocationError }}</span>
       </div>
 
       <div class="job-form__row">
@@ -366,4 +433,8 @@ watch(
   border-color: #dc2626;
   outline-color: #dc2626;
 }
+
+.job-form__workplace-location { align-items: flex-start; padding: 16px; border-radius: 12px; background: #f5faf7; }
+.job-form__confirmation { display: flex; align-items: flex-start; gap: 9px; }
+.job-form__confirmation input { margin-top: 2px; accent-color: var(--worker-role-green-end, #12ad59); }
 </style>

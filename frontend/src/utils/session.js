@@ -4,5 +4,6 @@ import { clearAuth } from '../api'
 // unauthenticated landing state.
 export function logout() {
   clearAuth()
+  window.history.replaceState({}, '', '/')
   window.location.reload()
 }

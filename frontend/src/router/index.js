@@ -13,60 +13,76 @@ import AllWorkerJobsPage from '../components/AllWorkerJobsPage.vue'
 import SavedJobsPage from '../components/SavedJobsPage.vue'
 import SavedCandidatesPage from '../components/SavedCandidatesPage.vue'
 import NotificationsPage from '../components/NotificationsPage.vue'
+import NotFoundPage from '../components/NotFoundPage.vue'
+import { authRole, hasAuthToken } from '../api/index.js'
+import { normalizeRole } from '../utils/role.js'
 
 const routes = [
   { path: '/', name: 'dashboard', component: AppDashboard },
-  { path: '/PostNewJob', name: 'post-new-job', component: PostJobView },
-  { path: '/hiring/roles', name: 'all-roles', component: AllRolesPage },
-  { path: '/hiring/candidates', name: 'all-candidates', component: AllCandidatesPage },
-  { path: '/hiring/saved-candidates', name: 'saved-candidates', component: SavedCandidatesPage },
-  { path: '/hiring/shortlists', name: 'review-shortlists', component: ShortlistsPage },
-  { path: '/work/applications', name: 'worker-applications', component: AppliedJobsPage },
-  { path: '/work/saved-jobs', name: 'worker-saved-jobs', component: SavedJobsPage },
-  { path: '/work/jobs', name: 'all-worker-jobs', component: AllWorkerJobsPage },
+  { path: '/PostNewJob', name: 'post-new-job', component: PostJobView, meta: { roles: ['hiring'] } },
+  { path: '/hiring/roles', name: 'all-roles', component: AllRolesPage, meta: { roles: ['hiring'] } },
+  { path: '/hiring/candidates', name: 'all-candidates', component: AllCandidatesPage, meta: { roles: ['hiring'] } },
+  { path: '/hiring/saved-candidates', name: 'saved-candidates', component: SavedCandidatesPage, meta: { roles: ['hiring'] } },
+  { path: '/hiring/shortlists', name: 'review-shortlists', component: ShortlistsPage, meta: { roles: ['hiring'] } },
+  { path: '/work/applications', name: 'worker-applications', component: AppliedJobsPage, meta: { roles: ['worker'] } },
+  { path: '/work/saved-jobs', name: 'worker-saved-jobs', component: SavedJobsPage, meta: { roles: ['worker'] } },
+  { path: '/work/jobs', name: 'all-worker-jobs', component: AllWorkerJobsPage, meta: { roles: ['worker'] } },
   { path: '/notifications', name: 'notifications', component: NotificationsPage },
   {
     path: '/work/jobs/:id',
     name: 'worker-job-detail',
     component: WorkerJobDetailPage,
     props: true,
+    meta: { roles: ['worker'] },
   },
   {
     path: '/hiring/candidates/:id',
     name: 'candidate-detail',
     component: CandidateDetailPage,
+    meta: { roles: ['hiring'] },
   },
   {
     path: '/hiring/jobs/:id/applicants',
     name: 'job-applicants',
     component: JobApplicantsPage,
     props: { filter: 'all' },
+    meta: { roles: ['hiring'] },
   },
   {
     path: '/hiring/jobs/:id/shortlisted',
     name: 'job-shortlisted',
     component: JobApplicantsPage,
     props: { filter: 'shortlisted' },
+    meta: { roles: ['hiring'] },
   },
   {
     path: '/jobs/:id',
     name: 'job-view',
     component: JobDetailView,
     props: (route) => ({ id: route.params.id, mode: 'view' }),
+    meta: { roles: ['hiring'] },
   },
   {
     path: '/jobs/:id/edit',
     name: 'job-edit',
     component: JobDetailView,
     props: (route) => ({ id: route.params.id, mode: 'edit' }),
+    meta: { roles: ['hiring'] },
   },
-  // Unknown paths fall back to the dashboard.
-  { path: '/:pathMatch(.*)*', redirect: '/' },
+  { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundPage },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+router.beforeEach((to) => {
+  if (!hasAuthToken() || !to.meta.roles) return true
+  const role = normalizeRole(authRole())
+  return to.meta.roles.includes(role)
+    ? true
+    : { name: 'dashboard', query: { routeError: 'That page is not available for this account.' } }
 })
 
 export default router

@@ -1184,3 +1184,22 @@ input { font: inherit; }
   .job-form__row { grid-template-columns: 1fr; }
   .location-prompt { flex-direction: column; align-items: stretch; text-align: center; }
 }
+/* Recoverable request states shared by the authenticated shell. */
+.dash-load-error,
+.auth-check-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: min(1100px, calc(100% - 40px));
+  margin: 20px auto;
+  padding: 16px 18px;
+  color: #7f1d1d;
+  border: 1px solid #fecaca;
+  border-radius: 14px;
+  background: #fff7f7;
+}
+
+.auth-check-error { display: grid; justify-items: center; max-width: 640px; margin-top: 80px; text-align: center; }
+.auth-check-error h1 { color: #0b3658; }
+@media (max-width: 600px) { .dash-load-error { align-items: stretch; flex-direction: column; } }

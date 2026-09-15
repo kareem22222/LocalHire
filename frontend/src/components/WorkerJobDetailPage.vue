@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSavedJobs } from '../composables/useSavedJobs'
 import { useJobsStore } from '../stores/jobs'
@@ -11,6 +11,7 @@ import {
   formatShift,
 } from '../utils/jobDisplay'
 import BrandLogo from './BrandLogo.vue'
+import { apiErrorMessage } from '../utils/apiError.js'
 
 const props = defineProps({ id: { type: String, required: true } })
 const router = useRouter()
@@ -21,24 +22,41 @@ const loading = ref(true)
 const applying = ref(false)
 const applied = ref(false)
 const error = ref('')
+const loadError = ref('')
+const notFound = ref(false)
+let loadGeneration = 0
 
 const application = computed(() =>
   jobsStore.myApplications.find((item) => item.jobPostId === props.id) ||
   (applied.value ? { status: 'Applied' } : null))
+const isOpen = computed(() => job.value?.isActive !== false)
 
-onMounted(async () => {
+async function load() {
+  const generation = ++loadGeneration
+  loading.value = true
+  job.value = null
+  applied.value = false
+  error.value = ''
+  loadError.value = ''
+  notFound.value = false
   try {
     const [jobData] = await Promise.all([
-      jobsStore.loadWorkerJob(props.id),
-      jobsStore.loadMyApplications(),
+      jobsStore.loadWorkerJob(props.id, { force: true }),
+      jobsStore.loadMyApplications({ force: true }),
     ])
-    job.value = jobData
-  } catch {
-    error.value = 'This job is no longer available.'
+    if (generation === loadGeneration) job.value = jobData
+  } catch (err) {
+    if (generation !== loadGeneration) return
+    notFound.value = err.response?.status === 404
+    loadError.value = notFound.value
+      ? 'This job is unavailable or you do not have access to it.'
+      : apiErrorMessage(err, 'We could not load this job. Please try again.')
   } finally {
-    loading.value = false
+    if (generation === loadGeneration) loading.value = false
   }
-})
+}
+
+watch(() => props.id, load, { immediate: true })
 
 async function apply() {
   applying.value = true
@@ -46,7 +64,7 @@ async function apply() {
   try {
     await jobsStore.applyToJob(props.id)
   } catch (err) {
-    error.value = err.response?.data?.message || 'Could not apply to this job.'
+    error.value = apiErrorMessage(err, 'Could not apply to this job.')
     applying.value = false
     return
   }
@@ -70,15 +88,16 @@ async function apply() {
     <main class="worker-detail-page">
       <div v-if="loading" class="worker-page-empty">Loading job details...</div>
       <div v-else-if="!job" class="worker-page-empty">
-        <h1>Job unavailable</h1>
-        <p>{{ error }}</p>
+        <h1>{{ notFound ? 'Job unavailable' : 'Could not load job' }}</h1>
+        <p>{{ loadError }}</p>
+        <button v-if="!notFound" type="button" class="dash-btn worker-primary" @click="load">Retry</button>
         <button type="button" class="dash-btn worker-outline" @click="router.push('/')">Back to jobs</button>
       </div>
 
       <template v-else>
         <section class="worker-detail-hero">
           <div>
-            <span class="worker-eyebrow">Now hiring</span>
+            <span class="worker-eyebrow">{{ isOpen ? 'Now hiring' : 'Vacancy closed' }}</span>
             <h1>{{ job.title }}</h1>
             <p>{{ job.workplaceName }} · {{ formatJobLocation(job) }}</p>
           </div>
@@ -88,13 +107,13 @@ async function apply() {
               type="button"
               class="dash-btn worker-outline"
               :aria-pressed="isJobSaved(job.id)"
-              :disabled="isJobSaved(job.id)"
+              :disabled="isJobSaved(job.id) || !isOpen"
               @click="toggleSavedJob(job.id)"
             >
               {{ isJobSaved(job.id) ? 'Saved job' : 'Save job' }}
             </button>
-            <button type="button" class="dash-btn worker-primary" :disabled="application || applying" @click="apply">
-              {{ application ? 'Applied' : applying ? 'Applying...' : 'Apply now' }}
+            <button type="button" class="dash-btn worker-primary" :disabled="application || applying || !isOpen" @click="apply">
+              {{ application ? 'Applied' : !isOpen ? 'Closed' : applying ? 'Applying...' : 'Apply now' }}
             </button>
           </div>
         </section>
@@ -103,6 +122,9 @@ async function apply() {
 
         <section v-if="application" class="worker-application-notice">
           Application status: <strong>{{ application.status }}</strong>
+        </section>
+        <section v-if="!isOpen" class="worker-application-notice" role="status">
+          This vacancy is closed and no longer accepts applications.
         </section>
 
         <section class="worker-detail-card">

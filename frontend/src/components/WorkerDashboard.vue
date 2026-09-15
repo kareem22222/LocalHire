@@ -195,6 +195,7 @@ const hasMoreJobs = computed(() => !props.loading && !props.listOnly && props.jo
               <span v-if="formatEmploymentType(job)">{{ formatEmploymentType(job) }}</span>
               <span v-if="formatSalary(job)">{{ formatSalary(job) }}</span>
               <span v-if="formatExperience(job)">{{ formatExperience(job) }}</span>
+              <span v-if="!job.locationSource">Distance unavailable</span>
             </div>
           </a>
           <div class="worker-job-row__actions">

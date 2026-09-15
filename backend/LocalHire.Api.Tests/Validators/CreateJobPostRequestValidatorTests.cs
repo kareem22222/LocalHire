@@ -32,6 +32,7 @@ public sealed class CreateJobPostRequestValidatorTests
         Pincode = "400050",
         Latitude = 19.05,
         Longitude = 72.83,
+        LocationSource = "Device",
         EmploymentType = "FullTime",
         SalaryMin = 15000m,
         SalaryMax = 25000m,
@@ -92,6 +93,10 @@ public sealed class CreateJobPostRequestValidatorTests
     [Fact]
     public void Rejects_longitude_without_latitude() =>
         AssertInvalid(Valid() with { Longitude = 72.0 }, nameof(CreateJobPostRequest.Latitude));
+
+    [Fact]
+    public void Requires_source_for_coordinates() =>
+        AssertInvalid(Valid() with { Latitude = 19.0, Longitude = 72.0 }, nameof(CreateJobPostRequest.LocationSource));
 
     [Fact]
     public void Rejects_out_of_range_latitude() =>

@@ -40,6 +40,7 @@ public sealed class User
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
     public DateTimeOffset? LocationUpdatedAt { get; set; }
+    public bool IsDiscoverable { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; }
 
     public ICollection<JobPost> JobPosts { get; set; } = new List<JobPost>();

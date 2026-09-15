@@ -10,6 +10,7 @@ public sealed record JobPostResponse(
     string? Pincode,
     double? Latitude,
     double? Longitude,
+    string? LocationSource,
     string? EmploymentType,
     decimal? SalaryMin,
     decimal? SalaryMax,

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import * as profileApi from '../api/profile.js'
+import { useJobsStore } from './jobs.js'
 
 const PROFILE_TTL_MS = 5 * 60 * 1000
 
@@ -36,6 +37,7 @@ export const useProfileStore = defineStore('profile', () => {
     const { data } = await profileApi.updateProfile(details)
     profile.value = data
     fetchedAt.value = Date.now()
+    useJobsStore().invalidateDiscovery()
     return data
   }
 
@@ -43,6 +45,7 @@ export const useProfileStore = defineStore('profile', () => {
     const { data } = await profileApi.updateLocation(coords)
     profile.value = data
     fetchedAt.value = Date.now()
+    useJobsStore().invalidateDiscovery()
     return data
   }
 
@@ -50,6 +53,7 @@ export const useProfileStore = defineStore('profile', () => {
     const { data } = await profileApi.uploadResume(file, onUploadProgress)
     profile.value = data
     fetchedAt.value = Date.now()
+    useJobsStore().invalidateDiscovery()
     return data
   }
 

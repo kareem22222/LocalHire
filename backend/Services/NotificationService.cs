@@ -13,6 +13,14 @@ public sealed class NotificationService(LocalHireDbContext db) : INotificationSe
             $"{jobPost.Title} at {jobPost.WorkplaceName} has new details.",
             $"/work/jobs/{jobPost.Id}")));
 
+    public void NotifyJobClosed(IEnumerable<Guid> workerIds, JobPost jobPost) =>
+        db.Notifications.AddRange(workerIds.Select(workerId => Create(
+            workerId,
+            "JobClosed",
+            "An applied job was closed",
+            $"{jobPost.Title} at {jobPost.WorkplaceName} is no longer accepting applications.",
+            $"/work/jobs/{jobPost.Id}")));
+
     public void NotifyShortlisted(Guid workerId, JobPost jobPost) =>
         db.Notifications.Add(Create(
             workerId,

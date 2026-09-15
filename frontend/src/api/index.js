@@ -61,11 +61,6 @@ export function clearAuth() {
   }
   clearSavedCandidates()
   clearSavedJobs()
-  try {
-    window.history.replaceState({}, '', '/')
-  } catch {
-    // The next authenticated render also resets the Vue Router route.
-  }
 }
 
 export function hasAuthToken() {
@@ -80,8 +75,18 @@ export async function isAuthenticated() {
   } catch (err) {
     if (err.response?.status === 401) {
       clearAuth()
+      return false
     }
-    return false
+    return null
+  }
+}
+
+export function authRole() {
+  try {
+    const payload = JSON.parse(atob(accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || payload.role || ''
+  } catch {
+    return ''
   }
 }
 

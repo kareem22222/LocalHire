@@ -13,6 +13,7 @@ public sealed class JobPost
     public string? Pincode { get; set; }
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
+    public string? LocationSource { get; set; }
 
     // Role details
     public EmploymentType? EmploymentType { get; set; }

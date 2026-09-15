@@ -34,6 +34,9 @@ const statsRef = ref(null)
 const ctaRef = ref(null)
 const heroContentRef = ref(null)
 const showPrivacyPolicy = ref(false)
+const authChecking = ref(true)
+const authError = ref('')
+const pendingReturnPath = ref('/')
 const router = useRouter()
 const profileStore = useProfileStore()
 const notificationsStore = useNotificationsStore()
@@ -101,12 +104,30 @@ function showSignupConfetti() {
 }
 
 async function onAuthSuccess({ mode } = {}) {
-  await router.replace('/')
   cleanupLandingAnimations()
   isAuth.value = true
   showModal.value = false
-  profileStore.fetchProfile().catch(() => {})
+  await profileStore.fetchProfile().catch(() => {})
+  await router.replace(pendingReturnPath.value)
+  pendingReturnPath.value = '/'
   if (mode === 'register') showSignupConfetti()
+}
+
+async function checkAuthentication() {
+  authChecking.value = true
+  authError.value = ''
+  isAuth.value = await isAuthenticated()
+  authChecking.value = false
+  if (isAuth.value === null) {
+    authError.value = 'We could not check your session. Check your connection and try again.'
+    return
+  }
+  if (isAuth.value) {
+    await profileStore.fetchProfile().catch(() => {})
+    return
+  }
+  const path = router.currentRoute.value.fullPath
+  pendingReturnPath.value = path.startsWith('/') && !path.startsWith('//') ? path : '/'
 }
 
 function handleCtaSubmit() {
@@ -142,11 +163,8 @@ function scrollToTop() {
 }
 
 onMounted(async () => {
-  isAuth.value = await isAuthenticated()
-  if (isAuth.value) {
-    await profileStore.fetchProfile().catch(() => {})
-    return
-  }
+  await checkAuthentication()
+  if (isAuth.value !== false) return
 
   ctx = gsap.context(() => {
     // Hero entrance
@@ -228,6 +246,12 @@ onUnmounted(() => {
 />
 
 <router-view v-if="isAuth === true" />
+
+<main v-if="!authChecking && isAuth === null" class="auth-check-error" role="alert">
+  <h1>LocalHire is temporarily unavailable</h1>
+  <p>{{ authError }}</p>
+  <button type="button" class="cta-button" @click="checkAuthentication">Retry</button>
+</main>
 
 <PrivacyPolicy
   v-if="showPrivacyPolicy"

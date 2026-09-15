@@ -22,6 +22,8 @@ public interface IJobService
 
     Task<JobPostResponse> UpdateJobAsync(Guid id, CreateJobPostRequest request, Guid employerId, CancellationToken ct);
 
+    Task<JobPostResponse> SetJobActiveAsync(Guid id, bool isActive, Guid employerId, CancellationToken ct);
+
     Task<IReadOnlyList<ApplicantResponse>> GetApplicationsAsync(Guid jobId, Guid employerId, CancellationToken ct);
 
     Task<PagedResponse<ApplicantResponse>> GetApplicationsPagedAsync(
@@ -72,7 +74,7 @@ public interface IJobService
         double? lat, double? lng, string? search, EmploymentType? employmentType,
         Guid workerId, PagingRequest paging, CancellationToken ct);
 
-    Task<JobPostResponse> GetActiveJobAsync(Guid id, CancellationToken ct);
+    Task<JobPostResponse> GetWorkerJobAsync(Guid id, Guid workerId, CancellationToken ct);
 
     /// <summary>
     /// Returns workers ("candidates") for an employer's talent search. An optional

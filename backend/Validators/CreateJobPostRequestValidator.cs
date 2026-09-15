@@ -48,6 +48,16 @@ public sealed class CreateJobPostRequestValidator : AbstractValidator<CreateJobP
             .InclusiveBetween(-180.0, 180.0)
             .When(x => x.Latitude is not null);
 
+        RuleFor(x => x.LocationSource)
+            .Equal("Device")
+            .WithMessage("Location source must be Device.")
+            .When(x => !string.IsNullOrWhiteSpace(x.LocationSource));
+
+        RuleFor(x => x.LocationSource)
+            .NotEmpty()
+            .WithMessage("Location source is required when coordinates are provided.")
+            .When(x => x.Latitude is not null && x.Longitude is not null);
+
         // --- Role details ---
 
         RuleFor(x => x.EmploymentType)

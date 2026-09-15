@@ -1,4 +1,3 @@
-using System.Globalization;
 using LocalHire.Api.DTOs;
 using LocalHire.Api.Models;
 using Microsoft.Extensions.Caching.Memory;
@@ -58,6 +57,14 @@ public sealed class CachedJobService : IJobService
         return result;
     }
 
+    public async Task<JobPostResponse> SetJobActiveAsync(
+        Guid id, bool isActive, Guid employerId, CancellationToken ct)
+    {
+        var result = await _inner.SetJobActiveAsync(id, isActive, employerId, ct);
+        _version.Invalidate();
+        return result;
+    }
+
     public Task<IReadOnlyList<ApplicantResponse>> GetApplicationsAsync(
         Guid jobId, Guid employerId, CancellationToken ct) =>
         GetOrCreateAsync($"employer:{employerId}:job:{jobId}:applications",
@@ -94,8 +101,7 @@ public sealed class CachedJobService : IJobService
 
     public Task<CandidateDetailResponse> GetCandidateDetailAsync(
         Guid workerId, Guid employerId, CancellationToken ct) =>
-        GetOrCreateAsync($"candidate-detail:{employerId}:{workerId}",
-            () => _inner.GetCandidateDetailAsync(workerId, employerId, ct));
+        _inner.GetCandidateDetailAsync(workerId, employerId, ct);
 
     // Recheck authorization and metadata for every short-lived URL the endpoint signs.
     public Task<ResumeFileReference> GetCandidateResumeAsync(
@@ -104,54 +110,25 @@ public sealed class CachedJobService : IJobService
 
     public Task<IReadOnlyList<JobPostResponse>> GetNearbyJobsAsync(
         double? lat, double? lng, string? search, EmploymentType? employmentType,
-        Guid workerId, CancellationToken ct)
-    {
-        var location = LocationKey(lat, lng);
-        var term = Normalized(search);
-        var scope = location == "all" && term.Length == 0 ? workerId.ToString() : "global";
-        return GetOrCreateAsync($"nearby:{scope}:{location}:{term}:{employmentType}",
-            () => _inner.GetNearbyJobsAsync(lat, lng, search, employmentType, workerId, ct));
-    }
+        Guid workerId, CancellationToken ct) =>
+        _inner.GetNearbyJobsAsync(lat, lng, search, employmentType, workerId, ct);
 
     public Task<PagedResponse<JobPostResponse>> SearchJobsAsync(
         double? lat, double? lng, string? search, EmploymentType? employmentType,
-        Guid workerId, PagingRequest paging, CancellationToken ct)
-    {
-        var location = LocationKey(lat, lng);
-        var term = Normalized(search);
-        var scope = location == "all" && term.Length == 0 ? workerId.ToString() : "global";
-        return GetOrCreateAsync(
-            $"job-search:{scope}:{location}:{term}:{employmentType}:{paging.Page}:{paging.PageSize}",
-            () => _inner.SearchJobsAsync(
-                lat, lng, search, employmentType, workerId, paging, ct));
-    }
+        Guid workerId, PagingRequest paging, CancellationToken ct) =>
+        _inner.SearchJobsAsync(lat, lng, search, employmentType, workerId, paging, ct);
 
-    public Task<JobPostResponse> GetActiveJobAsync(Guid id, CancellationToken ct) =>
-        GetOrCreateAsync($"active-job:{id}", () => _inner.GetActiveJobAsync(id, ct));
+    public Task<JobPostResponse> GetWorkerJobAsync(Guid id, Guid workerId, CancellationToken ct) =>
+        _inner.GetWorkerJobAsync(id, workerId, ct);
 
     public Task<IReadOnlyList<CandidateResponse>> GetNearbyCandidatesAsync(
-        double? lat, double? lng, string? search, string? role, Guid employerId, CancellationToken ct)
-    {
-        var location = LocationKey(lat, lng);
-        var term = Normalized(search);
-        var roleKey = Normalized(role);
-        var scope = location == "all" && term.Length == 0 ? employerId.ToString() : "global";
-        return GetOrCreateAsync($"candidates:{scope}:{location}:{term}:{roleKey}",
-            () => _inner.GetNearbyCandidatesAsync(lat, lng, search, role, employerId, ct));
-    }
+        double? lat, double? lng, string? search, string? role, Guid employerId, CancellationToken ct) =>
+        _inner.GetNearbyCandidatesAsync(lat, lng, search, role, employerId, ct);
 
     public Task<PagedResponse<CandidateResponse>> SearchCandidatesAsync(
         double? lat, double? lng, string? search, string? role,
-        Guid employerId, PagingRequest paging, CancellationToken ct)
-    {
-        var location = LocationKey(lat, lng);
-        var term = Normalized(search);
-        var scope = location == "all" && term.Length == 0 ? employerId.ToString() : "global";
-        return GetOrCreateAsync(
-            $"candidate-search:{scope}:{location}:{term}:{Normalized(role)}:{paging.Page}:{paging.PageSize}",
-            () => _inner.SearchCandidatesAsync(
-                lat, lng, search, role, employerId, paging, ct));
-    }
+        Guid employerId, PagingRequest paging, CancellationToken ct) =>
+        _inner.SearchCandidatesAsync(lat, lng, search, role, employerId, paging, ct);
 
     public async Task<JobApplicationResponse> ApplyAsync(
         Guid jobId, Guid workerId, CancellationToken ct)
@@ -166,9 +143,7 @@ public sealed class CachedJobService : IJobService
 
     public Task<PagedResponse<CandidateResponse>> GetSavedCandidatesPagedAsync(
         Guid employerId, PagingRequest paging, CancellationToken ct) =>
-        GetOrCreateAsync(
-            $"employer:{employerId}:saved-candidates:{paging.Page}:{paging.PageSize}",
-            () => _inner.GetSavedCandidatesPagedAsync(employerId, paging, ct));
+        _inner.GetSavedCandidatesPagedAsync(employerId, paging, ct);
 
     public async Task SaveCandidateAsync(Guid workerId, Guid employerId, CancellationToken ct)
     {
@@ -213,14 +188,6 @@ public sealed class CachedJobService : IJobService
         await _inner.RemoveSavedJobAsync(jobId, workerId, ct);
         _version.Invalidate();
     }
-
-    private static string LocationKey(double? lat, double? lng) =>
-        lat is null || lng is null
-            ? "all"
-            : $"{lat.Value.ToString("R", CultureInfo.InvariantCulture)}:{lng.Value.ToString("R", CultureInfo.InvariantCulture)}";
-
-    private static string Normalized(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim().ToLowerInvariant();
 
     private async Task<T> GetOrCreateAsync<T>(string key, Func<Task<T>> factory)
     {

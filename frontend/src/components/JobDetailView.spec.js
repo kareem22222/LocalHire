@@ -25,6 +25,7 @@ function sampleJob(overrides = {}) {
     pincode: '400050',
     latitude: 0,
     longitude: 0,
+    locationSource: 'Device',
     employmentType: 'FullTime',
     salaryMin: 15000,
     salaryMax: 25000,
@@ -146,14 +147,16 @@ describe('JobDetailView', () => {
     expect(wrapper.find('.job-form > .dash-btn').exists()).toBe(false)
   })
 
-  it('redirects to the dashboard when the job cannot be loaded', async () => {
+  it('shows a retry state when the job cannot be loaded', async () => {
     api.get.mockRejectedValue({ response: { status: 404 } })
 
     const wrapper = mountView('view')
     const replace = vi.spyOn(router, 'replace')
     await flushPromises()
 
-    expect(replace).toHaveBeenCalledWith('/')
+    expect(replace).not.toHaveBeenCalled()
+    expect(wrapper.get('[role="alert"]').text()).toContain('job')
+    expect(wrapper.find('button').text()).toBe('Retry')
     expect(wrapper.find('.job-form').exists()).toBe(false)
   })
 

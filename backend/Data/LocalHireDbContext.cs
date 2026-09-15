@@ -78,6 +78,7 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
             entity.Property(u => u.Latitude).IsRequired(false);
             entity.Property(u => u.Longitude).IsRequired(false);
             entity.Property(u => u.LocationUpdatedAt).IsRequired(false);
+            entity.Property(u => u.IsDiscoverable).HasDefaultValue(true);
             entity.ToTable(t => t.HasCheckConstraint("CK_Users_Location_CompleteAndValid", CoordinateCheck));
         });
 
@@ -98,6 +99,7 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
             entity.Property(j => j.IsActive).HasDefaultValue(true);
             entity.Property(j => j.Latitude).IsRequired(false);
             entity.Property(j => j.Longitude).IsRequired(false);
+            entity.Property(j => j.LocationSource).HasMaxLength(30).IsRequired(false);
 
             // Role details
             entity.Property(j => j.EmploymentType).HasMaxLength(50).HasConversion<string>().IsRequired(false);

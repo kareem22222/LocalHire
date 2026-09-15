@@ -11,6 +11,8 @@ export function emptyJobForm() {
     state: '',
     latitude: null,
     longitude: null,
+    locationSource: null,
+    workplaceConfirmed: false,
     employmentType: '',
     salaryMin: '',
     salaryMax: '',
@@ -38,6 +40,8 @@ export function jobResponseToForm(job) {
     state: job.state ?? '',
     latitude: job.latitude ?? null,
     longitude: job.longitude ?? null,
+    locationSource: job.locationSource ?? null,
+    workplaceConfirmed: job.locationSource === 'Device',
     employmentType: job.employmentType ?? '',
     salaryMin: job.salaryMin ?? '',
     salaryMax: job.salaryMax ?? '',
@@ -84,6 +88,7 @@ const SERVER_FIELD_TO_FORM = {
   State: 'state',
   Latitude: 'latitude',
   Longitude: 'longitude',
+  LocationSource: 'locationSource',
   EmploymentType: 'employmentType',
   SalaryMin: 'salaryMin',
   SalaryMax: 'salaryMax',
@@ -122,6 +127,9 @@ function validateLocation(form, errors) {
     errors.pincode = 'Enter a valid 6-digit pincode.'
   } else if (!String(form.state ?? '').trim()) {
     errors.state = 'Please wait for the state to load from the pincode.'
+  }
+  if (hasValidCoordinates(form.latitude, form.longitude) && form.locationSource !== 'Device') {
+    errors.locationSource = 'Confirm the workplace location again before saving.'
   }
 }
 
@@ -223,6 +231,7 @@ export function buildJobPayload(form) {
     pincode: form.pincode.trim() || null,
     latitude: hasCoords ? Number(form.latitude) : null,
     longitude: hasCoords ? Number(form.longitude) : null,
+    locationSource: hasCoords ? form.locationSource : null,
     employmentType: form.employmentType || null,
     salaryMin: numberOrNull(form.salaryMin),
     salaryMax: numberOrNull(form.salaryMax),

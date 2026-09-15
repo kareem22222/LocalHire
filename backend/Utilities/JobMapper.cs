@@ -49,6 +49,9 @@ public static class JobMapper
         job.Pincode = NormalizeText(request.Pincode);
         job.Latitude = request.Latitude is not null ? Math.Round(request.Latitude.Value, 3) : null;
         job.Longitude = request.Longitude is not null ? Math.Round(request.Longitude.Value, 3) : null;
+        job.LocationSource = request.Latitude is not null && request.Longitude is not null
+            ? NormalizeText(request.LocationSource)
+            : null;
         job.EmploymentType = ParseEnum<EmploymentType>(request.EmploymentType);
         job.SalaryMin = request.SalaryMin;
         job.SalaryMax = request.SalaryMax;
@@ -67,7 +70,7 @@ public static class JobMapper
 
     public static JobPostResponse ToResponse(JobPost j, int applicationCount, int shortlistedCount = 0) =>
         new(j.Id, j.Title, j.Description, j.WorkplaceName,
-            j.CityArea, j.State, j.Pincode, j.Latitude, j.Longitude,
+            j.CityArea, j.State, j.Pincode, j.Latitude, j.Longitude, j.LocationSource,
             j.EmploymentType?.ToString(), j.SalaryMin, j.SalaryMax, j.SalaryPeriod?.ToString(),
             j.MinEducation, j.ExperienceMinYears, j.ExperienceMaxYears,
             j.WorkingDays,

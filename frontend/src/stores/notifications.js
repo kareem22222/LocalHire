@@ -70,7 +70,13 @@ export const useNotificationsStore = defineStore('notifications', () => {
       || page.value.items.find((notification) => notification.id === id)
     if (!item || item.isRead) return
 
-    const { data } = await notificationsApi.markNotificationRead(id)
+    let data
+    try {
+      ;({ data } = await notificationsApi.markNotificationRead(id))
+    } catch (requestError) {
+      error.value = 'Could not update this notification. Please try again.'
+      throw requestError
+    }
     const index = items.value.findIndex((notification) => notification.id === id)
     const wasUnread = !item.isRead
     if (index >= 0) items.value[index] = data
@@ -96,7 +102,12 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
   async function markAllRead() {
     if (!unreadCount.value) return
-    await notificationsApi.markAllNotificationsRead()
+    try {
+      await notificationsApi.markAllNotificationsRead()
+    } catch (requestError) {
+      error.value = 'Could not update notifications. Please try again.'
+      throw requestError
+    }
     items.value = items.value.map((item) => ({ ...item, isRead: true }))
     readCount.value += unreadCount.value
     unreadCount.value = 0

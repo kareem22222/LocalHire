@@ -22,5 +22,6 @@ public sealed record UpdateProfileRequest(
     List<EducationEntry>? EducationHistory = null,
     List<SkillProfile>? SkillDetails = null,
     List<LanguageProfile>? LanguageDetails = null,
-    List<CredentialEntry>? Credentials = null
+    List<CredentialEntry>? Credentials = null,
+    bool IsDiscoverable = true
 );

@@ -73,12 +73,12 @@ public sealed class WorkerJobSearchTests
         Assert.Equal("Karnataka", defaults[0].State);
         Assert.Single(searched);
         Assert.Equal("Telangana", searched[0].State);
-        var detail = await service.GetActiveJobAsync(defaults[0].Id, CancellationToken.None);
+        var detail = await service.GetWorkerJobAsync(defaults[0].Id, worker.Id, CancellationToken.None);
         Assert.Equal("Bengaluru Cashier", detail.Title);
     }
 
     [Fact]
-    public async Task Coordinate_text_search_caps_the_ranked_candidate_set()
+    public async Task Coordinate_text_search_ranks_the_complete_candidate_set()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
@@ -105,8 +105,8 @@ public sealed class WorkerJobSearchTests
             12.97, 77.64, "Ranked", null, worker.Id,
             new PagingRequest(1, 100), CancellationToken.None);
 
-        Assert.Equal(200, result.TotalCount);
-        Assert.Equal(2, result.TotalPages);
+        Assert.Equal(205, result.TotalCount);
+        Assert.Equal(3, result.TotalPages);
         Assert.Equal(100, result.Items.Count);
     }
 

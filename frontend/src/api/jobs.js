@@ -23,6 +23,10 @@ export function updateJob(id, payload) {
   return api.put(`/hiring/jobs/${id}`, payload)
 }
 
+export function setJobActive(id, isActive) {
+  return api.patch(`/hiring/jobs/${id}/status`, { isActive })
+}
+
 export function getJobApplications(jobId) {
   return api.get(`/hiring/jobs/${jobId}/applications`)
 }

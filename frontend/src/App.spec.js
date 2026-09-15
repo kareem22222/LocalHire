@@ -122,7 +122,7 @@ describe('App signup confetti', () => {
     wrapper.unmount()
   })
 
-  it('replaces a stale role page with the dashboard before login completes', async () => {
+  it('returns to the requested role page after login completes', async () => {
     const router = createTestRouter()
     await router.push('/hiring/roles?page=2')
     const wrapper = mountAppWithAuthMode('login', router)
@@ -132,7 +132,7 @@ describe('App signup confetti', () => {
     await wrapper.find('.fake-auth').trigger('click')
     await flushPromises()
 
-    expect(router.currentRoute.value.fullPath).toBe('/')
+    expect(router.currentRoute.value.fullPath).toBe('/hiring/roles?page=2')
     expect(wrapper.find('.fake-menu').exists()).toBe(true)
     wrapper.unmount()
   })

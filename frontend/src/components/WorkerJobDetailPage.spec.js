@@ -64,7 +64,7 @@ describe('WorkerJobDetailPage', () => {
 
     await apply().trigger('click')
     await flushPromises()
-    expect(wrapper.get('[role="alert"]').text()).toContain('Could not apply')
+    expect(wrapper.get('[role="alert"]').text()).toContain('offline')
   })
 
   it('keeps the applied state when refreshing applications fails', async () => {
@@ -111,7 +111,7 @@ describe('WorkerJobDetailPage', () => {
     expect(wrapper.text()).not.toContain('Sign out')
   })
 
-  it('shows unavailable jobs and returns to the dashboard', async () => {
+  it('shows recoverable load failures and returns to the dashboard', async () => {
     api.get.mockRejectedValue(new Error('gone'))
     const router = createTestRouter()
     const push = vi.spyOn(router, 'push')
@@ -121,7 +121,8 @@ describe('WorkerJobDetailPage', () => {
     })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Job unavailable')
+    expect(wrapper.text()).toContain('Could not load job')
+    expect(wrapper.text()).toContain('gone')
     await wrapper.findAll('button').find((item) => item.text() === 'Back to jobs').trigger('click')
     expect(push).toHaveBeenCalledWith('/')
   })

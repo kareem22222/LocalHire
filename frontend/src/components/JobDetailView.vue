@@ -1,8 +1,9 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useJobsStore } from '../stores/jobs'
 import { buildJobPayload, jobResponseToForm, mapServerErrors, validateJobFormFields } from '../utils/jobForm'
+import { apiErrorMessage } from '../utils/apiError'
 import BrandLogo from './BrandLogo.vue'
 import PostJobPage from './PostJobPage.vue'
 
@@ -15,6 +16,7 @@ const router = useRouter()
 const jobsStore = useJobsStore()
 
 const jobForm = ref(null)
+const job = ref(null)
 // Snapshot of the last-saved values so "Cancel" can discard in-progress edits.
 const originalForm = ref(null)
 const jobFormError = ref('')
@@ -22,20 +24,37 @@ const fieldErrors = ref({})
 const saving = ref(false)
 const loaded = ref(false)
 const editing = ref(false)
+const loadError = ref('')
+const statusChanging = ref(false)
+let loadGeneration = 0
 
 // Load the job the card links to. The hiring-only endpoint returns 403 for
-// workers and 404 for unknown/other-owner jobs; in every failure case we send
-// the user back to the dashboard (a 401 reloads via the API interceptor).
-onMounted(async () => {
+// workers and 404 for unknown/other-owner jobs; a 401 reloads via the API interceptor.
+async function load() {
+  const generation = ++loadGeneration
+  loaded.value = false
+  loadError.value = ''
+  job.value = null
+  jobForm.value = null
+  originalForm.value = null
+  jobFormError.value = ''
+  fieldErrors.value = {}
   try {
     const data = await jobsStore.loadJob(props.id)
+    if (generation !== loadGeneration) return
+    job.value = data
     jobForm.value = jobResponseToForm(data)
     originalForm.value = { ...jobForm.value }
     editing.value = props.mode === 'edit'
     loaded.value = true
-  } catch {
-    router.replace('/')
+  } catch (err) {
+    if (generation === loadGeneration) loadError.value = apiErrorMessage(err, 'We could not load this job.')
   }
+}
+
+watch(() => props.id, load, { immediate: true })
+watch(() => props.mode, (mode) => {
+  if (loaded.value) editing.value = mode === 'edit'
 })
 
 function goDashboard() {
@@ -69,6 +88,7 @@ async function saveJob() {
   saving.value = true
   try {
     const data = await jobsStore.updateJob(props.id, buildJobPayload(jobForm.value))
+    job.value = data
     // Stay on this page: reflect the saved values in the read-only view.
     jobForm.value = jobResponseToForm(data)
     originalForm.value = { ...jobForm.value }
@@ -84,6 +104,18 @@ async function saveJob() {
     }
   } finally {
     saving.value = false
+  }
+}
+
+async function changeStatus(isActive) {
+  statusChanging.value = true
+  jobFormError.value = ''
+  try {
+    job.value = await jobsStore.setJobActive(props.id, isActive)
+  } catch (err) {
+    jobFormError.value = apiErrorMessage(err, 'Could not update this vacancy.')
+  } finally {
+    statusChanging.value = false
   }
 }
 </script>
@@ -106,14 +138,21 @@ async function saveJob() {
       :subtitle="''"
       :can-edit="!editing"
       :cancelable="editing"
+      :job-active="job?.isActive"
+      :status-changing="statusChanging"
       submit-label="Save changes"
       busy-label="Saving..."
       @update:job-form="(value) => (jobForm = value)"
       @submit="saveJob"
       @edit="startEdit"
       @cancel="cancelEdit"
+      @status="changeStatus"
       @back="goDashboard"
     />
+    <section v-else-if="loadError" class="job-detail-loading" role="alert">
+      <p>{{ loadError }}</p>
+      <button type="button" class="dash-btn dash-btn--primary" @click="load">Retry</button>
+    </section>
     <p v-else class="job-detail-loading">Loading job details...</p>
   </div>
 </template>

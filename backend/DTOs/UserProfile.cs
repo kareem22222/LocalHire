@@ -33,6 +33,7 @@ public sealed record UserProfile(
     IReadOnlyList<LanguageProfile> LanguageDetails,
     IReadOnlyList<CredentialEntry> Credentials,
     string? ResumeFileName,
+    bool IsDiscoverable,
     bool IsProfileComplete,
     int ProfileCompletionPercent
 );

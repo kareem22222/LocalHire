@@ -63,6 +63,7 @@ public sealed class ProfileService : IProfileService
         user.Pincode = NormalizeOptional(request.Pincode);
         if (user.Role == UserRole.LookingForWork)
         {
+            user.IsDiscoverable = request.IsDiscoverable;
             user.JobTitle = NormalizeOptional(request.JobTitle);
             user.ProfessionalSummary = NormalizeOptional(request.ProfessionalSummary);
             user.ExperienceYears = request.ExperienceYears;
@@ -120,7 +121,7 @@ public sealed class ProfileService : IProfileService
             user.JobTitle, user.ProfessionalSummary, user.ExperienceYears, user.Education,
             user.Skills, user.Languages, user.WorkPreferences, user.WorkHistory,
             user.EducationHistory, user.SkillDetails, user.LanguageDetails, user.Credentials,
-            user.ResumeFileName, IsComplete(user),
+            user.ResumeFileName, user.IsDiscoverable, IsComplete(user),
             CompletionPercent(user));
 
     private static bool IsComplete(User user) =>

@@ -41,6 +41,7 @@ const form = reactive({
   phone: '',
   dateOfBirth: '',
   gender: '',
+  isDiscoverable: true,
   // Location
   addressLine: '',
   cityArea: '',
@@ -72,6 +73,7 @@ function hydrate() {
   form.phone = u.phone || ''
   form.dateOfBirth = u.dateOfBirth || ''
   form.gender = u.gender || ''
+  form.isDiscoverable = u.isDiscoverable !== false
   form.addressLine = u.addressLine || ''
   form.cityArea = u.cityArea || ''
   form.state = u.state || ''
@@ -255,6 +257,7 @@ function save() {
       phone: form.phone.trim(),
       dateOfBirth: form.dateOfBirth || null,
       gender: form.gender,
+      isDiscoverable: form.isDiscoverable,
       addressLine: form.addressLine.trim(),
       cityArea: form.cityArea.trim(),
       state: form.state,
@@ -361,6 +364,19 @@ function goBack() {
           <p v-else class="profile-value">{{ form.gender || '—' }}</p>
         </div>
       </div>
+    </section>
+
+    <section v-if="isWorker" class="profile-card">
+      <div class="profile-card__head">
+        <h2 class="dash-section__title">Employer visibility</h2>
+        <p class="profile-card__hint">Control whether employers can find this profile in talent search.</p>
+      </div>
+      <label v-if="editing" class="profile-visibility">
+        <input v-model="form.isDiscoverable" type="checkbox" />
+        Show my profile to employers
+      </label>
+      <p v-else class="profile-value">{{ form.isDiscoverable ? 'Visible to employers' : 'Hidden from employer search' }}</p>
+      <p class="profile-card__hint">Employers can still view your profile when you have applied to one of their jobs.</p>
     </section>
 
     <section v-if="isWorker" class="profile-card">
@@ -629,6 +645,9 @@ function goBack() {
 .profile-value--locked {
   color: #5d7482;
 }
+
+.profile-visibility { display: flex; align-items: center; gap: 10px; color: #12324a; font-weight: 700; }
+.profile-visibility input { width: 18px; height: 18px; accent-color: var(--worker-role-green-end); }
 
 @media (max-width: 700px) {
   .profile-hero {

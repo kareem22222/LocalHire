@@ -5,6 +5,7 @@ import { getCandidateResume } from '../api/jobs.js'
 import { useJobsStore } from '../stores/jobs'
 import { useSavedCandidates } from '../composables/useSavedCandidates'
 import { safeDownloadUrl } from '../utils/downloadUrl.js'
+import { apiErrorMessage } from '../utils/apiError.js'
 import BrandLogo from './BrandLogo.vue'
 
 const route = useRoute()
@@ -55,14 +56,6 @@ const locationSummary = computed(() => {
   return candidate.value.pincode ? [base, candidate.value.pincode].filter(Boolean).join(' - ') : base
 })
 
-const dateOfBirth = computed(() => {
-  const dob = candidate.value?.dateOfBirth
-  if (!dob) return ''
-  const [year, month, day] = dob.split('-').map(Number)
-  const date = new Date(year, month - 1, day)
-  return Number.isNaN(date.getTime()) ? dob : date.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
-})
-
 const memberSince = computed(() => {
   const created = candidate.value?.createdAt
   if (!created) return ''
@@ -81,8 +74,8 @@ async function load() {
   try {
     const data = await jobsStore.loadCandidate(id, { force: true })
     if (generation === loadGeneration) candidate.value = data
-  } catch {
-    if (generation === loadGeneration) error.value = 'We could not load this candidate.'
+  } catch (err) {
+    if (generation === loadGeneration) error.value = apiErrorMessage(err, 'We could not load this candidate.')
   } finally {
     if (generation === loadGeneration) loading.value = false
   }
@@ -130,6 +123,7 @@ async function downloadResume() {
 
     <main class="dash-main candidate-detail">
       <p v-if="error" class="job-form__error" role="alert">{{ error }}</p>
+      <button v-if="error && !candidate && !loading" type="button" class="dash-btn dash-btn--primary" @click="load">Retry</button>
       <p v-if="resumeError" class="job-form__error" role="alert">{{ resumeError }}</p>
 
       <div v-if="loading" class="candidate-empty">
@@ -251,14 +245,6 @@ async function downloadResume() {
             <div class="candidate-detail__field">
               <span class="candidate-detail__label">Role</span>
               <p class="candidate-detail__value">{{ candidate.role || '—' }}</p>
-            </div>
-            <div class="candidate-detail__field">
-              <span class="candidate-detail__label">Gender</span>
-              <p class="candidate-detail__value">{{ candidate.gender || '—' }}</p>
-            </div>
-            <div class="candidate-detail__field">
-              <span class="candidate-detail__label">Date of birth</span>
-              <p class="candidate-detail__value">{{ dateOfBirth || '—' }}</p>
             </div>
             <div class="candidate-detail__field candidate-detail__field--full">
               <span class="candidate-detail__label">Address</span>

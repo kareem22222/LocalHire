@@ -25,7 +25,13 @@ function formatTime(value) {
 }
 
 async function selectNotification(notification) {
-  if (!notification.isRead) await store.markRead(notification.id)
+  if (!notification.isRead) {
+    try {
+      await store.markRead(notification.id)
+    } catch {
+      return
+    }
+  }
   open.value = false
   if (notification.link) await router.push(notification.link)
 }
@@ -91,7 +97,10 @@ onUnmounted(() => {
 
       <div class="notification-center__list" role="tabpanel">
         <p v-if="store.loading && !store.items.length" class="notification-center__state">Loading notifications…</p>
-        <p v-else-if="store.error && !store.items.length" class="notification-center__state">{{ store.error }}</p>
+        <div v-else-if="store.error && !store.items.length" class="notification-center__state" role="alert">
+          <p>{{ store.error }}</p>
+          <button type="button" class="notification-center__show-more" @click="store.load()">Retry</button>
+        </div>
         <p v-else-if="!visibleItems.length" class="notification-center__state">
           {{ tab === 'unread' ? 'You are all caught up.' : 'No read notifications yet.' }}
         </p>
