@@ -42,6 +42,11 @@ const form = reactive({
   dateOfBirth: '',
   gender: '',
   isDiscoverable: true,
+  emailNotificationsEnabled: true,
+  businessName: '',
+  businessDescription: '',
+  businessLocation: '',
+  businessContact: '',
   // Location
   addressLine: '',
   cityArea: '',
@@ -74,6 +79,11 @@ function hydrate() {
   form.dateOfBirth = u.dateOfBirth || ''
   form.gender = u.gender || ''
   form.isDiscoverable = u.isDiscoverable !== false
+  form.emailNotificationsEnabled = u.emailNotificationsEnabled !== false
+  form.businessName = u.businessName || ''
+  form.businessDescription = u.businessDescription || ''
+  form.businessLocation = u.businessLocation || ''
+  form.businessContact = u.businessContact || ''
   form.addressLine = u.addressLine || ''
   form.cityArea = u.cityArea || ''
   form.state = u.state || ''
@@ -258,6 +268,11 @@ function save() {
       dateOfBirth: form.dateOfBirth || null,
       gender: form.gender,
       isDiscoverable: form.isDiscoverable,
+      emailNotificationsEnabled: form.emailNotificationsEnabled,
+      businessName: form.businessName.trim(),
+      businessDescription: form.businessDescription.trim(),
+      businessLocation: form.businessLocation.trim(),
+      businessContact: form.businessContact.trim(),
       addressLine: form.addressLine.trim(),
       cityArea: form.cityArea.trim(),
       state: form.state,
@@ -363,6 +378,28 @@ function goBack() {
           </select>
           <p v-else class="profile-value">{{ form.gender || '—' }}</p>
         </div>
+      </div>
+    </section>
+
+    <section class="profile-card">
+      <div class="profile-card__head">
+        <h2 class="dash-section__title">Email notifications</h2>
+        <p class="profile-card__hint">Receive invitations, application decisions, and appointment updates away from the website.</p>
+      </div>
+      <label v-if="editing" class="profile-visibility"><input v-model="form.emailNotificationsEnabled" type="checkbox" /> Email me important hiring updates</label>
+      <p v-else class="profile-value">{{ form.emailNotificationsEnabled ? 'Important email updates enabled' : 'Email updates disabled' }}</p>
+    </section>
+
+    <section v-if="!isWorker" class="profile-card">
+      <div class="profile-card__head">
+        <h2 class="dash-section__title">Public business profile</h2>
+        <p class="profile-card__hint">Workers see these details from your job pages. Your personal address and phone stay private.</p>
+      </div>
+      <div class="profile-grid">
+        <div class="profile-field"><label for="business-name">Business name</label><input v-if="editing" id="business-name" v-model="form.businessName" maxlength="200" /><p v-else class="profile-value">{{ form.businessName || '—' }}</p></div>
+        <div class="profile-field"><label for="business-location">Workplace location</label><input v-if="editing" id="business-location" v-model="form.businessLocation" maxlength="300" /><p v-else class="profile-value">{{ form.businessLocation || '—' }}</p></div>
+        <div class="profile-field profile-field--full"><label for="business-description">Description</label><textarea v-if="editing" id="business-description" v-model="form.businessDescription" maxlength="1000"></textarea><p v-else class="profile-value">{{ form.businessDescription || '—' }}</p></div>
+        <div class="profile-field profile-field--full"><label for="business-contact">Public contact route</label><input v-if="editing" id="business-contact" v-model="form.businessContact" maxlength="200" placeholder="careers@example.com or reception number" /><p v-else class="profile-value">{{ form.businessContact || '—' }}</p></div>
       </div>
     </section>
 

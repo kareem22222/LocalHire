@@ -106,6 +106,11 @@ public static class MockDataSeeder
                     || user.Id == SeedId('d', LegacyWorkerCount - 1),
                 cancellationToken))
         {
+            await database.Users
+                .Where(user => expectedUserIds.Contains(user.Id) && !user.IsTestAccount)
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(user => user.IsTestAccount, true),
+                    cancellationToken);
             await database.JobApplications
                 .Where(application => application.StatusUpdatedAt == null)
                 .ExecuteUpdateAsync(
@@ -190,6 +195,8 @@ public static class MockDataSeeder
             users.Add(worker);
         }
 
+        foreach (var user in users)
+            user.IsTestAccount = true;
         database.Users.AddRange(users);
 
         var jobs = new List<JobPost>(JobCount);

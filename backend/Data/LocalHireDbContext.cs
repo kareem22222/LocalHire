@@ -18,6 +18,9 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<SavedCandidate> SavedCandidates => Set<SavedCandidate>();
     public DbSet<SavedJob> SavedJobs => Set<SavedJob>();
+    public DbSet<CandidateInvitation> CandidateInvitations => Set<CandidateInvitation>();
+    public DbSet<ApplicationAppointment> ApplicationAppointments => Set<ApplicationAppointment>();
+    public DbSet<EmailOutboxMessage> EmailOutboxMessages => Set<EmailOutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -79,6 +82,12 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
             entity.Property(u => u.Longitude).IsRequired(false);
             entity.Property(u => u.LocationUpdatedAt).IsRequired(false);
             entity.Property(u => u.IsDiscoverable).HasDefaultValue(true);
+            entity.Property(u => u.EmailNotificationsEnabled).HasDefaultValue(true);
+            entity.Property(u => u.IsTestAccount).HasDefaultValue(false);
+            entity.Property(u => u.BusinessName).HasMaxLength(200).IsRequired(false);
+            entity.Property(u => u.BusinessDescription).HasMaxLength(1000).IsRequired(false);
+            entity.Property(u => u.BusinessLocation).HasMaxLength(300).IsRequired(false);
+            entity.Property(u => u.BusinessContact).HasMaxLength(200).IsRequired(false);
             entity.ToTable(t => t.HasCheckConstraint("CK_Users_Location_CompleteAndValid", CoordinateCheck));
         });
 
@@ -223,6 +232,62 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
             entity.HasOne(savedJob => savedJob.JobPost)
                 .WithMany(jobPost => jobPost.SavedByWorkers)
                 .HasForeignKey(savedJob => savedJob.JobPostId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CandidateInvitation>(entity =>
+        {
+            entity.HasKey(invitation => invitation.Id);
+            entity.Property(invitation => invitation.Status).HasMaxLength(50).HasConversion<string>();
+            entity.HasIndex(invitation => new
+            {
+                invitation.EmployerId,
+                invitation.WorkerId,
+                invitation.JobPostId
+            }).IsUnique();
+
+            entity.HasOne(invitation => invitation.Employer)
+                .WithMany(user => user.SentInvitations)
+                .HasForeignKey(invitation => invitation.EmployerId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(invitation => invitation.Worker)
+                .WithMany(user => user.ReceivedInvitations)
+                .HasForeignKey(invitation => invitation.WorkerId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(invitation => invitation.JobPost)
+                .WithMany(job => job.Invitations)
+                .HasForeignKey(invitation => invitation.JobPostId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ApplicationAppointment>(entity =>
+        {
+            entity.HasKey(appointment => appointment.Id);
+            entity.Property(appointment => appointment.TimeZone).HasMaxLength(100).IsRequired();
+            entity.Property(appointment => appointment.Venue).HasMaxLength(300).IsRequired(false);
+            entity.Property(appointment => appointment.MeetingUrl).HasMaxLength(500).IsRequired(false);
+            entity.Property(appointment => appointment.Notes).HasMaxLength(1000).IsRequired(false);
+            entity.Property(appointment => appointment.Status).HasMaxLength(50).HasConversion<string>();
+            entity.HasIndex(appointment => appointment.JobApplicationId).IsUnique();
+            entity.HasOne(appointment => appointment.JobApplication)
+                .WithOne(application => application.Appointment)
+                .HasForeignKey<ApplicationAppointment>(appointment => appointment.JobApplicationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<EmailOutboxMessage>(entity =>
+        {
+            entity.HasKey(message => message.Id);
+            entity.Property(message => message.DedupeKey).HasMaxLength(200).IsRequired();
+            entity.Property(message => message.Subject).HasMaxLength(200).IsRequired();
+            entity.Property(message => message.Body).HasMaxLength(4000).IsRequired();
+            entity.Property(message => message.Link).HasMaxLength(500).IsRequired(false);
+            entity.Property(message => message.LastError).HasMaxLength(1000).IsRequired(false);
+            entity.HasIndex(message => message.DedupeKey).IsUnique();
+            entity.HasIndex(message => new { message.SentAt, message.NextAttemptAt });
+            entity.HasOne(message => message.User)
+                .WithMany()
+                .HasForeignKey(message => message.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

@@ -13,6 +13,7 @@ import AllWorkerJobsPage from '../components/AllWorkerJobsPage.vue'
 import SavedJobsPage from '../components/SavedJobsPage.vue'
 import SavedCandidatesPage from '../components/SavedCandidatesPage.vue'
 import NotificationsPage from '../components/NotificationsPage.vue'
+import InvitationsPage from '../components/InvitationsPage.vue'
 import NotFoundPage from '../components/NotFoundPage.vue'
 import { authRole, hasAuthToken } from '../api/index.js'
 import { normalizeRole } from '../utils/role.js'
@@ -26,6 +27,7 @@ const routes = [
   { path: '/hiring/shortlists', name: 'review-shortlists', component: ShortlistsPage, meta: { roles: ['hiring'] } },
   { path: '/work/applications', name: 'worker-applications', component: AppliedJobsPage, meta: { roles: ['worker'] } },
   { path: '/work/saved-jobs', name: 'worker-saved-jobs', component: SavedJobsPage, meta: { roles: ['worker'] } },
+  { path: '/work/invitations', name: 'worker-invitations', component: InvitationsPage, meta: { roles: ['worker'] } },
   { path: '/work/jobs', name: 'all-worker-jobs', component: AllWorkerJobsPage, meta: { roles: ['worker'] } },
   { path: '/notifications', name: 'notifications', component: NotificationsPage },
   {

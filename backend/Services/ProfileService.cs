@@ -61,6 +61,7 @@ public sealed class ProfileService : IProfileService
         user.CityArea = NormalizeOptional(request.CityArea);
         user.State = NormalizeOptional(request.State);
         user.Pincode = NormalizeOptional(request.Pincode);
+        user.EmailNotificationsEnabled = request.EmailNotificationsEnabled;
         if (user.Role == UserRole.LookingForWork)
         {
             user.IsDiscoverable = request.IsDiscoverable;
@@ -80,6 +81,13 @@ public sealed class ProfileService : IProfileService
             user.Languages = NormalizeList(user.LanguageDetails.Count > 0
                 ? user.LanguageDetails.Select(language => language.Name)
                 : request.Languages);
+        }
+        else
+        {
+            user.BusinessName = NormalizeOptional(request.BusinessName);
+            user.BusinessDescription = NormalizeOptional(request.BusinessDescription);
+            user.BusinessLocation = NormalizeOptional(request.BusinessLocation);
+            user.BusinessContact = NormalizeOptional(request.BusinessContact);
         }
 
         await _db.SaveChangesAsync(ct);
@@ -121,7 +129,9 @@ public sealed class ProfileService : IProfileService
             user.JobTitle, user.ProfessionalSummary, user.ExperienceYears, user.Education,
             user.Skills, user.Languages, user.WorkPreferences, user.WorkHistory,
             user.EducationHistory, user.SkillDetails, user.LanguageDetails, user.Credentials,
-            user.ResumeFileName, user.IsDiscoverable, IsComplete(user),
+            user.ResumeFileName, user.IsDiscoverable, user.EmailNotificationsEnabled,
+            user.BusinessName, user.BusinessDescription, user.BusinessLocation, user.BusinessContact,
+            IsComplete(user),
             CompletionPercent(user));
 
     private static bool IsComplete(User user) =>

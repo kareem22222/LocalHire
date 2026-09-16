@@ -69,7 +69,7 @@ public static class JobMapper
     }
 
     public static JobPostResponse ToResponse(JobPost j, int applicationCount, int shortlistedCount = 0) =>
-        new(j.Id, j.Title, j.Description, j.WorkplaceName,
+        new(j.Id, j.EmployerId, j.Title, j.Description, j.WorkplaceName,
             j.CityArea, j.State, j.Pincode, j.Latitude, j.Longitude, j.LocationSource,
             j.EmploymentType?.ToString(), j.SalaryMin, j.SalaryMax, j.SalaryPeriod?.ToString(),
             j.MinEducation, j.ExperienceMinYears, j.ExperienceMaxYears,

@@ -30,6 +30,7 @@ const props = defineProps({
   listTitle: { type: String, default: 'Roles for you' },
   emptyTitle: { type: String, default: 'No roles found' },
   emptyText: { type: String, default: 'Try another role, area, employment type, or use your current location.' },
+  initialFilters: { type: Object, default: () => ({}) },
 })
 
 const emit = defineEmits([
@@ -43,6 +44,11 @@ const emit = defineEmits([
 ])
 const search = ref('')
 const employmentType = ref('All')
+const salaryPeriod = ref('')
+const salaryMin = ref('')
+const salaryMax = ref('')
+const experienceYears = ref('')
+const maxDistanceKm = ref('')
 const employmentTypes = ['All', ...Object.keys(EMPLOYMENT_TYPE_LABELS)]
 const { isSaved: isJobSaved, toggle: toggleSavedJob } = useSavedJobs()
 let searchTimer = null
@@ -64,10 +70,14 @@ const profileScore = computed(() => {
 })
 
 function searchPayload() {
-  return {
+  const payload = {
     search: search.value.trim(),
     employmentType: employmentType.value === 'All' ? '' : employmentType.value,
   }
+  for (const [key, value] of Object.entries({ salaryPeriod: salaryPeriod.value, salaryMin: salaryMin.value, salaryMax: salaryMax.value, experienceYears: experienceYears.value, maxDistanceKm: maxDistanceKm.value })) {
+    if (value !== '') payload[key] = value
+  }
+  return payload
 }
 
 function runSearch() {
@@ -79,7 +89,16 @@ function onSearchInput() {
   searchTimer = setTimeout(runSearch, 400)
 }
 
-watch(employmentType, runSearch)
+watch([employmentType, salaryPeriod], runSearch)
+watch(() => props.initialFilters, (filters) => {
+  search.value = filters.search || ''
+  employmentType.value = filters.employmentType || 'All'
+  salaryPeriod.value = filters.salaryPeriod || ''
+  salaryMin.value = filters.salaryMin || ''
+  salaryMax.value = filters.salaryMax || ''
+  experienceYears.value = filters.experienceYears || ''
+  maxDistanceKm.value = filters.maxDistanceKm || ''
+}, { immediate: true })
 onBeforeUnmount(() => clearTimeout(searchTimer))
 
 function hasApplied(jobId) {
@@ -162,11 +181,17 @@ const hasMoreJobs = computed(() => !props.loading && !props.listOnly && props.jo
               </option>
             </select>
           </label>
+          <label class="worker-search__field"><span>Pay period</span><select v-model="salaryPeriod"><option value="">Any period</option><option>Hourly</option><option>Daily</option><option>Weekly</option><option>Monthly</option><option>Annual</option></select></label>
+          <label class="worker-search__field"><span>Minimum pay</span><input v-model="salaryMin" type="number" min="0" inputmode="decimal" placeholder="Any" /></label>
+          <label class="worker-search__field"><span>Maximum pay</span><input v-model="salaryMax" type="number" min="0" inputmode="decimal" placeholder="Any" /></label>
+          <label class="worker-search__field"><span>Your experience</span><input v-model="experienceYears" type="number" min="0" max="60" inputmode="numeric" placeholder="Years" /></label>
+          <label class="worker-search__field"><span>Distance</span><input v-model="maxDistanceKm" type="number" min="1" max="500" inputmode="numeric" placeholder="km" /></label>
           <button type="button" class="worker-search__location" :disabled="locating" @click="emit('use-my-location')">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.4-7-11a7 7 0 0 1 14 0c0 4.6-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
             {{ locating ? 'Locating...' : 'Use my location' }}
           </button>
           <span class="worker-search__location-label">{{ locationLabel }}</span>
+          <span class="worker-search__location-label">Jobs without salary are excluded only when pay filters are used; unspecified experience remains included.</span>
         </div>
       </form>
 

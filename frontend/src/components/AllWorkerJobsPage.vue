@@ -33,6 +33,9 @@ function buildParams() {
   }
   if (route.query.search) params.search = route.query.search.toString()
   if (route.query.employmentType) params.employmentType = route.query.employmentType.toString()
+  for (const key of ['salaryPeriod', 'salaryMin', 'salaryMax', 'experienceYears', 'maxDistanceKm']) {
+    if (route.query[key]) params[key] = route.query[key].toString()
+  }
   params.page = currentPage.value
   params.pageSize = MAX_VISIBLE_JOBS
   return params
@@ -56,7 +59,15 @@ async function load() {
 
 onMounted(load)
 watch(currentPage, load)
-watch([() => route.query.search, () => route.query.employmentType], async () => {
+watch([
+  () => route.query.search,
+  () => route.query.employmentType,
+  () => route.query.salaryPeriod,
+  () => route.query.salaryMin,
+  () => route.query.salaryMax,
+  () => route.query.experienceYears,
+  () => route.query.maxDistanceKm,
+], async () => {
   if (!route.query.page) return load()
   const wasFirstPage = currentPage.value === 1
   await router.replace({ query: { ...route.query, page: undefined } })

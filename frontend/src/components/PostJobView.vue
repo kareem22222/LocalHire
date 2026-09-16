@@ -22,6 +22,13 @@ onMounted(async () => {
   try {
     const profile = await profileStore.fetchProfile()
     if (normalizeRole(profile.role) !== 'hiring') router.replace('/')
+    else jobForm.value = {
+      ...jobForm.value,
+      workplaceName: profile.businessName || '',
+      cityArea: profile.businessLocation || profile.cityArea || '',
+      state: profile.state || '',
+      pincode: profile.pincode || '',
+    }
   } catch {
     // A 401 triggers a reload via the API interceptor; other errors return home.
     router.replace('/')

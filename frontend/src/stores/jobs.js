@@ -5,12 +5,7 @@ import * as jobsApi from '../api/jobs.js'
 const JOBS_TTL_MS = 2 * 60 * 1000
 
 function nearbyKey(params = {}) {
-  const location = params.lat == null || params.lng == null
-    ? 'all'
-    : `${Number(params.lat)},${Number(params.lng)}`
-  const term = (params.search || '').trim().toLowerCase()
-  const employmentType = (params.employmentType || '').trim().toLowerCase()
-  return `${location}|${term}|${employmentType}`
+  return paramsKey(params)
 }
 
 function candidatesKey(params = {}) {
@@ -49,6 +44,7 @@ export const useJobsStore = defineStore('jobs', () => {
   const candidates = ref([])
   const candidatesByKey = ref({})
   const myApplications = ref([])
+  const invitations = ref([])
   const myApplicationsFetchedAt = ref(0)
   const workerJobsPage = ref(emptyPage())
   const candidateSearchPage = ref(emptyPage())
@@ -340,6 +336,26 @@ export const useJobsStore = defineStore('jobs', () => {
     return data
   }
 
+  async function withdrawApplication(applicationId) {
+    const { data } = await jobsApi.withdrawApplication(applicationId)
+    myApplications.value = myApplications.value.map((item) => item.id === applicationId ? data : item)
+    myApplicationsFetchedAt.value = Date.now()
+    invalidatePaged()
+    return data
+  }
+
+  async function loadInvitations() {
+    const { data } = await jobsApi.getMyInvitations()
+    invitations.value = data
+    return data
+  }
+
+  async function declineInvitation(invitationId) {
+    const { data } = await jobsApi.declineInvitation(invitationId)
+    invitations.value = invitations.value.map((item) => item.id === invitationId ? data : item)
+    return data
+  }
+
   function clear() {
     invalidatePaged()
     myJobs.value = []
@@ -362,6 +378,7 @@ export const useJobsStore = defineStore('jobs', () => {
     latestSavedJobsPageRequest++
     latestSavedCandidatesPageRequest++
     myApplications.value = []
+    invitations.value = []
     myApplicationsFetchedAt.value = 0
     workerJobsPage.value = emptyPage()
     candidateSearchPage.value = emptyPage()
@@ -380,6 +397,7 @@ export const useJobsStore = defineStore('jobs', () => {
     nearbyJobsByLocation,
     candidates,
     myApplications,
+    invitations,
     workerJobsPage,
     candidateSearchPage,
     employerJobsPage,
@@ -409,6 +427,9 @@ export const useJobsStore = defineStore('jobs', () => {
     updateJob,
     setJobActive,
     applyToJob,
+    withdrawApplication,
+    loadInvitations,
+    declineInvitation,
     invalidateDiscovery,
     clear,
   }

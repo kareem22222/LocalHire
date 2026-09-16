@@ -12,6 +12,8 @@ import {
 } from '../utils/jobDisplay'
 import BrandLogo from './BrandLogo.vue'
 import { apiErrorMessage } from '../utils/apiError.js'
+import { getBusinessProfile } from '../api/jobs.js'
+import AppointmentPanel from './AppointmentPanel.vue'
 
 const props = defineProps({ id: { type: String, required: true } })
 const router = useRouter()
@@ -22,6 +24,8 @@ const loading = ref(true)
 const applying = ref(false)
 const applied = ref(false)
 const error = ref('')
+const business = ref(null)
+const withdrawing = ref(false)
 const loadError = ref('')
 const notFound = ref(false)
 let loadGeneration = 0
@@ -30,6 +34,11 @@ const application = computed(() =>
   jobsStore.myApplications.find((item) => item.jobPostId === props.id) ||
   (applied.value ? { status: 'Applied' } : null))
 const isOpen = computed(() => job.value?.isActive !== false)
+
+function goBack() {
+  if (window.history.length > 1) router.back()
+  else router.push('/work/jobs')
+}
 
 async function load() {
   const generation = ++loadGeneration
@@ -45,6 +54,9 @@ async function load() {
       jobsStore.loadMyApplications({ force: true }),
     ])
     if (generation === loadGeneration) job.value = jobData
+    if (generation === loadGeneration && jobData.employerId) {
+      business.value = (await getBusinessProfile(jobData.employerId)).data
+    }
   } catch (err) {
     if (generation !== loadGeneration) return
     notFound.value = err.response?.status === 404
@@ -54,6 +66,17 @@ async function load() {
   } finally {
     if (generation === loadGeneration) loading.value = false
   }
+}
+
+async function withdraw() {
+  if (!application.value || !window.confirm('Withdraw this application? You cannot reapply to this role.')) return
+  withdrawing.value = true
+  error.value = ''
+  try {
+    await jobsStore.withdrawApplication(application.value.id)
+    await jobsStore.loadMyApplications({ force: true })
+  } catch (err) { error.value = apiErrorMessage(err, 'Could not withdraw this application.') }
+  finally { withdrawing.value = false }
 }
 
 watch(() => props.id, load, { immediate: true })
@@ -91,7 +114,7 @@ async function apply() {
         <h1>{{ notFound ? 'Job unavailable' : 'Could not load job' }}</h1>
         <p>{{ loadError }}</p>
         <button v-if="!notFound" type="button" class="dash-btn worker-primary" @click="load">Retry</button>
-        <button type="button" class="dash-btn worker-outline" @click="router.push('/')">Back to jobs</button>
+        <button type="button" class="dash-btn worker-outline" @click="goBack">Back to jobs</button>
       </div>
 
       <template v-else>
@@ -102,7 +125,7 @@ async function apply() {
             <p>{{ job.workplaceName }} · {{ formatJobLocation(job) }}</p>
           </div>
           <div class="worker-detail-actions">
-            <button type="button" class="dash-btn worker-outline" @click="router.push('/')">Back</button>
+            <button type="button" class="dash-btn worker-outline" @click="goBack">Back</button>
             <button
               type="button"
               class="dash-btn worker-outline"
@@ -115,6 +138,13 @@ async function apply() {
             <button type="button" class="dash-btn worker-primary" :disabled="application || applying || !isOpen" @click="apply">
               {{ application ? 'Applied' : !isOpen ? 'Closed' : applying ? 'Applying...' : 'Apply now' }}
             </button>
+            <button
+              v-if="['Applied', 'Shortlisted'].includes(application?.status)"
+              type="button"
+              class="dash-btn worker-danger"
+              :disabled="withdrawing"
+              @click="withdraw"
+            >{{ withdrawing ? 'Withdrawing…' : 'Withdraw' }}</button>
           </div>
         </section>
 
@@ -122,6 +152,11 @@ async function apply() {
 
         <section v-if="application" class="worker-application-notice">
           Application status: <strong>{{ application.status }}</strong>
+          <AppointmentPanel
+            v-if="application.id && ['Applied', 'Shortlisted'].includes(application.status)"
+            :application-id="application.id"
+            role="work"
+          />
         </section>
         <section v-if="!isOpen" class="worker-application-notice" role="status">
           This vacancy is closed and no longer accepts applications.
@@ -130,6 +165,15 @@ async function apply() {
         <section class="worker-detail-card">
           <h2>About this job</h2>
           <p class="worker-detail-description">{{ job.description }}</p>
+        </section>
+
+        <section v-if="business" class="worker-detail-card">
+          <h2>About {{ business.name }}</h2>
+          <p class="worker-detail-description">{{ business.description || 'This business has not added a description yet.' }}</p>
+          <dl class="worker-detail-grid">
+            <div v-if="business.location"><dt>Business location</dt><dd>{{ business.location }}</dd></div>
+            <div v-if="business.contact"><dt>Public contact</dt><dd>{{ business.contact }}</dd></div>
+          </dl>
         </section>
 
         <section class="worker-detail-card">
@@ -169,6 +213,7 @@ async function apply() {
 .worker-page-shell { background: #eef9f2; }
 .worker-primary { color: #fff; background: var(--worker-role-gradient); }
 .worker-outline { color: var(--worker-role-green-text); border: 1.5px solid rgba(var(--worker-role-green-rgb), 0.3); background: #fff; }
+.worker-danger { color: #b42318; border: 1px solid rgba(180,35,24,.25); background: #fff; }
 .worker-detail-page { display: grid; gap: 20px; max-width: 960px; margin: 0 auto; padding: 40px 24px 72px; }
 .worker-detail-hero, .worker-detail-card, .worker-page-empty { padding: 30px; border: 1px solid rgba(18, 50, 74, 0.08); border-radius: 20px; background: #fff; box-shadow: 0 14px 40px rgba(18, 50, 74, 0.06); }
 .worker-detail-hero { display: flex; align-items: center; justify-content: space-between; gap: 24px; }

@@ -107,7 +107,7 @@ describe('WorkerJobDetailPage', () => {
     expect(wrapper.text()).toContain('Application status: Shortlisted')
     expect(wrapper.findAll('button').find((item) => item.text() === 'Applied').attributes('disabled')).toBeDefined()
     await wrapper.findAll('button').find((item) => item.text() === 'Back').trigger('click')
-    expect(push).toHaveBeenCalledWith('/')
+    expect(push).toHaveBeenCalledWith('/work/jobs')
     expect(wrapper.text()).not.toContain('Sign out')
   })
 
@@ -124,6 +124,6 @@ describe('WorkerJobDetailPage', () => {
     expect(wrapper.text()).toContain('Could not load job')
     expect(wrapper.text()).toContain('gone')
     await wrapper.findAll('button').find((item) => item.text() === 'Back to jobs').trigger('click')
-    expect(push).toHaveBeenCalledWith('/')
+    expect(push).toHaveBeenCalledWith('/work/jobs')
   })
 })

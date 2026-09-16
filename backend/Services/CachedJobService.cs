@@ -110,13 +110,21 @@ public sealed class CachedJobService : IJobService
 
     public Task<IReadOnlyList<JobPostResponse>> GetNearbyJobsAsync(
         double? lat, double? lng, string? search, EmploymentType? employmentType,
+        decimal? salaryMin, decimal? salaryMax, SalaryPeriod? salaryPeriod,
+        int? experienceYears, double? maxDistanceKm,
         Guid workerId, CancellationToken ct) =>
-        _inner.GetNearbyJobsAsync(lat, lng, search, employmentType, workerId, ct);
+        _inner.GetNearbyJobsAsync(
+            lat, lng, search, employmentType, salaryMin, salaryMax, salaryPeriod,
+            experienceYears, maxDistanceKm, workerId, ct);
 
     public Task<PagedResponse<JobPostResponse>> SearchJobsAsync(
         double? lat, double? lng, string? search, EmploymentType? employmentType,
+        decimal? salaryMin, decimal? salaryMax, SalaryPeriod? salaryPeriod,
+        int? experienceYears, double? maxDistanceKm,
         Guid workerId, PagingRequest paging, CancellationToken ct) =>
-        _inner.SearchJobsAsync(lat, lng, search, employmentType, workerId, paging, ct);
+        _inner.SearchJobsAsync(
+            lat, lng, search, employmentType, salaryMin, salaryMax, salaryPeriod,
+            experienceYears, maxDistanceKm, workerId, paging, ct);
 
     public Task<JobPostResponse> GetWorkerJobAsync(Guid id, Guid workerId, CancellationToken ct) =>
         _inner.GetWorkerJobAsync(id, workerId, ct);
@@ -134,6 +142,14 @@ public sealed class CachedJobService : IJobService
         Guid jobId, Guid workerId, CancellationToken ct)
     {
         var result = await _inner.ApplyAsync(jobId, workerId, ct);
+        _version.Invalidate();
+        return result;
+    }
+
+    public async Task<JobApplicationResponse> WithdrawApplicationAsync(
+        Guid applicationId, Guid workerId, CancellationToken ct)
+    {
+        var result = await _inner.WithdrawApplicationAsync(applicationId, workerId, ct);
         _version.Invalidate();
         return result;
     }
@@ -188,6 +204,58 @@ public sealed class CachedJobService : IJobService
         await _inner.RemoveSavedJobAsync(jobId, workerId, ct);
         _version.Invalidate();
     }
+
+    public async Task<InvitationResponse> CreateInvitationAsync(
+        Guid workerId, Guid jobId, Guid employerId, CancellationToken ct)
+    {
+        var result = await _inner.CreateInvitationAsync(workerId, jobId, employerId, ct);
+        _version.Invalidate();
+        return result;
+    }
+
+    public Task<IReadOnlyList<InvitationResponse>> GetMyInvitationsAsync(
+        Guid workerId, CancellationToken ct) =>
+        _inner.GetMyInvitationsAsync(workerId, ct);
+
+    public async Task<InvitationResponse> DeclineInvitationAsync(
+        Guid invitationId, Guid workerId, CancellationToken ct)
+    {
+        var result = await _inner.DeclineInvitationAsync(invitationId, workerId, ct);
+        _version.Invalidate();
+        return result;
+    }
+
+    public Task<AppointmentResponse?> GetAppointmentAsync(
+        Guid applicationId, Guid userId, UserRole role, CancellationToken ct) =>
+        _inner.GetAppointmentAsync(applicationId, userId, role, ct);
+
+    public async Task<AppointmentResponse> SetAppointmentAsync(
+        Guid applicationId, AppointmentRequest request, Guid userId, UserRole role, CancellationToken ct)
+    {
+        var result = await _inner.SetAppointmentAsync(applicationId, request, userId, role, ct);
+        _version.Invalidate();
+        return result;
+    }
+
+    public async Task<AppointmentResponse> ConfirmAppointmentAsync(
+        Guid applicationId, Guid userId, UserRole role, CancellationToken ct)
+    {
+        var result = await _inner.ConfirmAppointmentAsync(applicationId, userId, role, ct);
+        _version.Invalidate();
+        return result;
+    }
+
+    public async Task<AppointmentResponse> CancelAppointmentAsync(
+        Guid applicationId, Guid userId, UserRole role, CancellationToken ct)
+    {
+        var result = await _inner.CancelAppointmentAsync(applicationId, userId, role, ct);
+        _version.Invalidate();
+        return result;
+    }
+
+    public Task<BusinessProfileResponse> GetBusinessProfileAsync(
+        Guid employerId, CancellationToken ct) =>
+        _inner.GetBusinessProfileAsync(employerId, ct);
 
     private async Task<T> GetOrCreateAsync<T>(string key, Func<Task<T>> factory)
     {

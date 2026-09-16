@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getCandidateResume } from '../api/jobs.js'
+import { getCandidateResume, inviteCandidate } from '../api/jobs.js'
 import { useJobsStore } from '../stores/jobs'
 import { useSavedCandidates } from '../composables/useSavedCandidates'
 import { safeDownloadUrl } from '../utils/downloadUrl.js'
@@ -19,10 +19,15 @@ const candidate = ref(null)
 const showContact = ref(route.query.contact === '1')
 const resumeDownloading = ref(false)
 const resumeError = ref('')
+const inviteError = ref('')
+const inviting = ref(false)
+const selectedJobId = ref('')
+const showInvite = ref(false)
 
 const candidateId = computed(() => route.params.id)
 const shortlisted = computed(() => candidate.value && isSaved(candidate.value.id))
 const preferences = computed(() => candidate.value?.workPreferences || {})
+const activeJobs = computed(() => jobsStore.myJobs.filter((job) => job.isActive))
 
 const OPTION_LABELS = {
   FullTime: 'Full time', PartTime: 'Part time', Contract: 'Contract', Temporary: 'Temporary',
@@ -81,6 +86,22 @@ async function load() {
   }
 }
 
+async function invite() {
+  if (!selectedJobId.value) return
+  inviting.value = true
+  inviteError.value = ''
+  try { await inviteCandidate(candidate.value.id, selectedJobId.value) }
+  catch (requestError) { inviteError.value = apiErrorMessage(requestError, 'Could not send the invitation.') }
+  finally { inviting.value = false }
+}
+
+async function openInvite() {
+  showInvite.value = true
+  inviteError.value = ''
+  try { await jobsStore.loadMyJobs({ force: true }) }
+  catch { inviteError.value = 'Could not load your active roles.' }
+}
+
 onMounted(load)
 watch(() => route.params.id, load)
 watch(() => route.query.contact, (value) => { showContact.value = value === '1' })
@@ -125,6 +146,7 @@ async function downloadResume() {
       <p v-if="error" class="job-form__error" role="alert">{{ error }}</p>
       <button v-if="error && !candidate && !loading" type="button" class="dash-btn dash-btn--primary" @click="load">Retry</button>
       <p v-if="resumeError" class="job-form__error" role="alert">{{ resumeError }}</p>
+      <p v-if="inviteError" class="job-form__error" role="alert">{{ inviteError }}</p>
 
       <div v-if="loading" class="candidate-empty">
         <strong>Loading candidate...</strong>
@@ -155,6 +177,17 @@ async function downloadResume() {
               :disabled="resumeDownloading"
               @click="downloadResume"
             >{{ resumeDownloading ? 'Preparing resume…' : 'Download resume' }}</button>
+            <button v-if="!candidate.hasApplied && !showInvite" type="button" class="dash-btn dash-btn--outline" @click="openInvite">Invite to apply</button>
+            <label v-if="!candidate.hasApplied && showInvite" class="candidate-invite">
+              <span>Invite to role</span>
+              <select v-model="selectedJobId">
+                <option value="">Choose an active role</option>
+                <option v-for="job in activeJobs" :key="job.id" :value="job.id">{{ job.title }} · {{ job.workplaceName }}</option>
+              </select>
+              <button type="button" class="dash-btn dash-btn--outline" :disabled="!selectedJobId || inviting" @click="invite">
+                {{ inviting ? 'Sending…' : 'Send invitation' }}
+              </button>
+            </label>
           </div>
         </section>
 
@@ -353,6 +386,7 @@ async function downloadResume() {
   gap: 10px;
   flex-wrap: wrap;
 }
+.candidate-invite { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: #526977; font-size: 11px; font-weight: 800; }.candidate-invite select { min-width: 190px; padding: 10px; border: 1px solid rgba(18,50,74,.16); border-radius: 9px; background: #fff; }
 
 .candidate-detail__card {
   padding: 28px 32px;

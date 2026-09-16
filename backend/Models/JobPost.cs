@@ -37,4 +37,5 @@ public sealed class JobPost
     public User Employer { get; set; } = null!;
     public ICollection<JobApplication> Applications { get; set; } = new List<JobApplication>();
     public ICollection<SavedJob> SavedByWorkers { get; set; } = new List<SavedJob>();
+    public ICollection<CandidateInvitation> Invitations { get; set; } = new List<CandidateInvitation>();
 }

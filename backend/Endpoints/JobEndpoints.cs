@@ -4,6 +4,7 @@ using FluentValidation;
 using LocalHire.Api.DTOs;
 using LocalHire.Api.Models;
 using LocalHire.Api.Services;
+using System.Text;
 
 namespace LocalHire.Api.Endpoints;
 
@@ -384,6 +385,20 @@ public static class JobEndpoints
         })
         .WithName("RemoveSavedCandidate");
 
+        hiringGroup.MapPost("/candidates/{workerId:guid}/invitations", async (
+            Guid workerId,
+            CreateInvitationRequest request,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+            return Results.Ok(await jobService.CreateInvitationAsync(
+                workerId, request.JobPostId, userId, ct));
+        })
+        .WithName("InviteCandidate");
+
         // --- Worker endpoints ---
 
         workGroup.MapGet("/jobs/nearby", async (
@@ -391,6 +406,11 @@ public static class JobEndpoints
             double? lng,
             string? search,
             EmploymentType? employmentType,
+            decimal? salaryMin,
+            decimal? salaryMax,
+            SalaryPeriod? salaryPeriod,
+            int? experienceYears,
+            double? maxDistanceKm,
             ClaimsPrincipal user,
             IJobService jobService,
             CancellationToken ct) =>
@@ -398,12 +418,17 @@ public static class JobEndpoints
             var coordinateError = EndpointHelpers.ValidateCoordinatePair(lat, lng);
             if (coordinateError is not null)
                 return coordinateError;
+            var filterError = ValidateJobFilters(
+                lat, lng, salaryMin, salaryMax, salaryPeriod, experienceYears, maxDistanceKm);
+            if (filterError is not null)
+                return filterError;
 
             if (!user.TryGetUserId(out var userId))
                 return Results.Unauthorized();
 
             var jobs = await jobService.GetNearbyJobsAsync(
-                lat, lng, search, employmentType, userId, ct);
+                lat, lng, search, employmentType, salaryMin, salaryMax, salaryPeriod,
+                experienceYears, maxDistanceKm, userId, ct);
             return Results.Ok(jobs);
         })
         .WithName("GetNearbyJobs");
@@ -415,6 +440,11 @@ public static class JobEndpoints
             double? lng,
             string? search,
             EmploymentType? employmentType,
+            decimal? salaryMin,
+            decimal? salaryMax,
+            SalaryPeriod? salaryPeriod,
+            int? experienceYears,
+            double? maxDistanceKm,
             ClaimsPrincipal user,
             IJobService jobService,
             CancellationToken ct) =>
@@ -425,11 +455,16 @@ public static class JobEndpoints
             var coordinateError = EndpointHelpers.ValidateCoordinatePair(lat, lng);
             if (coordinateError is not null)
                 return coordinateError;
+            var filterError = ValidateJobFilters(
+                lat, lng, salaryMin, salaryMax, salaryPeriod, experienceYears, maxDistanceKm);
+            if (filterError is not null)
+                return filterError;
             if (!user.TryGetUserId(out var userId))
                 return Results.Unauthorized();
 
             return Results.Ok(await jobService.SearchJobsAsync(
-                lat, lng, search, employmentType, userId, paging, ct));
+                lat, lng, search, employmentType, salaryMin, salaryMax, salaryPeriod,
+                experienceYears, maxDistanceKm, userId, paging, ct));
         })
         .WithName("SearchWorkerJobs");
 
@@ -444,6 +479,13 @@ public static class JobEndpoints
             return Results.Ok(await jobService.GetWorkerJobAsync(id, userId, ct));
         })
         .WithName("GetWorkerJob");
+
+        workGroup.MapGet("/businesses/{employerId:guid}", async (
+            Guid employerId,
+            IJobService jobService,
+            CancellationToken ct) =>
+            Results.Ok(await jobService.GetBusinessProfileAsync(employerId, ct)))
+        .WithName("GetBusinessProfile");
 
         workGroup.MapPost("/jobs/{id:guid}/apply", async (
             Guid id,
@@ -488,6 +530,44 @@ public static class JobEndpoints
             return Results.Ok(await jobService.GetMyApplicationsPagedAsync(userId, paging, ct));
         })
         .WithName("GetMyApplicationsPaged");
+
+        workGroup.MapPost("/applications/{applicationId:guid}/withdraw", async (
+            Guid applicationId,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+            return Results.Ok(await jobService.WithdrawApplicationAsync(applicationId, userId, ct));
+        })
+        .WithName("WithdrawApplication");
+
+        workGroup.MapGet("/invitations", async (
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+            return Results.Ok(await jobService.GetMyInvitationsAsync(userId, ct));
+        })
+        .WithName("GetMyInvitations");
+
+        workGroup.MapPost("/invitations/{invitationId:guid}/decline", async (
+            Guid invitationId,
+            ClaimsPrincipal user,
+            IJobService jobService,
+            CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId))
+                return Results.Unauthorized();
+            return Results.Ok(await jobService.DeclineInvitationAsync(invitationId, userId, ct));
+        })
+        .WithName("DeclineInvitation");
+
+        MapAppointmentEndpoints(hiringGroup, UserRole.Hiring);
+        MapAppointmentEndpoints(workGroup, UserRole.LookingForWork);
 
         workGroup.MapGet("/saved-jobs", async (
             ClaimsPrincipal user,
@@ -546,4 +626,71 @@ public static class JobEndpoints
         })
         .WithName("RemoveSavedJob");
     }
+
+    private static void MapAppointmentEndpoints(RouteGroupBuilder group, UserRole role)
+    {
+        group.MapGet("/applications/{applicationId:guid}/appointment", async (
+            Guid applicationId, ClaimsPrincipal user, IJobService jobs, CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId)) return Results.Unauthorized();
+            var appointment = await jobs.GetAppointmentAsync(applicationId, userId, role, ct);
+            return appointment is null ? Results.NoContent() : Results.Ok(appointment);
+        });
+
+        group.MapPut("/applications/{applicationId:guid}/appointment", async (
+            Guid applicationId, AppointmentRequest request, ClaimsPrincipal user,
+            IJobService jobs, CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId)) return Results.Unauthorized();
+            return Results.Ok(await jobs.SetAppointmentAsync(applicationId, request, userId, role, ct));
+        });
+
+        group.MapPost("/applications/{applicationId:guid}/appointment/confirm", async (
+            Guid applicationId, ClaimsPrincipal user, IJobService jobs, CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId)) return Results.Unauthorized();
+            return Results.Ok(await jobs.ConfirmAppointmentAsync(applicationId, userId, role, ct));
+        });
+
+        group.MapPost("/applications/{applicationId:guid}/appointment/cancel", async (
+            Guid applicationId, ClaimsPrincipal user, IJobService jobs, CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId)) return Results.Unauthorized();
+            return Results.Ok(await jobs.CancelAppointmentAsync(applicationId, userId, role, ct));
+        });
+
+        group.MapGet("/applications/{applicationId:guid}/appointment.ics", async (
+            Guid applicationId, ClaimsPrincipal user, IJobService jobs, CancellationToken ct) =>
+        {
+            if (!user.TryGetUserId(out var userId)) return Results.Unauthorized();
+            var appointment = await jobs.GetAppointmentAsync(applicationId, userId, role, ct);
+            if (appointment is null || appointment.Status == "Cancelled") return Results.NotFound();
+            var start = appointment.StartsAt.UtcDateTime;
+            var calendar = $"BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//LocalHire//Appointment//EN\r\nBEGIN:VEVENT\r\nUID:{appointment.Id}@localhire\r\nDTSTAMP:{DateTime.UtcNow:yyyyMMdd'T'HHmmss'Z'}\r\nDTSTART:{start:yyyyMMdd'T'HHmmss'Z'}\r\nSUMMARY:LocalHire interview or trial shift\r\nLOCATION:{EscapeCalendar(appointment.Venue)}\r\nDESCRIPTION:{EscapeCalendar(appointment.Notes ?? appointment.MeetingUrl)}\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+            return Results.File(Encoding.UTF8.GetBytes(calendar), "text/calendar", "localhire-appointment.ics");
+        });
+    }
+
+    private static IResult? ValidateJobFilters(
+        double? lat, double? lng, decimal? salaryMin, decimal? salaryMax,
+        SalaryPeriod? salaryPeriod, int? experienceYears, double? maxDistanceKm)
+    {
+        var errors = new Dictionary<string, string[]>();
+        if (salaryMin < 0) errors[nameof(salaryMin)] = ["Minimum salary cannot be negative."];
+        if (salaryMax < 0) errors[nameof(salaryMax)] = ["Maximum salary cannot be negative."];
+        if (salaryMin is not null && salaryMax is not null && salaryMax < salaryMin)
+            errors[nameof(salaryMax)] = ["Maximum salary must be at least the minimum salary."];
+        if ((salaryMin is not null || salaryMax is not null) && salaryPeriod is null)
+            errors[nameof(salaryPeriod)] = ["Salary period is required when filtering by pay."];
+        if (experienceYears is < 0 or > 60)
+            errors[nameof(experienceYears)] = ["Experience must be between 0 and 60 years."];
+        if (maxDistanceKm is < 1 or > 500)
+            errors[nameof(maxDistanceKm)] = ["Distance must be between 1 and 500 km."];
+        if (maxDistanceKm is not null && (lat is null || lng is null))
+            errors[nameof(maxDistanceKm)] = ["Distance requires a location."];
+        return errors.Count == 0 ? null : Results.ValidationProblem(errors);
+    }
+
+    private static string EscapeCalendar(string? value) =>
+        (value ?? string.Empty).Replace("\\", "\\\\").Replace(";", "\\;").Replace(",", "\\,").Replace("\r", string.Empty).Replace("\n", "\\n");
 }

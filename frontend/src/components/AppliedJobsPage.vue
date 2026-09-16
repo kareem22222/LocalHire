@@ -8,6 +8,7 @@ import BrandLogo from './BrandLogo.vue'
 import CountUp from './CountUp.vue'
 import Pagination from './ui/Pagination.vue'
 import SkeletonShimmer from './ui/SkeletonShimmer.vue'
+import AppointmentPanel from './AppointmentPanel.vue'
 import '../hiring-dashboard.css'
 
 const route = useRoute()
@@ -15,6 +16,7 @@ const router = useRouter()
 const jobsStore = useJobsStore()
 const loading = ref(true)
 const error = ref('')
+const withdrawing = ref(null)
 
 const applications = computed(() => jobsStore.myApplicationsPage.items)
 const totalPages = computed(() => jobsStore.myApplicationsPage.totalPages)
@@ -41,6 +43,18 @@ watch(currentPage, load)
 
 function changePage(page) {
   router.push({ query: { ...route.query, page: page === 1 ? undefined : String(page) } })
+}
+
+async function withdraw(application) {
+  if (!window.confirm(`Withdraw your application for ${application.jobTitle}? You cannot reapply to this role.`)) return
+  withdrawing.value = application.id
+  error.value = ''
+  try {
+    await jobsStore.withdrawApplication(application.id)
+    await load()
+  } catch (requestError) {
+    error.value = requestError.response?.data?.message || 'Could not withdraw the application.'
+  } finally { withdrawing.value = null }
 }
 </script>
 
@@ -77,9 +91,12 @@ function changePage(page) {
         </div>
 
         <div class="applied-list">
-          <a
+          <div
             v-for="(application, index) in applications"
             :key="application.id"
+            class="applied-entry"
+          >
+          <a
             class="applied-card spotlight-card spotlight-card--worker"
             :class="`applied-card--${application.status.toLowerCase()}`"
             :href="`/work/jobs/${application.jobPostId}`"
@@ -114,6 +131,11 @@ function changePage(page) {
               <b class="applied-card__link">View job <span aria-hidden="true">→</span></b>
             </div>
           </a>
+          <div v-if="['Applied', 'Shortlisted'].includes(application.status)" class="applied-entry__actions">
+            <button type="button" class="applied-withdraw" :disabled="withdrawing === application.id" @click="withdraw(application)">{{ withdrawing === application.id ? 'Withdrawing…' : 'Withdraw application' }}</button>
+            <AppointmentPanel :application-id="application.id" role="work" />
+          </div>
+          </div>
         </div>
         <Pagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
       </section>
@@ -144,8 +166,10 @@ function changePage(page) {
 .applied-journey { --pagination-accent: var(--worker-role-green-text); display: grid; gap: 16px; padding: 24px; border: 1px solid rgba(18,50,74,.08); border-radius: 24px; background: rgba(248,252,253,.72); }
 .applied-journey__head { display: flex; align-items: end; justify-content: space-between; gap: 20px; padding: 4px 4px 10px; }.applied-journey__head h2 { margin-top: 5px; color: #0b3658; font: 800 25px/1.2 Manrope,sans-serif; letter-spacing: -.035em; }.applied-journey__head > p { color: #708794; font-size: 12px; font-weight: 800; }
 .applied-list { display: grid; gap: 14px; }
+.applied-entry { display: grid; gap: 8px; }.applied-entry__actions { padding: 0 14px 10px; }
 .applied-card { --status-start: #07559a; --status-end: #168caa; --status-rgb: 7,85,154; --spotlight-rgb: var(--status-rgb); display: grid; grid-template-columns: minmax(210px,.85fr) minmax(210px,.7fr) minmax(260px,1fr); gap: 26px; align-items: center; padding: 24px; color: inherit; text-decoration: none; border: 1px solid rgba(18,50,74,.08); border-radius: 20px; background: #fff; box-shadow: 0 12px 34px rgba(18,50,74,.06); cursor: pointer; animation: application-enter .55s cubic-bezier(.22,1,.36,1) backwards; animation-delay: calc(var(--card-index) * 65ms); transition: border-color .25s ease,box-shadow .25s ease,transform .25s ease,opacity .25s ease; }
-.applied-card--shortlisted { --status-start: #5145b5; --status-end: #7c3aed; --status-rgb: 81,69,181; }.applied-card--hired { --status-start: #0b7a4b; --status-end: #20a875; --status-rgb: 11,122,75; }.applied-card--rejected { --status-start: #b42318; --status-end: #e5484d; --status-rgb: 180,35,24; }
+.applied-card--shortlisted { --status-start: #5145b5; --status-end: #7c3aed; --status-rgb: 81,69,181; }.applied-card--hired { --status-start: #0b7a4b; --status-end: #20a875; --status-rgb: 11,122,75; }.applied-card--rejected,.applied-card--withdrawn { --status-start: #b42318; --status-end: #e5484d; --status-rgb: 180,35,24; }
+.applied-withdraw { justify-self: start; padding: 7px 0; color: #b42318; border: 0; background: none; font-size: 11px; font-weight: 800; cursor: pointer; }
 .applied-card:hover { border-color: rgba(var(--status-rgb),.32); box-shadow: 0 20px 46px rgba(var(--status-rgb),.12); }.applied-card:focus-visible { outline: 3px solid rgba(var(--status-rgb),.25); outline-offset: 2px; }.applied-list:has(.applied-card:hover) .applied-card:not(:hover) { opacity: .58; transform: scale(.98); }
 .applied-card__topline { display: flex; align-items: center; gap: 9px; }.applied-card__number { color: #91a3ab; font: 800 10px ui-monospace,monospace; letter-spacing: .08em; }.applied-card h2 { margin-top: 12px; color: #0b3658; font: 800 21px/1.2 Manrope,sans-serif; letter-spacing: -.025em; }.applied-card__identity > p { margin-top: 6px; color: #526977; font-size: 13px; }
 .applied-card__status { display: inline-flex; padding: 6px 10px; color: #fff; border-radius: 999px; background: linear-gradient(135deg,var(--status-start),var(--status-end)); box-shadow: 0 7px 18px rgba(var(--status-rgb),.22); font-size: 11px; font-weight: 800; text-transform: uppercase; }

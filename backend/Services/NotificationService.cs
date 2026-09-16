@@ -38,7 +38,7 @@ public sealed class NotificationService(LocalHireDbContext db) : INotificationSe
             $"/hiring/jobs/{jobPost.Id}/applicants"));
 
     public void NotifyApplicationOutcome(
-        Guid workerId, JobPost jobPost, ApplicationStatus status)
+        Guid workerId, JobPost jobPost, Guid applicationId, ApplicationStatus status)
     {
         var notification = status switch
         {
@@ -57,6 +57,59 @@ public sealed class NotificationService(LocalHireDbContext db) : INotificationSe
             _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Only terminal outcomes create outcome notifications.")
         };
         db.Notifications.Add(notification);
+        QueueEmail(workerId, $"application:{applicationId}:{status}", notification);
+    }
+
+    public void NotifyInvitation(Guid workerId, JobPost jobPost, Guid invitationId)
+    {
+        var notification = Create(
+            workerId,
+            "Invitation",
+            "You were invited to apply",
+            $"{jobPost.WorkplaceName} invited you to apply for {jobPost.Title}.",
+            "/work/invitations");
+        db.Notifications.Add(notification);
+        QueueEmail(workerId, $"invitation:{invitationId}", notification);
+    }
+
+    public void NotifyWithdrawal(Guid employerId, JobPost jobPost, Guid applicationId)
+    {
+        var notification = Create(
+            employerId,
+            "ApplicationWithdrawn",
+            "An application was withdrawn",
+            $"A candidate withdrew their application for {jobPost.Title}.",
+            $"/hiring/jobs/{jobPost.Id}/applicants");
+        db.Notifications.Add(notification);
+        QueueEmail(employerId, $"application:{applicationId}:Withdrawn", notification);
+    }
+
+    public void NotifyAppointment(
+        Guid userId, JobPost jobPost, Guid applicationId, string status, bool recipientIsWorker)
+    {
+        var notification = Create(
+            userId,
+            "Appointment",
+            $"Interview {status.ToLowerInvariant()}",
+            $"The interview or trial shift for {jobPost.Title} is now {status.ToLowerInvariant()}.",
+            recipientIsWorker ? "/work/applications" : $"/hiring/jobs/{jobPost.Id}/applicants");
+        db.Notifications.Add(notification);
+        QueueEmail(userId, $"appointment:{notification.Id}", notification);
+    }
+
+    private void QueueEmail(Guid userId, string dedupeKey, Notification notification)
+    {
+        db.EmailOutboxMessages.Add(new EmailOutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            DedupeKey = dedupeKey,
+            Subject = notification.Title,
+            Body = notification.Message,
+            Link = notification.Link,
+            CreatedAt = notification.CreatedAt,
+            NextAttemptAt = notification.CreatedAt
+        });
     }
 
     private static Notification Create(

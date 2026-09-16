@@ -23,5 +23,10 @@ public sealed record UpdateProfileRequest(
     List<SkillProfile>? SkillDetails = null,
     List<LanguageProfile>? LanguageDetails = null,
     List<CredentialEntry>? Credentials = null,
-    bool IsDiscoverable = true
+    bool IsDiscoverable = true,
+    bool EmailNotificationsEnabled = true,
+    string? BusinessName = null,
+    string? BusinessDescription = null,
+    string? BusinessLocation = null,
+    string? BusinessContact = null
 );

@@ -2,6 +2,7 @@ namespace LocalHire.Api.DTOs;
 
 public sealed record JobPostResponse(
     Guid Id,
+    Guid EmployerId,
     string Title,
     string Description,
     string WorkplaceName,

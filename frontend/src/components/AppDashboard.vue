@@ -288,8 +288,14 @@ const workerCoords = ref(null)
 const applying = ref(null)
 const workerApplyError = ref('')
 const workerJobsLoading = ref(true)
-const workerSearch = ref('')
-const workerEmploymentType = ref('')
+const workerSearch = ref(route.query.search?.toString() || '')
+const workerEmploymentType = ref(route.query.employmentType?.toString() || '')
+const workerFilters = ref(Object.fromEntries(
+  ['salaryPeriod', 'salaryMin', 'salaryMax', 'experienceYears', 'maxDistanceKm']
+    .filter((key) => route.query[key] != null)
+    .map((key) => [key, route.query[key].toString()]),
+))
+const initialWorkerFilters = computed(() => ({ search: workerSearch.value, employmentType: workerEmploymentType.value, ...workerFilters.value }))
 
 const workerLocationLabel = computed(() => {
   if (locationStatus.value === 'done') return 'Using your current location'
@@ -308,6 +314,7 @@ function workerJobParams() {
   }
   if (workerSearch.value) params.search = workerSearch.value
   if (workerEmploymentType.value) params.employmentType = workerEmploymentType.value
+  Object.assign(params, workerFilters.value)
   return params
 }
 
@@ -329,6 +336,9 @@ function goAllWorkerJobs(payload = {}) {
   const query = {}
   if (payload.search) query.search = payload.search
   if (payload.employmentType) query.employmentType = payload.employmentType
+  for (const key of ['salaryPeriod', 'salaryMin', 'salaryMax', 'experienceYears', 'maxDistanceKm']) {
+    if (payload[key] !== '' && payload[key] != null) query[key] = payload[key]
+  }
   router.push({ path: '/work/jobs', query })
 }
 
@@ -376,6 +386,15 @@ async function loadNearbyJobs(options = {}) {
 async function searchJobs(payload) {
   workerSearch.value = payload.search || ''
   workerEmploymentType.value = payload.employmentType || ''
+  workerFilters.value = Object.fromEntries(
+    ['salaryPeriod', 'salaryMin', 'salaryMax', 'experienceYears', 'maxDistanceKm']
+      .filter((key) => payload[key] !== '' && payload[key] != null)
+      .map((key) => [key, payload[key]]),
+  )
+  const query = { ...route.query }
+  for (const key of ['search', 'employmentType', 'salaryPeriod', 'salaryMin', 'salaryMax', 'experienceYears', 'maxDistanceKm'])
+    query[key] = payload[key] || undefined
+  await router.replace({ query })
   await loadNearbyJobs({ force: true })
 }
 
@@ -480,6 +499,7 @@ async function applyToJob(jobId) {
       :location-label="workerLocationLabel"
       :locating="locationStatus === 'prompt'"
       :applying="applying"
+      :initial-filters="initialWorkerFilters"
       @search-jobs="searchJobs"
       @use-my-location="requestLocation"
       @apply="applyToJob"

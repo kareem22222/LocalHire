@@ -6,5 +6,5 @@ public enum SalaryPeriod
     Daily,
     Weekly,
     Monthly,
-    Yearly
+    Annual
 }

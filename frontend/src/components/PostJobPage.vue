@@ -36,7 +36,7 @@ const employmentTypeOptions = [
   { value: 'Internship', label: 'Internship' },
   { value: 'Daily', label: 'Daily wage' },
 ]
-const salaryPeriodOptions = ['Hourly', 'Daily', 'Weekly', 'Monthly', 'Yearly']
+const salaryPeriodOptions = ['Hourly', 'Daily', 'Weekly', 'Monthly', 'Annual']
 const educationOptions = [
   'No formal education',
   'Below 10th',

@@ -78,6 +78,11 @@ const APPLICATION_STATUS_DISPLAY = {
     progress: 100,
     milestone: 'Hired',
   },
+  Withdrawn: {
+    summary: 'You withdrew this application. The original record remains for your history.',
+    progress: 100,
+    milestone: 'Withdrawn',
+  },
 }
 
 export function applicationStatusDisplay(status) {

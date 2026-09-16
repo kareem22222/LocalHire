@@ -5,6 +5,7 @@ import { useJobsStore } from '../stores/jobs'
 import BrandLogo from './BrandLogo.vue'
 import CandidateCard from './CandidateCard.vue'
 import Pagination from './ui/Pagination.vue'
+import AppointmentPanel from './AppointmentPanel.vue'
 import { MAX_VISIBLE_CANDIDATES } from '../utils/jobDisplay'
 import '../hiring-dashboard.css'
 
@@ -172,18 +173,23 @@ async function decide(candidate, request, message) {
         </div>
 
         <template v-else>
-          <CandidateCard
-            v-for="candidate in paginatedApplicants"
-            :key="candidate.applicationId"
-            :candidate="candidate"
-            :shortlisted="candidate.status === 'Shortlisted'"
-            :busy="deciding === candidate.applicationId"
-            @select="openCandidate"
-            @shortlist="shortlist"
-            @hire="hire"
-            @reject="reject"
-            @contact="contact"
-          />
+          <template v-for="candidate in paginatedApplicants" :key="candidate.applicationId">
+            <CandidateCard
+              :candidate="candidate"
+              :shortlisted="candidate.status === 'Shortlisted'"
+              :busy="deciding === candidate.applicationId"
+              @select="openCandidate"
+              @shortlist="shortlist"
+              @hire="hire"
+              @reject="reject"
+              @contact="contact"
+            />
+            <AppointmentPanel
+              v-if="['Applied', 'Shortlisted'].includes(candidate.status)"
+              :application-id="candidate.applicationId"
+              role="hiring"
+            />
+          </template>
 
           <Pagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
 
