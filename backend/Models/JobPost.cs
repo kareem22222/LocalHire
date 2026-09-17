@@ -32,6 +32,7 @@ public sealed class JobPost
     public List<string> Benefits { get; set; } = new();
 
     public bool IsActive { get; set; } = true;
+    public int Version { get; set; } = 1;
     public DateTimeOffset CreatedAt { get; set; }
 
     public User Employer { get; set; } = null!;

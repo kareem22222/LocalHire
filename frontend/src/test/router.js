@@ -8,6 +8,7 @@ export function createTestRouter() {
     history: createMemoryHistory(),
     routes: [
       { path: '/', name: 'dashboard', component: { template: '<div />' } },
+      { path: '/public/jobs/:id', name: 'public-job', component: { template: '<div />' }, meta: { public: true } },
       { path: '/PostNewJob', name: 'post-new-job', component: { template: '<div />' } },
       { path: '/hiring/roles', name: 'all-roles', component: { template: '<div />' } },
       { path: '/hiring/candidates', name: 'all-candidates', component: { template: '<div />' } },

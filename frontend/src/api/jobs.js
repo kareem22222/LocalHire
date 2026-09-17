@@ -27,6 +27,10 @@ export function setJobActive(id, isActive) {
   return api.patch(`/hiring/jobs/${id}/status`, { isActive })
 }
 
+export function getPublicJob(id) {
+  return api.get(`/public/jobs/${id}`, { skipAuthReload: true })
+}
+
 export function getJobApplications(jobId) {
   return api.get(`/hiring/jobs/${jobId}/applications`)
 }

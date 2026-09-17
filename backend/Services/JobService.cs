@@ -106,13 +106,24 @@ public sealed class JobService : IJobService
         return JobMapper.ToResponse(result.Job, result.Count, result.Shortlisted);
     }
 
+    public async Task<PublicJobResponse> GetPublicJobAsync(Guid id, CancellationToken ct)
+    {
+        var job = await _db.JobPosts.AsNoTracking()
+            .FirstOrDefaultAsync(item => item.Id == id && item.IsActive, ct)
+            ?? throw new NotFoundException(JobPostNotFoundMessage);
+        return JobMapper.ToPublicResponse(job);
+    }
+
     public async Task<JobPostResponse> UpdateJobAsync(Guid id, CreateJobPostRequest request, Guid employerId, CancellationToken ct)
     {
         var jobPost = await _db.JobPosts.FirstOrDefaultAsync(j => j.Id == id && j.EmployerId == employerId, ct);
         if (jobPost is null)
             throw new NotFoundException(JobPostNotFoundMessage);
+        if (request.Version != jobPost.Version)
+            throw new ConflictException("This job changed after you opened it. Compare your edits with the latest version and reload before saving.");
 
         JobMapper.ApplyRequest(jobPost, request);
+        jobPost.Version++;
 
         _db.ChangeTracker.DetectChanges();
         if (_db.Entry(jobPost).State == EntityState.Modified)
@@ -146,6 +157,7 @@ public sealed class JobService : IJobService
             if (jobPost.IsActive != isActive)
             {
                 jobPost.IsActive = isActive;
+                jobPost.Version++;
                 if (!isActive)
                 {
                     var workerIds = await _db.JobApplications
@@ -971,7 +983,14 @@ public sealed class JobService : IJobService
             return;
 
         _db.SavedJobs.Remove(savedJob);
-        await _db.SaveChangesAsync(ct);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("This job changed after you opened it. Compare your edits with the latest version and reload before saving.");
+        }
     }
 
     public async Task<JobApplicationResponse> WithdrawApplicationAsync(
@@ -1245,7 +1264,8 @@ public sealed class JobService : IJobService
         _db.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite";
 
     private static bool IsTransactionConflict(Exception exception) =>
-        exception is PostgresException
+        exception is DbUpdateConcurrencyException
+        || exception is PostgresException
         {
             SqlState: PostgresErrorCodes.SerializationFailure or PostgresErrorCodes.DeadlockDetected
         }

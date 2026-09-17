@@ -77,7 +77,15 @@ public static class JobMapper
             j.ShiftStartTime?.ToString("HH\\:mm", CultureInfo.InvariantCulture),
             j.ShiftEndTime?.ToString("HH\\:mm", CultureInfo.InvariantCulture),
             j.Openings, j.RequiredSkills, j.Languages, j.Benefits,
-            j.IsActive, j.CreatedAt, applicationCount, shortlistedCount);
+            j.IsActive, j.Version, j.CreatedAt, applicationCount, shortlistedCount);
+
+    public static PublicJobResponse ToPublicResponse(JobPost j) =>
+        new(j.Id, j.Title, j.Description, j.WorkplaceName, j.CityArea, j.State,
+            j.EmploymentType?.ToString(), j.SalaryMin, j.SalaryMax, j.SalaryPeriod?.ToString(),
+            j.MinEducation, j.ExperienceMinYears, j.ExperienceMaxYears, j.WorkingDays,
+            j.ShiftStartTime?.ToString("HH\\:mm", CultureInfo.InvariantCulture),
+            j.ShiftEndTime?.ToString("HH\\:mm", CultureInfo.InvariantCulture),
+            j.Openings, j.RequiredSkills, j.Languages, j.Benefits, j.CreatedAt);
 
     public static string? NormalizeText(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

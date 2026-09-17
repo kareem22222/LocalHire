@@ -27,6 +27,14 @@ public static class JobEndpoints
             .RequireAuthorization()
             .RequireAuthorization("LookingForWorkOnly");
 
+        app.MapGet("/api/public/jobs/{id:guid}", async (
+            Guid id,
+            IJobService jobService,
+            CancellationToken ct) => Results.Ok(await jobService.GetPublicJobAsync(id, ct)))
+            .AllowAnonymous()
+            .WithTags("Public")
+            .WithName("GetPublicJob");
+
         // --- Hiring endpoints ---
 
         hiringGroup.MapPost("/jobs", async (

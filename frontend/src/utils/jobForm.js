@@ -1,5 +1,6 @@
 // Shared helpers for the job posting form, used by the create (PostJobView)
 // and view/edit (JobDetailView) flows so they stay in sync.
+import { t } from '../i18n'
 
 export function emptyJobForm() {
   return {
@@ -112,10 +113,10 @@ function serverKeyToField(key) {
 
 function validateRequiredText(form, errors) {
   const required = {
-    title: 'Title is required.',
-    description: 'Description is required.',
-    workplaceName: 'Workplace name is required.',
-    cityArea: 'City / area is required.',
+    title: t('Title is required.'),
+    description: t('Description is required.'),
+    workplaceName: t('Workplace name is required.'),
+    cityArea: t('City / area is required.'),
   }
   for (const [field, message] of Object.entries(required)) {
     if (!String(form[field] ?? '').trim()) errors[field] = message
@@ -124,43 +125,43 @@ function validateRequiredText(form, errors) {
 
 function validateLocation(form, errors) {
   if (!/^\d{6}$/.test(String(form.pincode ?? '').trim())) {
-    errors.pincode = 'Enter a valid 6-digit pincode.'
+    errors.pincode = t('Enter a valid 6-digit pincode.')
   } else if (!String(form.state ?? '').trim()) {
-    errors.state = 'Please wait for the state to load from the pincode.'
+    errors.state = t('Please wait for the state to load from the pincode.')
   }
   if (hasValidCoordinates(form.latitude, form.longitude) && form.locationSource !== 'Device') {
-    errors.locationSource = 'Confirm the workplace location again before saving.'
+    errors.locationSource = t('Confirm the workplace location again before saving.')
   }
 }
 
 function validateSalary(form, errors) {
   const min = numberOrNull(form.salaryMin)
   const max = numberOrNull(form.salaryMax)
-  if (isNegative(min)) errors.salaryMin = 'Salary cannot be negative.'
-  if (isNegative(max)) errors.salaryMax = 'Salary cannot be negative.'
+  if (isNegative(min)) errors.salaryMin = t('Salary cannot be negative.')
+  if (isNegative(max)) errors.salaryMax = t('Salary cannot be negative.')
   if (min != null && max != null && max < min) {
-    errors.salaryMax = 'Maximum salary must be greater than or equal to minimum salary.'
+    errors.salaryMax = t('Maximum salary must be greater than or equal to minimum salary.')
   }
   if ((min != null || max != null) && !String(form.salaryPeriod ?? '').trim()) {
-    errors.salaryPeriod = 'Select a pay period when you enter a salary.'
+    errors.salaryPeriod = t('Select a pay period when you enter a salary.')
   }
 }
 
 function validateExperience(form, errors) {
   const min = numberOrNull(form.experienceMinYears)
   const max = numberOrNull(form.experienceMaxYears)
-  const message = 'Experience must be between 0 and 60 years.'
+  const message = t('Experience must be between 0 and 60 years.')
   if (isOutsideRange(min, 0, 60)) errors.experienceMinYears = message
   if (isOutsideRange(max, 0, 60)) errors.experienceMaxYears = message
   if (min != null && max != null && max < min) {
-    errors.experienceMaxYears = 'Maximum experience must be greater than or equal to minimum experience.'
+    errors.experienceMaxYears = t('Maximum experience must be greater than or equal to minimum experience.')
   }
   }
 
 function validateOpenings(form, errors) {
   const openings = numberOrNull(form.openings)
   if (isOutsideRange(openings, 1, 10000)) {
-    errors.openings = 'Openings must be between 1 and 10,000.'
+    errors.openings = t('Openings must be between 1 and 10,000.')
   }
 }
 

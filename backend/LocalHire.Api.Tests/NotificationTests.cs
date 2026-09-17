@@ -61,7 +61,7 @@ public sealed class NotificationTests
 
         client.DefaultRequestHeaders.Authorization = Bearer(employerToken);
         Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"/api/hiring/jobs/{job.Id}",
-            new CreateJobPostRequest("Cashier", "Updated front desk duties", "Corner Shop", "Bandra", "Maharashtra", "400050", 0, 0, "Device"))).StatusCode);
+            new CreateJobPostRequest("Cashier", "Updated front desk duties", "Corner Shop", "Bandra", "Maharashtra", "400050", 0, 0, "Device", Version: job.Version))).StatusCode);
 
         client.DefaultRequestHeaders.Authorization = Bearer(workerToken);
         workerNotifications = await client.GetFromJsonAsync<NotificationListResponse>("/api/notifications");

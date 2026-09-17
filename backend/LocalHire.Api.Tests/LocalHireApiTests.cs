@@ -539,7 +539,7 @@ public sealed class LocalHireApiTests
         var update = await client.PutAsJsonAsync($"/api/hiring/jobs/{created.Id}",
             new CreateJobPostRequest("Senior Cashier", "Lead the till", "Corner Shop", "Bandra", "Maharashtra", "400050", 0, 0, "Device",
                 EmploymentType: "PartTime", SalaryMin: 20000, SalaryMax: 30000, SalaryPeriod: "Monthly",
-                RequiredSkills: new List<string> { "Billing" }));
+                RequiredSkills: new List<string> { "Billing" }, Version: created.Version));
         Assert.Equal(HttpStatusCode.OK, update.StatusCode);
         var updated = await update.Content.ReadFromJsonAsync<JobPostResponse>();
         Assert.Equal("Senior Cashier", updated!.Title);

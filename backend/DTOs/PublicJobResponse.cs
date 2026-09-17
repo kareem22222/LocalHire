@@ -1,17 +1,12 @@
 namespace LocalHire.Api.DTOs;
 
-public sealed record JobPostResponse(
+public sealed record PublicJobResponse(
     Guid Id,
-    Guid EmployerId,
     string Title,
     string Description,
     string WorkplaceName,
     string CityArea,
     string? State,
-    string? Pincode,
-    double? Latitude,
-    double? Longitude,
-    string? LocationSource,
     string? EmploymentType,
     decimal? SalaryMin,
     decimal? SalaryMax,
@@ -26,9 +21,4 @@ public sealed record JobPostResponse(
     IReadOnlyList<string> RequiredSkills,
     IReadOnlyList<string> Languages,
     IReadOnlyList<string> Benefits,
-    bool IsActive,
-    int Version,
-    DateTimeOffset CreatedAt,
-    int ApplicationCount,
-    int ShortlistedCount = 0
-);
+    DateTimeOffset CreatedAt);

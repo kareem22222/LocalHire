@@ -49,6 +49,9 @@ public sealed class CachedJobService : IJobService
         GetOrCreateAsync($"employer:{employerId}:job:{id}",
             () => _inner.GetJobAsync(id, employerId, ct));
 
+    public Task<PublicJobResponse> GetPublicJobAsync(Guid id, CancellationToken ct) =>
+        GetOrCreateAsync($"public-job:{id}", () => _inner.GetPublicJobAsync(id, ct));
+
     public async Task<JobPostResponse> UpdateJobAsync(
         Guid id, CreateJobPostRequest request, Guid employerId, CancellationToken ct)
     {

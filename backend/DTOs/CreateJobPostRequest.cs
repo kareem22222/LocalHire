@@ -23,5 +23,6 @@ public sealed record CreateJobPostRequest(
     int? Openings = null,
     List<string>? RequiredSkills = null,
     List<string>? Languages = null,
-    List<string>? Benefits = null
+    List<string>? Benefits = null,
+    int? Version = null
 );

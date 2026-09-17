@@ -20,6 +20,8 @@ public interface IJobService
 
     Task<JobPostResponse> GetJobAsync(Guid id, Guid employerId, CancellationToken ct);
 
+    Task<PublicJobResponse> GetPublicJobAsync(Guid id, CancellationToken ct);
+
     Task<JobPostResponse> UpdateJobAsync(Guid id, CreateJobPostRequest request, Guid employerId, CancellationToken ct);
 
     Task<JobPostResponse> SetJobActiveAsync(Guid id, bool isActive, Guid employerId, CancellationToken ct);

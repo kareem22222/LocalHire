@@ -15,6 +15,7 @@ import BorderGlow from './BorderGlow.vue'
 import CountUp from './CountUp.vue'
 import AnimatedCard from './ui/AnimatedCard.vue'
 import SkeletonShimmer from './ui/SkeletonShimmer.vue'
+import { t } from '../i18n'
 
 const props = defineProps({
   user: { type: Object, default: null },
@@ -112,9 +113,9 @@ const hasMoreJobs = computed(() => !props.loading && !props.listOnly && props.jo
 <template>
   <component :is="listOnly ? 'div' : 'main'" class="hiring-dashboard worker-dashboard">
     <section v-if="!listOnly" class="hiring-metrics">
-      <BorderGlow><strong><CountUp :to="jobs.length" separator="" /></strong><span>matching roles</span></BorderGlow>
-      <BorderGlow><strong><CountUp :to="applications.length" separator="" /></strong><span>applications</span></BorderGlow>
-      <BorderGlow><strong><CountUp :to="profileScore" separator="" suffix="%" /></strong><span>profile score</span></BorderGlow>
+      <BorderGlow><strong><CountUp :to="jobs.length" separator="" /></strong><span>{{ t('matching roles') }}</span></BorderGlow>
+      <BorderGlow><strong><CountUp :to="applications.length" separator="" /></strong><span>{{ t('applications') }}</span></BorderGlow>
+      <BorderGlow><strong><CountUp :to="profileScore" separator="" suffix="%" /></strong><span>{{ t('profile score') }}</span></BorderGlow>
     </section>
 
     <div v-if="!listOnly" class="hiring-side-stack">
@@ -151,10 +152,10 @@ const hasMoreJobs = computed(() => !props.loading && !props.listOnly && props.jo
     <section class="worker-jobs">
       <div class="hiring-roles__head">
         <div>
-          <span class="hiring-kicker">{{ listKicker }}</span>
-          <h2>{{ listTitle }}</h2>
+          <span class="hiring-kicker">{{ t(listKicker) }}</span>
+          <h2>{{ t(listTitle) }}</h2>
         </div>
-        <span class="worker-results">{{ totalJobs ?? jobs.length }} results</span>
+        <span class="worker-results">{{ totalJobs ?? jobs.length }} {{ t('results') }}</span>
       </div>
 
       <form v-if="!listOnly" class="worker-search" @submit.prevent="runSearch">
@@ -164,34 +165,34 @@ const hasMoreJobs = computed(() => !props.loading && !props.listOnly && props.jo
             <input
               v-model="search"
               type="search"
-              placeholder="Search by role, company, area, state, or pincode"
+              :placeholder="t('Search by role, company, area, state, or pincode')"
               aria-label="Search jobs by role or location"
               @input="onSearchInput"
             />
           </div>
-          <button type="submit" class="dash-btn dash-btn--primary worker-search__submit">Search</button>
+          <button type="submit" class="dash-btn dash-btn--primary worker-search__submit">{{ t('Search') }}</button>
         </div>
 
         <div class="worker-search__filters">
           <label class="worker-search__field">
-            <span>Employment type</span>
+            <span>{{ t('Employment type') }}</span>
             <select v-model="employmentType">
               <option v-for="type in employmentTypes" :key="type" :value="type">
-                {{ type === 'All' ? type : EMPLOYMENT_TYPE_LABELS[type] }}
+                {{ t(type === 'All' ? type : EMPLOYMENT_TYPE_LABELS[type]) }}
               </option>
             </select>
           </label>
-          <label class="worker-search__field"><span>Pay period</span><select v-model="salaryPeriod"><option value="">Any period</option><option>Hourly</option><option>Daily</option><option>Weekly</option><option>Monthly</option><option>Annual</option></select></label>
-          <label class="worker-search__field"><span>Minimum pay</span><input v-model="salaryMin" type="number" min="0" inputmode="decimal" placeholder="Any" /></label>
-          <label class="worker-search__field"><span>Maximum pay</span><input v-model="salaryMax" type="number" min="0" inputmode="decimal" placeholder="Any" /></label>
-          <label class="worker-search__field"><span>Your experience</span><input v-model="experienceYears" type="number" min="0" max="60" inputmode="numeric" placeholder="Years" /></label>
-          <label class="worker-search__field"><span>Distance</span><input v-model="maxDistanceKm" type="number" min="1" max="500" inputmode="numeric" placeholder="km" /></label>
+          <label class="worker-search__field"><span>{{ t('Pay period') }}</span><select v-model="salaryPeriod"><option value="">{{ t('Any period') }}</option><option>Hourly</option><option>Daily</option><option>Weekly</option><option>Monthly</option><option>Annual</option></select></label>
+          <label class="worker-search__field"><span>{{ t('Minimum pay') }}</span><input v-model="salaryMin" type="number" min="0" inputmode="decimal" :placeholder="t('Any')" /></label>
+          <label class="worker-search__field"><span>{{ t('Maximum pay') }}</span><input v-model="salaryMax" type="number" min="0" inputmode="decimal" :placeholder="t('Any')" /></label>
+          <label class="worker-search__field"><span>{{ t('Your experience') }}</span><input v-model="experienceYears" type="number" min="0" max="60" inputmode="numeric" :placeholder="t('Years')" /></label>
+          <label class="worker-search__field"><span>{{ t('Distance') }}</span><input v-model="maxDistanceKm" type="number" min="1" max="500" inputmode="numeric" placeholder="km" /></label>
           <button type="button" class="worker-search__location" :disabled="locating" @click="emit('use-my-location')">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.4-7-11a7 7 0 0 1 14 0c0 4.6-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
-            {{ locating ? 'Locating...' : 'Use my location' }}
+            {{ t(locating ? 'Locating...' : 'Use my location') }}
           </button>
           <span class="worker-search__location-label">{{ locationLabel }}</span>
-          <span class="worker-search__location-label">Jobs without salary are excluded only when pay filters are used; unspecified experience remains included.</span>
+          <span class="worker-search__location-label">{{ t('Jobs without salary are excluded only when pay filters are used; unspecified experience remains included.') }}</span>
         </div>
       </form>
 
@@ -212,7 +213,7 @@ const hasMoreJobs = computed(() => !props.loading && !props.listOnly && props.jo
             :aria-label="`View ${job.title} at ${job.workplaceName}`"
             @click.prevent="emit('open-job', job.id)"
           >
-            <span class="worker-job-row__status">Now hiring</span>
+            <span class="worker-job-row__status">{{ t('Now hiring') }}</span>
             <h3>{{ job.title }}</h3>
             <p class="worker-job-row__company">{{ job.workplaceName }} · {{ formatJobLocation(job) }}</p>
             <p class="worker-job-row__description">{{ job.description }}</p>
@@ -220,7 +221,7 @@ const hasMoreJobs = computed(() => !props.loading && !props.listOnly && props.jo
               <span v-if="formatEmploymentType(job)">{{ formatEmploymentType(job) }}</span>
               <span v-if="formatSalary(job)">{{ formatSalary(job) }}</span>
               <span v-if="formatExperience(job)">{{ formatExperience(job) }}</span>
-              <span v-if="!job.locationSource">Distance unavailable</span>
+              <span v-if="!job.locationSource">{{ t('Distance unavailable') }}</span>
             </div>
           </a>
           <div class="worker-job-row__actions">
@@ -232,16 +233,16 @@ const hasMoreJobs = computed(() => !props.loading && !props.listOnly && props.jo
               :disabled="isJobSaved(job.id)"
               @click="toggleSavedJob(job.id)"
             >
-              {{ isJobSaved(job.id) ? 'Saved job' : 'Save job' }}
+              {{ t(isJobSaved(job.id) ? 'Saved job' : 'Save job') }}
             </button>
-            <a class="worker-job-row__details" :href="`/work/jobs/${job.id}`" @click.prevent="emit('open-job', job.id)">View details →</a>
+            <a class="worker-job-row__details" :href="`/work/jobs/${job.id}`" @click.prevent="emit('open-job', job.id)">{{ t('View details') }} →</a>
             <button
               type="button"
               class="dash-btn dash-btn--primary"
               :disabled="hasApplied(job.id) || applying === job.id"
               @click="emit('apply', job.id)"
             >
-              {{ hasApplied(job.id) ? 'Applied' : applying === job.id ? 'Applying...' : 'Apply now' }}
+              {{ t(hasApplied(job.id) ? 'Applied' : applying === job.id ? 'Applying...' : 'Apply now') }}
             </button>
           </div>
         </article>
@@ -249,13 +250,13 @@ const hasMoreJobs = computed(() => !props.loading && !props.listOnly && props.jo
 
       <div v-if="hasMoreJobs" class="worker-show-more">
         <button type="button" class="worker-show-more__btn" @click="emit('view-all-jobs', searchPayload())">
-          Show more roles ({{ jobs.length }} total)
+          {{ t('Show more roles') }} ({{ jobs.length }} {{ t('total') }})
         </button>
       </div>
 
       <div v-if="!loading && !visibleJobs.length" class="candidate-empty">
-        <strong>{{ emptyTitle }}</strong>
-        <p>{{ emptyText }}</p>
+        <strong>{{ t(emptyTitle) }}</strong>
+        <p>{{ t(emptyText) }}</p>
       </div>
 
       <slot />

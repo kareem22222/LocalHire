@@ -10,6 +10,7 @@ import BrandLogo from './BrandLogo.vue'
 import Pagination from './ui/Pagination.vue'
 import WorkerDashboard from './WorkerDashboard.vue'
 import '../hiring-dashboard.css'
+import { t } from '../i18n'
 
 const route = useRoute()
 const router = useRouter()
@@ -51,7 +52,7 @@ async function load() {
       await jobsStore.loadMyApplications()
     })
   } catch {
-    error.value = 'We could not load roles right now. Please try again.'
+    error.value = t('We could not load roles right now. Please try again.')
   } finally {
     loading.value = false
   }
@@ -97,7 +98,7 @@ async function apply(jobId) {
     <header class="dash-header">
       <BrandLogo @click.prevent="router.push('/')" />
       <div class="dash-header__right">
-        <button type="button" class="dash-btn dash-btn--primary" @click="router.push('/')">Back to dashboard</button>
+        <button type="button" class="dash-btn dash-btn--primary" @click="router.push('/')">{{ t('Back to dashboard') }}</button>
       </div>
     </header>
 

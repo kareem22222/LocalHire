@@ -14,6 +14,7 @@ import BrandLogo from './BrandLogo.vue'
 import { apiErrorMessage } from '../utils/apiError.js'
 import { getBusinessProfile } from '../api/jobs.js'
 import AppointmentPanel from './AppointmentPanel.vue'
+import { t } from '../i18n'
 
 const props = defineProps({ id: { type: String, required: true } })
 const router = useRouter()
@@ -109,23 +110,23 @@ async function apply() {
     </header>
 
     <main class="worker-detail-page">
-      <div v-if="loading" class="worker-page-empty">Loading job details...</div>
+      <div v-if="loading" class="worker-page-empty">{{ t('Loading job details...') }}</div>
       <div v-else-if="!job" class="worker-page-empty">
-        <h1>{{ notFound ? 'Job unavailable' : 'Could not load job' }}</h1>
+        <h1>{{ t(notFound ? 'Job unavailable' : 'Could not load job') }}</h1>
         <p>{{ loadError }}</p>
-        <button v-if="!notFound" type="button" class="dash-btn worker-primary" @click="load">Retry</button>
-        <button type="button" class="dash-btn worker-outline" @click="goBack">Back to jobs</button>
+        <button v-if="!notFound" type="button" class="dash-btn worker-primary" @click="load">{{ t('Retry') }}</button>
+        <button type="button" class="dash-btn worker-outline" @click="goBack">{{ t('Back to jobs') }}</button>
       </div>
 
       <template v-else>
         <section class="worker-detail-hero">
           <div>
-            <span class="worker-eyebrow">{{ isOpen ? 'Now hiring' : 'Vacancy closed' }}</span>
+            <span class="worker-eyebrow">{{ t(isOpen ? 'Now hiring' : 'Vacancy closed') }}</span>
             <h1>{{ job.title }}</h1>
             <p>{{ job.workplaceName }} · {{ formatJobLocation(job) }}</p>
           </div>
           <div class="worker-detail-actions">
-            <button type="button" class="dash-btn worker-outline" @click="goBack">Back</button>
+            <button type="button" class="dash-btn worker-outline" @click="goBack">{{ t('Back') }}</button>
             <button
               type="button"
               class="dash-btn worker-outline"
@@ -133,10 +134,10 @@ async function apply() {
               :disabled="isJobSaved(job.id) || !isOpen"
               @click="toggleSavedJob(job.id)"
             >
-              {{ isJobSaved(job.id) ? 'Saved job' : 'Save job' }}
+              {{ t(isJobSaved(job.id) ? 'Saved job' : 'Save job') }}
             </button>
             <button type="button" class="dash-btn worker-primary" :disabled="application || applying || !isOpen" @click="apply">
-              {{ application ? 'Applied' : !isOpen ? 'Closed' : applying ? 'Applying...' : 'Apply now' }}
+              {{ t(application ? 'Applied' : !isOpen ? 'Closed' : applying ? 'Applying...' : 'Apply now') }}
             </button>
             <button
               v-if="['Applied', 'Shortlisted'].includes(application?.status)"
@@ -144,14 +145,14 @@ async function apply() {
               class="dash-btn worker-danger"
               :disabled="withdrawing"
               @click="withdraw"
-            >{{ withdrawing ? 'Withdrawing…' : 'Withdraw' }}</button>
+            >{{ t(withdrawing ? 'Withdrawing' : 'Withdraw') }}</button>
           </div>
         </section>
 
         <p v-if="error" class="worker-detail-error" role="alert">{{ error }}</p>
 
         <section v-if="application" class="worker-application-notice">
-          Application status: <strong>{{ application.status }}</strong>
+          {{ t('Application status') }}: <strong>{{ t(application.status) }}</strong>
           <AppointmentPanel
             v-if="application.id && ['Applied', 'Shortlisted'].includes(application.status)"
             :application-id="application.id"
@@ -159,11 +160,11 @@ async function apply() {
           />
         </section>
         <section v-if="!isOpen" class="worker-application-notice" role="status">
-          This vacancy is closed and no longer accepts applications.
+          {{ t('This vacancy is closed and no longer accepts applications.') }}
         </section>
 
         <section class="worker-detail-card">
-          <h2>About this job</h2>
+          <h2>{{ t('About this job') }}</h2>
           <p class="worker-detail-description">{{ job.description }}</p>
         </section>
 
@@ -177,30 +178,30 @@ async function apply() {
         </section>
 
         <section class="worker-detail-card">
-          <h2>Job details</h2>
+          <h2>{{ t('Job details') }}</h2>
           <dl class="worker-detail-grid">
-            <div v-if="formatEmploymentType(job)"><dt>Employment type</dt><dd>{{ formatEmploymentType(job) }}</dd></div>
-            <div v-if="formatSalary(job)"><dt>Salary</dt><dd>{{ formatSalary(job) }}</dd></div>
-            <div v-if="formatExperience(job)"><dt>Experience</dt><dd>{{ formatExperience(job) }}</dd></div>
-            <div v-if="job.minEducation"><dt>Education</dt><dd>{{ job.minEducation }}</dd></div>
-            <div v-if="formatShift(job)"><dt>Schedule</dt><dd>{{ formatShift(job) }}</dd></div>
-            <div v-if="job.openings"><dt>Openings</dt><dd>{{ job.openings }}</dd></div>
-            <div><dt>Location</dt><dd>{{ formatJobLocation(job) }}</dd></div>
+            <div v-if="formatEmploymentType(job)"><dt>{{ t('Employment type') }}</dt><dd>{{ formatEmploymentType(job) }}</dd></div>
+            <div v-if="formatSalary(job)"><dt>{{ t('Salary') }}</dt><dd>{{ formatSalary(job) }}</dd></div>
+            <div v-if="formatExperience(job)"><dt>{{ t('Experience') }}</dt><dd>{{ formatExperience(job) }}</dd></div>
+            <div v-if="job.minEducation"><dt>{{ t('Education') }}</dt><dd>{{ job.minEducation }}</dd></div>
+            <div v-if="formatShift(job)"><dt>{{ t('Schedule') }}</dt><dd>{{ formatShift(job) }}</dd></div>
+            <div v-if="job.openings"><dt>{{ t('Openings') }}</dt><dd>{{ job.openings }}</dd></div>
+            <div><dt>{{ t('Location') }}</dt><dd>{{ formatJobLocation(job) }}</dd></div>
           </dl>
         </section>
 
         <section v-if="job.requiredSkills?.length || job.languages?.length || job.benefits?.length" class="worker-detail-card">
-          <h2>Requirements and benefits</h2>
+          <h2>{{ t('Requirements and benefits') }}</h2>
           <div v-if="job.requiredSkills?.length" class="worker-detail-group">
-            <h3>Skills</h3>
+            <h3>{{ t('Skills') }}</h3>
             <div class="worker-detail-chips"><span v-for="skill in job.requiredSkills" :key="skill">{{ skill }}</span></div>
           </div>
           <div v-if="job.languages?.length" class="worker-detail-group">
-            <h3>Languages</h3>
+            <h3>{{ t('Languages') }}</h3>
             <div class="worker-detail-chips"><span v-for="language in job.languages" :key="language">{{ language }}</span></div>
           </div>
           <div v-if="job.benefits?.length" class="worker-detail-group">
-            <h3>Benefits</h3>
+            <h3>{{ t('Benefits') }}</h3>
             <div class="worker-detail-chips"><span v-for="benefit in job.benefits" :key="benefit">{{ benefit }}</span></div>
           </div>
         </section>

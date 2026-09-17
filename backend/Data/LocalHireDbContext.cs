@@ -106,6 +106,7 @@ public sealed class LocalHireDbContext(DbContextOptions<LocalHireDbContext> opti
             entity.Property(j => j.State).HasMaxLength(100).IsRequired(false);
             entity.Property(j => j.Pincode).HasMaxLength(6).IsRequired(false);
             entity.Property(j => j.IsActive).HasDefaultValue(true);
+            entity.Property(j => j.Version).HasDefaultValue(1).IsConcurrencyToken();
             entity.Property(j => j.Latitude).IsRequired(false);
             entity.Property(j => j.Longitude).IsRequired(false);
             entity.Property(j => j.LocationSource).HasMaxLength(30).IsRequired(false);

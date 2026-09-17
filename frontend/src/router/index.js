@@ -15,11 +15,13 @@ import SavedCandidatesPage from '../components/SavedCandidatesPage.vue'
 import NotificationsPage from '../components/NotificationsPage.vue'
 import InvitationsPage from '../components/InvitationsPage.vue'
 import NotFoundPage from '../components/NotFoundPage.vue'
+import PublicJobPage from '../components/PublicJobPage.vue'
 import { authRole, hasAuthToken } from '../api/index.js'
 import { normalizeRole } from '../utils/role.js'
 
 const routes = [
   { path: '/', name: 'dashboard', component: AppDashboard },
+  { path: '/public/jobs/:id', name: 'public-job', component: PublicJobPage, props: true, meta: { public: true } },
   { path: '/PostNewJob', name: 'post-new-job', component: PostJobView, meta: { roles: ['hiring'] } },
   { path: '/hiring/roles', name: 'all-roles', component: AllRolesPage, meta: { roles: ['hiring'] } },
   { path: '/hiring/candidates', name: 'all-candidates', component: AllCandidatesPage, meta: { roles: ['hiring'] } },

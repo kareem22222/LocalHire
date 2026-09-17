@@ -10,6 +10,7 @@ import Pagination from './ui/Pagination.vue'
 import SkeletonShimmer from './ui/SkeletonShimmer.vue'
 import AppointmentPanel from './AppointmentPanel.vue'
 import '../hiring-dashboard.css'
+import { formatDate, t } from '../i18n'
 
 const route = useRoute()
 const router = useRouter()
@@ -67,27 +68,27 @@ async function withdraw(application) {
     <main class="applied-page">
       <section class="applied-hero">
         <div class="applied-hero__copy">
-          <span class="applied-kicker">Application journey</span>
-          <h1>Applied jobs</h1>
+          <span class="applied-kicker">{{ t('Application journey') }}</span>
+          <h1>{{ t('Applied jobs') }}</h1>
           <p>Every application, every update, and your next opportunity—all in one clear timeline.</p>
           <button type="button" class="dash-btn applied-outline" @click="router.push('/')">
-            <span aria-hidden="true">←</span> Back to jobs
+            <span aria-hidden="true">←</span> {{ t('Back to jobs') }}
           </button>
         </div>
       </section>
 
       <section class="applied-metrics" aria-label="Application totals">
-        <div style="--metric-index: 0"><span>Total applications</span><strong><CountUp :to="jobsStore.myApplicationsPage.totalCount" separator="" /></strong><i></i></div>
-        <div style="--metric-index: 1"><span>Shortlisted</span><strong><CountUp :to="shortlisted" separator="" /></strong><i></i></div>
-        <div style="--metric-index: 2"><span>Hired</span><strong><CountUp :to="hired" separator="" /></strong><i></i></div>
+        <div style="--metric-index: 0"><span>{{ t('Total applications') }}</span><strong><CountUp :to="jobsStore.myApplicationsPage.totalCount" separator="" /></strong><i></i></div>
+        <div style="--metric-index: 1"><span>{{ t('Shortlisted') }}</span><strong><CountUp :to="shortlisted" separator="" /></strong><i></i></div>
+        <div style="--metric-index: 2"><span>{{ t('Hired') }}</span><strong><CountUp :to="hired" separator="" /></strong><i></i></div>
       </section>
 
       <SkeletonShimmer v-if="loading" variant="job" :count="applications.length || 3" label="Loading applications" />
       <p v-else-if="error" class="applied-error" role="alert">{{ error }}</p>
       <section v-else-if="applications.length" class="applied-journey" aria-label="Your application timeline">
         <div class="applied-journey__head">
-          <div><span class="applied-kicker">Live status</span><h2>Your journey so far</h2></div>
-          <p>{{ jobsStore.myApplicationsPage.totalCount }} {{ jobsStore.myApplicationsPage.totalCount === 1 ? 'role' : 'roles' }} tracked</p>
+          <div><span class="applied-kicker">{{ t('Live status') }}</span><h2>{{ t('Your journey so far') }}</h2></div>
+          <p>{{ jobsStore.myApplicationsPage.totalCount }} {{ t(jobsStore.myApplicationsPage.totalCount === 1 ? 'role' : 'roles') }}</p>
         </div>
 
         <div class="applied-list">
@@ -109,7 +110,7 @@ async function withdraw(application) {
             <div class="applied-card__identity">
               <div class="applied-card__topline">
                 <span class="applied-card__number">{{ String((currentPage - 1) * MAX_VISIBLE_JOBS + index + 1).padStart(2, '0') }}</span>
-                <span class="applied-card__status" :class="`applied-card__status--${application.status.toLowerCase()}`">{{ application.status }}</span>
+                <span class="applied-card__status" :class="`applied-card__status--${application.status.toLowerCase()}`">{{ t(application.status) }}</span>
               </div>
               <h2>{{ application.jobTitle }}</h2>
               <p>{{ application.workplaceName }} · {{ application.cityArea }}</p>
@@ -122,17 +123,17 @@ async function withdraw(application) {
                 max="100"
                 :value="applicationStatusDisplay(application.status).progress"
               ></progress>
-              <div class="applied-card__milestones"><span>Applied</span><strong>{{ applicationStatusDisplay(application.status).milestone }}</strong></div>
+              <div class="applied-card__milestones"><span>{{ t('Applied') }}</span><strong>{{ applicationStatusDisplay(application.status).milestone }}</strong></div>
             </div>
 
             <div class="applied-card__summary">
-              <span><strong>Latest update</strong><small>Updated {{ new Date(application.statusUpdatedAt || application.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' }) }}</small></span>
+              <span><strong>{{ t('Latest update') }}</strong><small>{{ t('Updated') }} {{ formatDate(application.statusUpdatedAt || application.createdAt) }}</small></span>
               <p>{{ applicationStatusDisplay(application.status).summary }}</p>
-              <b class="applied-card__link">View job <span aria-hidden="true">→</span></b>
+              <b class="applied-card__link">{{ t('View job') }} <span aria-hidden="true">→</span></b>
             </div>
           </a>
           <div v-if="['Applied', 'Shortlisted'].includes(application.status)" class="applied-entry__actions">
-            <button type="button" class="applied-withdraw" :disabled="withdrawing === application.id" @click="withdraw(application)">{{ withdrawing === application.id ? 'Withdrawing…' : 'Withdraw application' }}</button>
+            <button type="button" class="applied-withdraw" :disabled="withdrawing === application.id" @click="withdraw(application)">{{ t(withdrawing === application.id ? 'Withdrawing' : 'Withdraw application') }}</button>
             <AppointmentPanel :application-id="application.id" role="work" />
           </div>
           </div>
@@ -142,9 +143,9 @@ async function withdraw(application) {
 
       <div v-else class="applied-empty">
         <span aria-hidden="true">◎</span>
-        <h2>No applications yet</h2>
-        <p>Find a nearby role that feels right and start your journey.</p>
-        <button type="button" class="dash-btn applied-primary" @click="router.push('/')">Explore local jobs</button>
+        <h2>{{ t('No applications yet') }}</h2>
+        <p>{{ t('Find a nearby role that feels right and start your journey.') }}</p>
+        <button type="button" class="dash-btn applied-primary" @click="router.push('/')">{{ t('Explore local jobs') }}</button>
       </div>
     </main>
   </div>
