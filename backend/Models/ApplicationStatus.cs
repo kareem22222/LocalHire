@@ -5,5 +5,6 @@ public enum ApplicationStatus
     Applied,
     Shortlisted,
     Rejected,
-    Hired
+    Hired,
+    Withdrawn
 }

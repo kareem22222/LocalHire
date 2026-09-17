@@ -4,7 +4,7 @@ import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { isAuthenticated } from './api'
 import AuthModal from './components/AuthModal.vue'
 import BrandLogo from './components/BrandLogo.vue'
@@ -21,6 +21,7 @@ import { useProfileStore } from './stores/profile'
 import { useNotificationsStore } from './stores/notifications'
 import { normalizeRole } from './utils/role'
 import { logout } from './utils/session'
+import { locale, setLocale, t } from './i18n'
 gsap.registerPlugin(ScrollTrigger)
 
 const showModal = ref(false)
@@ -34,46 +35,52 @@ const statsRef = ref(null)
 const ctaRef = ref(null)
 const heroContentRef = ref(null)
 const showPrivacyPolicy = ref(false)
+const authChecking = ref(true)
+const authError = ref('')
+const pendingReturnPath = ref('/')
 const router = useRouter()
+const route = useRoute()
 const profileStore = useProfileStore()
 const notificationsStore = useNotificationsStore()
 const { profile: authUser } = storeToRefs(profileStore)
+const isPublicRoute = computed(() => route.meta.public === true)
 
-const navItems = [
-  { label: 'Find work', links: [{ label: 'Browse nearby roles', action: 'candidate' }, { label: 'Build your profile', action: 'candidate' }] },
-  { label: 'Hire local', links: [{ label: 'Post a role', action: 'employer' }, { label: 'Meet local talent', action: 'employer' }] },
-  { label: 'Explore', links: [{ label: 'Network momentum', target: 'network-momentum' }] },
-]
-const sectionItems = [
-  { label: 'Start', target: 'home' },
-  { label: 'Momentum', target: 'network-momentum' },
-  { label: 'Join', target: 'join' },
-]
+const navItems = computed(() => [
+  { label: t('Find work'), links: [{ label: t('Browse nearby roles'), action: 'candidate' }, { label: t('Build your profile'), action: 'candidate' }] },
+  { label: t('Hire local'), links: [{ label: t('Post a role'), action: 'employer' }, { label: t('Meet local talent'), action: 'employer' }] },
+  { label: t('Explore'), links: [{ label: t('Network momentum'), target: 'network-momentum' }] },
+])
+const sectionItems = computed(() => [
+  { label: t('Start'), target: 'home' },
+  { label: t('Momentum'), target: 'network-momentum' },
+  { label: t('Join'), target: 'join' },
+])
 const authRoleByAction = { candidate: 'LookingForWork', employer: 'Hiring' }
 const authMenuItems = computed(() => {
   const role = normalizeRole(authUser.value?.role)
   if (role === 'hiring') return [
-    { label: 'Dashboard', path: '/' },
-    { label: 'Open roles', path: '/hiring/roles' },
-    { label: 'Talent', path: '/hiring/candidates' },
-    { label: 'Saved candidates', path: '/hiring/saved-candidates' },
-    { label: 'Shortlists', path: '/hiring/shortlists' },
+    { label: t('Dashboard'), path: '/' },
+    { label: t('Open roles'), path: '/hiring/roles' },
+    { label: t('Talent'), path: '/hiring/candidates' },
+    { label: t('Saved candidates'), path: '/hiring/saved-candidates' },
+    { label: t('Shortlists'), path: '/hiring/shortlists' },
   ]
   if (role === 'worker') return [
-    { label: 'Dashboard', path: '/' },
-    { label: 'Applications', path: '/work/applications' },
-    { label: 'Saved jobs', path: '/work/saved-jobs' },
+    { label: t('Dashboard'), path: '/' },
+    { label: t('Applications'), path: '/work/applications' },
+    { label: t('Invitations'), path: '/work/invitations' },
+    { label: t('Saved jobs'), path: '/work/saved-jobs' },
   ]
-  return [{ label: 'Dashboard', path: '/' }]
+  return [{ label: t('Dashboard'), path: '/' }]
 })
 const authAccount = computed(() => ({
   name: authUser.value?.name || 'Your account',
   detail: authUser.value?.email || (normalizeRole(authUser.value?.role) === 'hiring' ? 'Hiring workspace' : 'Local work profile'),
 }))
-const quickDockItems = [
-  { label: 'Back to top', icon: '↑', target: 'home' },
-  { label: 'Join LocalHire', icon: '+', target: 'join' },
-]
+const quickDockItems = computed(() => [
+  { label: t('Back to top'), icon: '↑', target: 'home' },
+  { label: t('Join LocalHire'), icon: '+', target: 'join' },
+])
 
 let ctx
 
@@ -90,6 +97,11 @@ function openModal(email = '', role = '',initialMode='register') {
   showModal.value = true
 }
 
+function requestPublicAuth({ role = 'LookingForWork', mode = 'login' } = {}) {
+  pendingReturnPath.value = route.fullPath
+  openModal('', role, mode)
+}
+
 function showSignupConfetti() {
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
   [
@@ -101,12 +113,30 @@ function showSignupConfetti() {
 }
 
 async function onAuthSuccess({ mode } = {}) {
-  await router.replace('/')
   cleanupLandingAnimations()
   isAuth.value = true
   showModal.value = false
-  profileStore.fetchProfile().catch(() => {})
+  await profileStore.fetchProfile().catch(() => {})
+  await router.replace(pendingReturnPath.value)
+  pendingReturnPath.value = '/'
   if (mode === 'register') showSignupConfetti()
+}
+
+async function checkAuthentication() {
+  authChecking.value = true
+  authError.value = ''
+  isAuth.value = await isAuthenticated()
+  authChecking.value = false
+  if (isAuth.value === null) {
+    authError.value = 'We could not check your session. Check your connection and try again.'
+    return
+  }
+  if (isAuth.value) {
+    await profileStore.fetchProfile().catch(() => {})
+    return
+  }
+  const path = router.currentRoute.value.fullPath
+  pendingReturnPath.value = path.startsWith('/') && !path.startsWith('//') ? path : '/'
 }
 
 function handleCtaSubmit() {
@@ -142,11 +172,8 @@ function scrollToTop() {
 }
 
 onMounted(async () => {
-  isAuth.value = await isAuthenticated()
-  if (isAuth.value) {
-    await profileStore.fetchProfile().catch(() => {})
-    return
-  }
+  await checkAuthentication()
+  if (isAuth.value !== false || isPublicRoute.value) return
 
   ctx = gsap.context(() => {
     // Hero entrance
@@ -208,15 +235,22 @@ onUnmounted(() => {
 </script>
 
 <template>
+ <label class="language-switcher">
+  <span>{{ t('Language') }}</span>
+  <select :value="locale" @change="setLocale($event.target.value)">
+    <option value="en">{{ t('English') }}</option>
+    <option value="hi">{{ t('Hindi') }}</option>
+  </select>
+ </label>
  <CardNav
-  v-if="isAuth === false && !showPrivacyPolicy"
+  v-if="isAuth === false && !showPrivacyPolicy && !isPublicRoute"
   :items="navItems"
   @select="handleNav"
   @cta="openModal('', 'LookingForWork', 'login')"
  />
  <StaggeredMenu v-if="isAuth === true" :items="authMenuItems" :account="authAccount" @select="handleAuthNav" />
  <NotificationCenter v-if="isAuth === true" />
- <Dock v-if="isAuth === false && !showPrivacyPolicy" class="quick-dock" :items="quickDockItems" @select="handleNav" />
+ <Dock v-if="isAuth === false && !showPrivacyPolicy && !isPublicRoute" class="quick-dock" :items="quickDockItems" @select="handleNav" />
 
  <AuthModal
   v-if="showModal"
@@ -227,7 +261,15 @@ onUnmounted(() => {
   @success="onAuthSuccess"
 />
 
-<router-view v-if="isAuth === true" />
+<router-view v-if="isAuth === true || isPublicRoute" v-slot="{ Component }">
+  <component :is="Component" @request-auth="requestPublicAuth" />
+</router-view>
+
+<main v-if="!authChecking && isAuth === null" class="auth-check-error" role="alert">
+  <h1>LocalHire is temporarily unavailable</h1>
+  <p>{{ authError }}</p>
+  <button type="button" class="cta-button" @click="checkAuthentication">Retry</button>
+</main>
 
 <PrivacyPolicy
   v-if="showPrivacyPolicy"
@@ -235,7 +277,7 @@ onUnmounted(() => {
 />
 
 <div
-  v-if="isAuth === false && !showPrivacyPolicy"
+  v-if="isAuth === false && !showPrivacyPolicy && !isPublicRoute"
   class="app-shell"
 >
     <NetworkBackground />

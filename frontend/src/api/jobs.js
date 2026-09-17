@@ -23,6 +23,14 @@ export function updateJob(id, payload) {
   return api.put(`/hiring/jobs/${id}`, payload)
 }
 
+export function setJobActive(id, isActive) {
+  return api.patch(`/hiring/jobs/${id}/status`, { isActive })
+}
+
+export function getPublicJob(id) {
+  return api.get(`/public/jobs/${id}`, { skipAuthReload: true })
+}
+
 export function getJobApplications(jobId) {
   return api.get(`/hiring/jobs/${jobId}/applications`)
 }
@@ -75,6 +83,10 @@ export function removeSavedCandidate(workerId) {
   return api.delete(`/hiring/saved-candidates/${workerId}`)
 }
 
+export function inviteCandidate(workerId, jobPostId) {
+  return api.post(`/hiring/candidates/${workerId}/invitations`, { jobPostId })
+}
+
 // --- Worker ---
 export function getNearbyJobs(params = {}) {
   return api.get('/work/jobs/nearby', { params })
@@ -88,6 +100,10 @@ export function getWorkerJob(id) {
   return api.get(`/work/jobs/${id}`)
 }
 
+export function getBusinessProfile(employerId) {
+  return api.get(`/work/businesses/${employerId}`)
+}
+
 export function applyToJob(jobId) {
   return api.post(`/work/jobs/${jobId}/apply`)
 }
@@ -98,6 +114,38 @@ export function getMyApplications() {
 
 export function getMyApplicationsPaged(params = {}) {
   return api.get('/work/applications/paged', { params })
+}
+
+export function withdrawApplication(applicationId) {
+  return api.post(`/work/applications/${applicationId}/withdraw`)
+}
+
+export function getMyInvitations() {
+  return api.get('/work/invitations')
+}
+
+export function declineInvitation(invitationId) {
+  return api.post(`/work/invitations/${invitationId}/decline`)
+}
+
+export function getAppointment(applicationId, role = 'work') {
+  return api.get(`/${role}/applications/${applicationId}/appointment`)
+}
+
+export function setAppointment(applicationId, payload, role = 'work') {
+  return api.put(`/${role}/applications/${applicationId}/appointment`, payload)
+}
+
+export function confirmAppointment(applicationId, role = 'work') {
+  return api.post(`/${role}/applications/${applicationId}/appointment/confirm`)
+}
+
+export function cancelAppointment(applicationId, role = 'work') {
+  return api.post(`/${role}/applications/${applicationId}/appointment/cancel`)
+}
+
+export function downloadAppointment(applicationId, role = 'work') {
+  return api.get(`/${role}/applications/${applicationId}/appointment.ics`, { responseType: 'blob' })
 }
 
 export function getSavedJobs() {

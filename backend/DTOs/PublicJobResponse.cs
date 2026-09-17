@@ -1,0 +1,24 @@
+namespace LocalHire.Api.DTOs;
+
+public sealed record PublicJobResponse(
+    Guid Id,
+    string Title,
+    string Description,
+    string WorkplaceName,
+    string CityArea,
+    string? State,
+    string? EmploymentType,
+    decimal? SalaryMin,
+    decimal? SalaryMax,
+    string? SalaryPeriod,
+    string? MinEducation,
+    int? ExperienceMinYears,
+    int? ExperienceMaxYears,
+    string? WorkingDays,
+    string? ShiftStartTime,
+    string? ShiftEndTime,
+    int? Openings,
+    IReadOnlyList<string> RequiredSkills,
+    IReadOnlyList<string> Languages,
+    IReadOnlyList<string> Benefits,
+    DateTimeOffset CreatedAt);

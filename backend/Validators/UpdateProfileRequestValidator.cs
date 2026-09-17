@@ -22,6 +22,7 @@ public sealed class UpdateProfileRequestValidator : AbstractValidator<UpdateProf
         ConfigureEducationHistory();
         ConfigureSkillsAndLanguages();
         ConfigureCredentials();
+        ConfigureBusinessDetails();
     }
 
     private void ConfigurePersonalDetails()
@@ -182,6 +183,14 @@ public sealed class UpdateProfileRequestValidator : AbstractValidator<UpdateProf
             entry.RuleFor(x => x).Must(x => x.IssueDate is null || x.ExpiryDate is null || x.ExpiryDate >= x.IssueDate)
                 .WithMessage("Credential expiry date cannot be before the issue date.");
         });
+    }
+
+    private void ConfigureBusinessDetails()
+    {
+        RuleFor(x => x.BusinessName).MaximumLength(200).When(x => !string.IsNullOrWhiteSpace(x.BusinessName));
+        RuleFor(x => x.BusinessDescription).MaximumLength(1000).When(x => !string.IsNullOrWhiteSpace(x.BusinessDescription));
+        RuleFor(x => x.BusinessLocation).MaximumLength(300).When(x => !string.IsNullOrWhiteSpace(x.BusinessLocation));
+        RuleFor(x => x.BusinessContact).MaximumLength(200).When(x => !string.IsNullOrWhiteSpace(x.BusinessContact));
     }
 
     private static bool IsHttpUrl(string? value) =>

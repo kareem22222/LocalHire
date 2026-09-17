@@ -1,5 +1,6 @@
 // Pure, presentation-only formatters for job data. Kept out of components so the
 // same display logic can be reused and unit-tested in isolation (SRP).
+import { formatNumber, t } from '../i18n'
 
 export const MAX_VISIBLE_CANDIDATES = 10
 export const MAX_VISIBLE_ROLES = 6
@@ -22,12 +23,12 @@ export const EMPLOYMENT_TYPE_LABELS = {
 
 export function formatEmploymentType(job) {
   if (!job.employmentType) return ''
-  return EMPLOYMENT_TYPE_LABELS[job.employmentType] || job.employmentType
+  return t(EMPLOYMENT_TYPE_LABELS[job.employmentType] || job.employmentType)
 }
 
 export function formatSalary(job) {
   if (job.salaryMin == null && job.salaryMax == null) return ''
-  const money = (n) => `₹${Number(n).toLocaleString('en-IN')}`
+  const money = (n) => `₹${formatNumber(Number(n))}`
   const range = job.salaryMin != null && job.salaryMax != null
     ? `${money(job.salaryMin)} – ${money(job.salaryMax)}`
     : money(job.salaryMin ?? job.salaryMax)
@@ -78,12 +79,18 @@ const APPLICATION_STATUS_DISPLAY = {
     progress: 100,
     milestone: 'Hired',
   },
+  Withdrawn: {
+    summary: 'You withdrew this application. The original record remains for your history.',
+    progress: 100,
+    milestone: 'Withdrawn',
+  },
 }
 
 export function applicationStatusDisplay(status) {
-  return APPLICATION_STATUS_DISPLAY[status] ?? {
+  const display = APPLICATION_STATUS_DISPLAY[status] ?? {
     summary: 'Your application status was updated.',
     progress: 50,
     milestone: 'Status updated',
   }
+  return { ...display, summary: t(display.summary), milestone: t(display.milestone) }
 }

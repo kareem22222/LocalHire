@@ -52,6 +52,10 @@ public sealed class LocalHireApiTests
             .IsValid);
 
         Assert.True(new CreateJobPostRequestValidator()
+            .Validate(new CreateJobPostRequest("Cashier", "Front desk", "Corner Shop", "Bandra", "Maharashtra", "400050", 0, 0, "Device"))
+            .IsValid);
+
+        Assert.False(new CreateJobPostRequestValidator()
             .Validate(new CreateJobPostRequest("Cashier", "Front desk", "Corner Shop", "Bandra", "Maharashtra", "400050", 0, 0))
             .IsValid);
 
@@ -178,7 +182,7 @@ public sealed class LocalHireApiTests
 
         var request = new CreateJobPostRequest(
             "Store Associate", "Handle billing and stock", "FreshMart", "Indiranagar",
-            State: "Karnataka", Pincode: "560038", Latitude: 12.971, Longitude: 77.641,
+            State: "Karnataka", Pincode: "560038", Latitude: 12.971, Longitude: 77.641, LocationSource: "Device",
             EmploymentType: "FullTime", SalaryMin: 18000, SalaryMax: 26000, SalaryPeriod: "Monthly",
             MinEducation: "12th pass", ExperienceMinYears: 1, ExperienceMaxYears: 4,
             WorkingDays: "Mon-Sat", ShiftStartTime: "09:30", ShiftEndTime: "18:30", Openings: 3,
@@ -267,14 +271,15 @@ public sealed class LocalHireApiTests
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/work/jobs/nearby")).StatusCode);
 
         var createJob = await client.PostAsJsonAsync("/api/hiring/jobs",
-            new CreateJobPostRequest("Cashier", "Front desk", "Corner Shop", "Bandra", "Maharashtra", "400050", 0, 0));
+            new CreateJobPostRequest("Cashier", "Front desk", "Corner Shop", "Bandra", "Maharashtra", "400050", 0, 0, "Device"));
         Assert.Equal(HttpStatusCode.Created, createJob.StatusCode);
         var job = await createJob.Content.ReadFromJsonAsync<JobPostResponse>();
         Assert.Equal("Maharashtra", job!.State);
         Assert.Equal("400050", job.Pincode);
+        Assert.Equal("Device", job.LocationSource);
 
         var createFarJob = await client.PostAsJsonAsync("/api/hiring/jobs",
-            new CreateJobPostRequest("Remote cashier", "Back office", "Far Shop", "Far Town", "Delhi", "110001", 80, 0));
+            new CreateJobPostRequest("Remote cashier", "Back office", "Far Shop", "Far Town", "Delhi", "110001", 80, 0, "Device"));
         Assert.Equal(HttpStatusCode.Created, createFarJob.StatusCode);
         var farJob = await createFarJob.Content.ReadFromJsonAsync<JobPostResponse>();
 
@@ -517,7 +522,7 @@ public sealed class LocalHireApiTests
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var create = await client.PostAsJsonAsync("/api/hiring/jobs",
-            new CreateJobPostRequest("Cashier", "Front desk", "Corner Shop", "Bandra", "Maharashtra", "400050", 0, 0,
+            new CreateJobPostRequest("Cashier", "Front desk", "Corner Shop", "Bandra", "Maharashtra", "400050", 0, 0, "Device",
                 EmploymentType: "FullTime", SalaryMin: 15000, SalaryMax: 25000, SalaryPeriod: "Monthly"));
         Assert.Equal(HttpStatusCode.Created, create.StatusCode);
         var created = await create.Content.ReadFromJsonAsync<JobPostResponse>();
@@ -532,9 +537,9 @@ public sealed class LocalHireApiTests
 
         // PUT updates the job and returns the new values.
         var update = await client.PutAsJsonAsync($"/api/hiring/jobs/{created.Id}",
-            new CreateJobPostRequest("Senior Cashier", "Lead the till", "Corner Shop", "Bandra", "Maharashtra", "400050", 0, 0,
+            new CreateJobPostRequest("Senior Cashier", "Lead the till", "Corner Shop", "Bandra", "Maharashtra", "400050", 0, 0, "Device",
                 EmploymentType: "PartTime", SalaryMin: 20000, SalaryMax: 30000, SalaryPeriod: "Monthly",
-                RequiredSkills: new List<string> { "Billing" }));
+                RequiredSkills: new List<string> { "Billing" }, Version: created.Version));
         Assert.Equal(HttpStatusCode.OK, update.StatusCode);
         var updated = await update.Content.ReadFromJsonAsync<JobPostResponse>();
         Assert.Equal("Senior Cashier", updated!.Title);
@@ -553,7 +558,7 @@ public sealed class LocalHireApiTests
 
         // Updating an unknown job -> 404.
         var missing = await client.PutAsJsonAsync($"/api/hiring/jobs/{Guid.NewGuid()}",
-            new CreateJobPostRequest("Cashier", "Front desk", "Corner Shop", "Bandra", "Maharashtra", "400050", 0, 0));
+            new CreateJobPostRequest("Cashier", "Front desk", "Corner Shop", "Bandra", "Maharashtra", "400050", 0, 0, "Device"));
         Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
 
         // A worker account cannot read or update hiring jobs.
@@ -563,7 +568,7 @@ public sealed class LocalHireApiTests
 
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"/api/hiring/jobs/{created.Id}")).StatusCode);
         var workerUpdate = await client.PutAsJsonAsync($"/api/hiring/jobs/{created.Id}",
-            new CreateJobPostRequest("Hacked", "x", "y", "z", "Maharashtra", "400050", 0, 0));
+            new CreateJobPostRequest("Hacked", "x", "y", "z", "Maharashtra", "400050", 0, 0, "Device"));
         Assert.Equal(HttpStatusCode.Forbidden, workerUpdate.StatusCode);
     }
 
@@ -581,7 +586,7 @@ public sealed class LocalHireApiTests
         // Hiring creates a job.
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", hiringToken);
         var createJob = await client.PostAsJsonAsync("/api/hiring/jobs",
-            new CreateJobPostRequest("Cashier", "Front desk", "Corner Shop", "Bandra", "Maharashtra", "400050", 0, 0));
+            new CreateJobPostRequest("Cashier", "Front desk", "Corner Shop", "Bandra", "Maharashtra", "400050", 0, 0, "Device"));
         var job = await createJob.Content.ReadFromJsonAsync<JobPostResponse>();
 
         // Applications for an unknown job -> 404; for a real job with none -> empty.
@@ -632,6 +637,61 @@ public sealed class LocalHireApiTests
     }
 
     [Fact]
+    public async Task Employer_can_close_and_reopen_a_job_while_applicants_keep_access()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient();
+        await Register(client, "Owner", "close-owner@example.com", "Hiring");
+        await Register(client, "Other", "close-other@example.com", "Hiring");
+        await Register(client, "Applicant", "close-applicant@example.com", "LookingForWork");
+        await Register(client, "New worker", "close-new@example.com", "LookingForWork");
+
+        var ownerToken = await Login(client, "close-owner@example.com", "Hiring");
+        var otherToken = await Login(client, "close-other@example.com", "Hiring");
+        var applicantToken = await Login(client, "close-applicant@example.com", "LookingForWork");
+        var newWorkerToken = await Login(client, "close-new@example.com", "LookingForWork");
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", ownerToken);
+        var job = (await (await client.PostAsJsonAsync("/api/hiring/jobs",
+            new CreateJobPostRequest("Cashier", "Front desk", "Corner Shop", "Bandra")))
+            .Content.ReadFromJsonAsync<JobPostResponse>())!;
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", applicantToken);
+        Assert.Equal(HttpStatusCode.Created,
+            (await client.PostAsync($"/api/work/jobs/{job.Id}/apply", null)).StatusCode);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", otherToken);
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await client.PatchAsJsonAsync($"/api/hiring/jobs/{job.Id}/status",
+                new UpdateJobStatusRequest(false))).StatusCode);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", ownerToken);
+        var closedResponse = await client.PatchAsJsonAsync($"/api/hiring/jobs/{job.Id}/status",
+            new UpdateJobStatusRequest(false));
+        Assert.Equal(HttpStatusCode.OK, closedResponse.StatusCode);
+        Assert.False((await closedResponse.Content.ReadFromJsonAsync<JobPostResponse>())!.IsActive);
+        Assert.Equal(HttpStatusCode.OK,
+            (await client.PatchAsJsonAsync($"/api/hiring/jobs/{job.Id}/status",
+                new UpdateJobStatusRequest(false))).StatusCode);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", applicantToken);
+        Assert.False((await client.GetFromJsonAsync<JobPostResponse>($"/api/work/jobs/{job.Id}"))!.IsActive);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", newWorkerToken);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/work/jobs/{job.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await client.PostAsync($"/api/work/jobs/{job.Id}/apply", null)).StatusCode);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", ownerToken);
+        var reopened = await client.PatchAsJsonAsync($"/api/hiring/jobs/{job.Id}/status",
+            new UpdateJobStatusRequest(true));
+        Assert.True((await reopened.Content.ReadFromJsonAsync<JobPostResponse>())!.IsActive);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", newWorkerToken);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/work/jobs/{job.Id}")).StatusCode);
+    }
+
+    [Fact]
     public async Task Nearby_matches_jobs_across_the_antimeridian()
     {
         using var factory = new ApiFactory();
@@ -645,7 +705,7 @@ public sealed class LocalHireApiTests
         // Job sits just west of the +180° meridian.
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", hiringToken);
         var create = await client.PostAsJsonAsync("/api/hiring/jobs",
-            new CreateJobPostRequest("Dock hand", "Port work", "Harbour", "Taveuni", "Fiji", "111111", 0, 179.95));
+            new CreateJobPostRequest("Dock hand", "Port work", "Harbour", "Taveuni", "Fiji", "111111", 0, 179.95, "Device"));
         Assert.Equal(HttpStatusCode.Created, create.StatusCode);
         var job = await create.Content.ReadFromJsonAsync<JobPostResponse>();
 

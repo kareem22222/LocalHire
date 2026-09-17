@@ -13,9 +13,6 @@ public sealed record CandidateResponse(
     string? Role,
     string? Area,
     string? State,
-    string? Pincode,
-    double? Latitude,
-    double? Longitude,
     double? DistanceKm,
     int MatchScore
 );

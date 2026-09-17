@@ -32,12 +32,12 @@ public sealed class CandidateSearchTests
         var byState = await GetCandidates(client, "/api/hiring/candidates/nearby");
         Assert.NotEmpty(byState);
         Assert.All(byState, c => Assert.Equal("Karnataka", c.State));
-        Assert.Contains(byState, c => c.Pincode == "560038");
-        Assert.DoesNotContain(byState, c => c.Pincode == "500081");
+        Assert.Contains(byState, c => c.Name == "Bengaluru Cashier");
+        Assert.DoesNotContain(byState, c => c.Name == "Hyderabad Driver");
 
         // 2) A far pincode still surfaces because a typed term overrides the state default.
         var byPincode = await GetCandidates(client, "/api/hiring/candidates/nearby?search=500081");
-        Assert.Contains(byPincode, c => c.Pincode == "500081");
+        Assert.Contains(byPincode, c => c.Name == "Hyderabad Driver");
 
         // 3) Searching by state name works too.
         var byStateName = await GetCandidates(client, "/api/hiring/candidates/nearby?search=telangana");
@@ -61,13 +61,13 @@ public sealed class CandidateSearchTests
 
         // Coordinates without a term restrict results to the local radius (Bengaluru).
         var byRadius = await GetCandidates(client, "/api/hiring/candidates/nearby?lat=12.97&lng=77.64");
-        Assert.Contains(byRadius, c => c.Pincode == "560038");
-        Assert.DoesNotContain(byRadius, c => c.Pincode == "500081");
+        Assert.Contains(byRadius, c => c.Name == "Bengaluru Cashier");
+        Assert.DoesNotContain(byRadius, c => c.Name == "Hyderabad Driver");
         Assert.All(byRadius, c => Assert.NotNull(c.DistanceKm));
 
         // Coordinates + a term: the far Hyderabad match still surfaces, with a real distance.
         var radiusPlusSearch = await GetCandidates(client, "/api/hiring/candidates/nearby?lat=12.97&lng=77.64&search=500081");
-        var hyderabad = radiusPlusSearch.Single(c => c.Pincode == "500081");
+        var hyderabad = radiusPlusSearch.Single(c => c.Name == "Hyderabad Driver");
         Assert.NotNull(hyderabad.DistanceKm);
         Assert.True(hyderabad.DistanceKm > 50);
 
@@ -121,7 +121,7 @@ public sealed class CandidateSearchTests
     }
 
     [Fact]
-    public async Task Coordinate_text_search_caps_the_ranked_candidate_set()
+    public async Task Coordinate_text_search_ranks_the_complete_candidate_set()
     {
         using var factory = new ApiFactory();
         using var client = factory.CreateClient();
@@ -131,8 +131,8 @@ public sealed class CandidateSearchTests
         var result = (await client.GetFromJsonAsync<PagedResponse<CandidateResponse>>(
             "/api/hiring/candidates/search?lat=12.97&lng=77.64&search=Nearby&page=1&pageSize=100"))!;
 
-        Assert.Equal(200, result.TotalCount);
-        Assert.Equal(2, result.TotalPages);
+        Assert.Equal(205, result.TotalCount);
+        Assert.Equal(3, result.TotalPages);
         Assert.Equal(100, result.Items.Count);
     }
 

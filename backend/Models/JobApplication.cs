@@ -15,4 +15,5 @@ public sealed class JobApplication
 
     public JobPost JobPost { get; set; } = null!;
     public User Worker { get; set; } = null!;
+    public ApplicationAppointment? Appointment { get; set; }
 }

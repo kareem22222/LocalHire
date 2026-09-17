@@ -64,7 +64,10 @@ async function selectNotification(notification) {
         </div>
 
         <p v-if="store.loading && !store.items.length" class="notifications-page__state">Loading notifications…</p>
-        <p v-else-if="store.error && !store.items.length" class="notifications-page__state" role="alert">{{ store.error }}</p>
+        <div v-else-if="store.error && !items.length" class="notifications-page__state" role="alert">
+          <p>{{ store.error }}</p>
+          <button type="button" class="notifications-page__mark-all" @click="load">Retry</button>
+        </div>
         <p v-else-if="!items.length" class="notifications-page__state">{{ status === 'unread' ? 'You are all caught up.' : 'No read notifications yet.' }}</p>
         <div v-else class="notifications-page__list">
           <button v-for="notification in items" :key="notification.id" type="button" class="notifications-page__item" :class="{ unread: !notification.isRead }" @click="selectNotification(notification)">

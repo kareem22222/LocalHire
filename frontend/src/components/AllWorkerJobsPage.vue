@@ -10,6 +10,7 @@ import BrandLogo from './BrandLogo.vue'
 import Pagination from './ui/Pagination.vue'
 import WorkerDashboard from './WorkerDashboard.vue'
 import '../hiring-dashboard.css'
+import { t } from '../i18n'
 
 const route = useRoute()
 const router = useRouter()
@@ -33,6 +34,9 @@ function buildParams() {
   }
   if (route.query.search) params.search = route.query.search.toString()
   if (route.query.employmentType) params.employmentType = route.query.employmentType.toString()
+  for (const key of ['salaryPeriod', 'salaryMin', 'salaryMax', 'experienceYears', 'maxDistanceKm']) {
+    if (route.query[key]) params[key] = route.query[key].toString()
+  }
   params.page = currentPage.value
   params.pageSize = MAX_VISIBLE_JOBS
   return params
@@ -48,7 +52,7 @@ async function load() {
       await jobsStore.loadMyApplications()
     })
   } catch {
-    error.value = 'We could not load roles right now. Please try again.'
+    error.value = t('We could not load roles right now. Please try again.')
   } finally {
     loading.value = false
   }
@@ -56,7 +60,15 @@ async function load() {
 
 onMounted(load)
 watch(currentPage, load)
-watch([() => route.query.search, () => route.query.employmentType], async () => {
+watch([
+  () => route.query.search,
+  () => route.query.employmentType,
+  () => route.query.salaryPeriod,
+  () => route.query.salaryMin,
+  () => route.query.salaryMax,
+  () => route.query.experienceYears,
+  () => route.query.maxDistanceKm,
+], async () => {
   if (!route.query.page) return load()
   const wasFirstPage = currentPage.value === 1
   await router.replace({ query: { ...route.query, page: undefined } })
@@ -86,7 +98,7 @@ async function apply(jobId) {
     <header class="dash-header">
       <BrandLogo @click.prevent="router.push('/')" />
       <div class="dash-header__right">
-        <button type="button" class="dash-btn dash-btn--primary" @click="router.push('/')">Back to dashboard</button>
+        <button type="button" class="dash-btn dash-btn--primary" @click="router.push('/')">{{ t('Back to dashboard') }}</button>
       </div>
     </header>
 

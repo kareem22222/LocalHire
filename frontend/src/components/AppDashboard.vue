@@ -6,6 +6,7 @@ import { useJobsStore } from '../stores/jobs'
 import { useProfileStore } from '../stores/profile'
 import { normalizeRole } from '../utils/role'
 import { withMinimumDelay } from '../utils/minimumDelay'
+import { apiErrorMessage } from '../utils/apiError'
 import BrandLogo from './BrandLogo.vue'
 import HiringDashboard from './HiringDashboard.vue'
 import ProfilePage from './ProfilePage.vue'
@@ -27,6 +28,7 @@ const profileSaveVersion = ref(0)
 const resumeUploadError = ref('')
 const resumeUploading = ref(false)
 const resumeUploadProgress = ref(0)
+const dashboardError = ref(route.query.routeError || '')
 
 // --- Shared ---
 const savedTab = typeof localStorage === 'undefined' ? 'dashboard' : (localStorage.getItem('dashboard_tab') || 'dashboard')
@@ -42,6 +44,7 @@ watch(() => route.query.tab, (tab) => {
 })
 
 async function fetchProfile() {
+  dashboardError.value = ''
   try {
     const data = await profileStore.fetchProfile()
     const role = normalizeRole(data.role)
@@ -50,7 +53,8 @@ async function fetchProfile() {
     } else if (role === 'worker') {
       await Promise.all([loadMyApplications(), loadNearbyJobs()])
     }
-  } catch {
+  } catch (err) {
+    dashboardError.value = apiErrorMessage(err, 'We could not load your dashboard.')
   }
 }
 
@@ -101,7 +105,7 @@ async function handleResumeUpload(file) {
     })
     resumeUploadProgress.value = 100
   } catch (err) {
-    resumeUploadError.value = err.response?.data?.message || 'Failed to upload resume.'
+    resumeUploadError.value = apiErrorMessage(err, 'Failed to upload resume.')
   } finally {
     resumeUploading.value = false
   }
@@ -165,7 +169,8 @@ async function loadMyJobs() {
   rolesLoading.value = true
   try {
     await withMinimumDelay(() => jobsStore.loadMyJobs())
-  } catch {
+  } catch (err) {
+    dashboardError.value = apiErrorMessage(err, 'We could not load your roles.')
   } finally {
     rolesLoading.value = false
   }
@@ -210,7 +215,8 @@ async function loadCandidates(options = {}) {
   candidatesLoading.value = true
   try {
     await withMinimumDelay(() => jobsStore.loadNearbyCandidates(candidateParams(), options))
-  } catch {
+  } catch (err) {
+    dashboardError.value = apiErrorMessage(err, 'We could not load nearby candidates.')
   } finally {
     candidatesLoading.value = false
   }
@@ -237,7 +243,8 @@ function useEmployerLocation() {
       employerLocationStatus.value = 'done'
       try {
         await profileStore.updateLocation({ latitude: lat, longitude: lng })
-      } catch {
+      } catch (err) {
+        dashboardError.value = apiErrorMessage(err, 'Your location was saved, but discovery could not refresh.')
       }
       await loadCandidates({ force: true })
     },
@@ -254,7 +261,8 @@ async function viewApplications(jobId) {
     selectedJobApplications.value = await jobsStore.loadJobApplications(jobId)
     selectedJobId.value = jobId
     activeTab.value = 'applications'
-  } catch {
+  } catch (err) {
+    dashboardError.value = apiErrorMessage(err, 'We could not load the applicants.')
   }
 }
 
@@ -280,8 +288,14 @@ const workerCoords = ref(null)
 const applying = ref(null)
 const workerApplyError = ref('')
 const workerJobsLoading = ref(true)
-const workerSearch = ref('')
-const workerEmploymentType = ref('')
+const workerSearch = ref(route.query.search?.toString() || '')
+const workerEmploymentType = ref(route.query.employmentType?.toString() || '')
+const workerFilters = ref(Object.fromEntries(
+  ['salaryPeriod', 'salaryMin', 'salaryMax', 'experienceYears', 'maxDistanceKm']
+    .filter((key) => route.query[key] != null)
+    .map((key) => [key, route.query[key].toString()]),
+))
+const initialWorkerFilters = computed(() => ({ search: workerSearch.value, employmentType: workerEmploymentType.value, ...workerFilters.value }))
 
 const workerLocationLabel = computed(() => {
   if (locationStatus.value === 'done') return 'Using your current location'
@@ -300,6 +314,7 @@ function workerJobParams() {
   }
   if (workerSearch.value) params.search = workerSearch.value
   if (workerEmploymentType.value) params.employmentType = workerEmploymentType.value
+  Object.assign(params, workerFilters.value)
   return params
 }
 
@@ -321,6 +336,9 @@ function goAllWorkerJobs(payload = {}) {
   const query = {}
   if (payload.search) query.search = payload.search
   if (payload.employmentType) query.employmentType = payload.employmentType
+  for (const key of ['salaryPeriod', 'salaryMin', 'salaryMax', 'experienceYears', 'maxDistanceKm']) {
+    if (payload[key] !== '' && payload[key] != null) query[key] = payload[key]
+  }
   router.push({ path: '/work/jobs', query })
 }
 
@@ -338,7 +356,8 @@ function requestLocation() {
       locationStatus.value = 'done'
       try {
         await profileStore.updateLocation({ latitude: lat, longitude: lng })
-      } catch {
+      } catch (err) {
+        dashboardError.value = apiErrorMessage(err, 'Your location was saved, but roles could not refresh.')
       }
       await loadNearbyJobs({ force: true })
       await loadMyApplications()
@@ -357,7 +376,8 @@ async function loadNearbyJobs(options = {}) {
   workerJobsLoading.value = true
   try {
     nearbyJobs.value = await withMinimumDelay(() => jobsStore.loadNearbyJobs(workerJobParams(), options))
-  } catch {
+  } catch (err) {
+    dashboardError.value = apiErrorMessage(err, 'We could not load nearby roles.')
   } finally {
     workerJobsLoading.value = false
   }
@@ -366,13 +386,23 @@ async function loadNearbyJobs(options = {}) {
 async function searchJobs(payload) {
   workerSearch.value = payload.search || ''
   workerEmploymentType.value = payload.employmentType || ''
+  workerFilters.value = Object.fromEntries(
+    ['salaryPeriod', 'salaryMin', 'salaryMax', 'experienceYears', 'maxDistanceKm']
+      .filter((key) => payload[key] !== '' && payload[key] != null)
+      .map((key) => [key, payload[key]]),
+  )
+  const query = { ...route.query }
+  for (const key of ['search', 'employmentType', 'salaryPeriod', 'salaryMin', 'salaryMax', 'experienceYears', 'maxDistanceKm'])
+    query[key] = payload[key] || undefined
+  await router.replace({ query })
   await loadNearbyJobs({ force: true })
 }
 
 async function loadMyApplications() {
   try {
     await jobsStore.loadMyApplications()
-  } catch {
+  } catch (err) {
+    dashboardError.value = apiErrorMessage(err, 'We could not load your applications.')
   }
 }
 
@@ -384,7 +414,7 @@ async function applyToJob(jobId) {
     await loadMyApplications()
     await loadNearbyJobs({ force: true })
   } catch (err) {
-    workerApplyError.value = err.response?.data?.message || 'Failed to apply.'
+    workerApplyError.value = apiErrorMessage(err, 'Failed to apply.')
   } finally {
     applying.value = null
   }
@@ -436,6 +466,11 @@ async function applyToJob(jobId) {
       @shortlist="() => {}"
     />
 
+    <section v-if="activeTab !== 'profile' && dashboardError" class="dash-load-error" role="alert">
+      <span>{{ dashboardError }}</span>
+      <button type="button" class="dash-btn dash-btn--outline" @click="fetchProfile">Retry</button>
+    </section>
+
     <div v-if="selectedJobApplications !== null" class="auth-overlay" @click.self="closeApplications">
       <div class="auth-modal" style="max-width: 520px;" role="dialog" aria-modal="true" aria-labelledby="applicants-dialog-title">
         <button class="auth-modal__close" @click="closeApplications" aria-label="Close applicants dialog">&times;</button>
@@ -464,6 +499,7 @@ async function applyToJob(jobId) {
       :location-label="workerLocationLabel"
       :locating="locationStatus === 'prompt'"
       :applying="applying"
+      :initial-filters="initialWorkerFilters"
       @search-jobs="searchJobs"
       @use-my-location="requestLocation"
       @apply="applyToJob"

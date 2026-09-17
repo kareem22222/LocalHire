@@ -25,6 +25,7 @@ function sampleJob(overrides = {}) {
     pincode: '400050',
     latitude: 0,
     longitude: 0,
+    locationSource: 'Device',
     employmentType: 'FullTime',
     salaryMin: 15000,
     salaryMax: 25000,
@@ -40,6 +41,7 @@ function sampleJob(overrides = {}) {
     languages: [],
     benefits: [],
     isActive: true,
+    version: 3,
     applicationCount: 0,
     ...overrides,
   }
@@ -135,6 +137,7 @@ describe('JobDetailView', () => {
 
     expect(api.put).toHaveBeenCalledWith('/hiring/jobs/abc', expect.objectContaining({
       title: 'Senior Cashier',
+      version: 3,
       cityArea: 'Bandra',
       state: 'Maharashtra',
       pincode: '400050',
@@ -146,14 +149,32 @@ describe('JobDetailView', () => {
     expect(wrapper.find('.job-form > .dash-btn').exists()).toBe(false)
   })
 
-  it('redirects to the dashboard when the job cannot be loaded', async () => {
+  it('keeps local edits and offers the latest version after a save conflict', async () => {
+    api.put.mockRejectedValueOnce({ response: { status: 409, data: { error: 'Changed elsewhere.' } } })
+    api.get.mockResolvedValueOnce({ data: sampleJob() }).mockResolvedValueOnce({ data: sampleJob({ title: 'Latest title', version: 4 }) })
+    const wrapper = mountView('edit')
+    await flushPromises()
+
+    await wrapper.find('#job-title').setValue('My title')
+    await wrapper.find('.job-form > .dash-btn').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('.job-conflict').text()).toContain('title')
+    expect(wrapper.find('#job-title').element.value).toBe('My title')
+    await wrapper.find('.job-conflict button').trigger('click')
+    expect(wrapper.find('#job-title').element.value).toBe('Latest title')
+  })
+
+  it('shows a retry state when the job cannot be loaded', async () => {
     api.get.mockRejectedValue({ response: { status: 404 } })
 
     const wrapper = mountView('view')
     const replace = vi.spyOn(router, 'replace')
     await flushPromises()
 
-    expect(replace).toHaveBeenCalledWith('/')
+    expect(replace).not.toHaveBeenCalled()
+    expect(wrapper.get('[role="alert"]').text()).toContain('job')
+    expect(wrapper.find('button').text()).toBe('Retry')
     expect(wrapper.find('.job-form').exists()).toBe(false)
   })
 

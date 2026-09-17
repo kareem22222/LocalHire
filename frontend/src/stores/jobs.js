@@ -5,12 +5,7 @@ import * as jobsApi from '../api/jobs.js'
 const JOBS_TTL_MS = 2 * 60 * 1000
 
 function nearbyKey(params = {}) {
-  const location = params.lat == null || params.lng == null
-    ? 'all'
-    : `${Number(params.lat)},${Number(params.lng)}`
-  const term = (params.search || '').trim().toLowerCase()
-  const employmentType = (params.employmentType || '').trim().toLowerCase()
-  return `${location}|${term}|${employmentType}`
+  return paramsKey(params)
 }
 
 function candidatesKey(params = {}) {
@@ -49,6 +44,7 @@ export const useJobsStore = defineStore('jobs', () => {
   const candidates = ref([])
   const candidatesByKey = ref({})
   const myApplications = ref([])
+  const invitations = ref([])
   const myApplicationsFetchedAt = ref(0)
   const workerJobsPage = ref(emptyPage())
   const candidateSearchPage = ref(emptyPage())
@@ -310,6 +306,26 @@ export const useJobsStore = defineStore('jobs', () => {
     return data
   }
 
+  async function setJobActive(id, isActive) {
+    const { data } = await jobsApi.setJobActive(id, isActive)
+    jobsById.value[id] = data
+    jobFetchedAt.value[id] = Date.now()
+    myJobs.value = myJobs.value.map((job) => job.id === id ? data : job)
+    myJobsFetchedAt.value = 0
+    nearbyJobsByLocation.value = {}
+    invalidatePaged()
+    return data
+  }
+
+  function invalidateDiscovery() {
+    candidatesById.value = {}
+    candidateFetchedAt.value = {}
+    candidates.value = []
+    candidatesByKey.value = {}
+    nearbyJobsByLocation.value = {}
+    invalidatePaged()
+  }
+
   async function applyToJob(jobId) {
     const { data } = await jobsApi.applyToJob(jobId)
     myApplicationsFetchedAt.value = 0
@@ -317,6 +333,26 @@ export const useJobsStore = defineStore('jobs', () => {
     invalidatePaged()
     applicationsFetchedAt.value[jobId] = 0
     jobFetchedAt.value[jobId] = 0
+    return data
+  }
+
+  async function withdrawApplication(applicationId) {
+    const { data } = await jobsApi.withdrawApplication(applicationId)
+    myApplications.value = myApplications.value.map((item) => item.id === applicationId ? data : item)
+    myApplicationsFetchedAt.value = Date.now()
+    invalidatePaged()
+    return data
+  }
+
+  async function loadInvitations() {
+    const { data } = await jobsApi.getMyInvitations()
+    invitations.value = data
+    return data
+  }
+
+  async function declineInvitation(invitationId) {
+    const { data } = await jobsApi.declineInvitation(invitationId)
+    invitations.value = invitations.value.map((item) => item.id === invitationId ? data : item)
     return data
   }
 
@@ -342,6 +378,7 @@ export const useJobsStore = defineStore('jobs', () => {
     latestSavedJobsPageRequest++
     latestSavedCandidatesPageRequest++
     myApplications.value = []
+    invitations.value = []
     myApplicationsFetchedAt.value = 0
     workerJobsPage.value = emptyPage()
     candidateSearchPage.value = emptyPage()
@@ -360,6 +397,7 @@ export const useJobsStore = defineStore('jobs', () => {
     nearbyJobsByLocation,
     candidates,
     myApplications,
+    invitations,
     workerJobsPage,
     candidateSearchPage,
     employerJobsPage,
@@ -387,7 +425,12 @@ export const useJobsStore = defineStore('jobs', () => {
     loadSavedCandidatesPage,
     createJob,
     updateJob,
+    setJobActive,
     applyToJob,
+    withdrawApplication,
+    loadInvitations,
+    declineInvitation,
+    invalidateDiscovery,
     clear,
   }
 })

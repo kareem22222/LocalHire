@@ -79,11 +79,7 @@ describe('CandidateDetailPage', () => {
     expect(wrapper.text()).toContain('Hourly')
     expect(wrapper.text()).not.toContain('Internship')
     expect(wrapper.text()).not.toContain('Remote')
-    expect(wrapper.text()).toContain(new Date(1990, 0, 2).toLocaleDateString(undefined, {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    }))
+    expect(wrapper.text()).not.toContain('1990')
     expect(wrapper.text()).not.toContain('ananya@example.com')
 
     const buttons = wrapper.findAll('.candidate-detail__actions button')
@@ -103,12 +99,12 @@ describe('CandidateDetailPage', () => {
     })
     const wrapper = await mountPage()
     await flushPromises()
-    expect(wrapper.get('[role="alert"]').text()).toContain('could not load')
+    expect(wrapper.get('[role="alert"]').text()).toContain('offline')
 
     await router.push('/hiring/candidates/candidate-2?contact=1')
     await flushPromises()
     expect(wrapper.text()).toContain('worker@example.com')
-    expect(wrapper.text()).toContain('unknown')
+    expect(wrapper.text()).not.toContain('unknown')
 
     await router.push('/hiring/candidates/candidate-2')
     await flushPromises()

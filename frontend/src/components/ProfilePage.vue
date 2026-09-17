@@ -6,6 +6,7 @@ import WorkerProfileSections from './WorkerProfileSections.vue'
 import DatePicker from './ui/DatePicker.vue'
 import ResumeUpload from './ui/ResumeUpload.vue'
 import ScrambleText from './ui/ScrambleText.vue'
+import { formatDate, t } from '../i18n'
 
 const props = defineProps({
   user: { type: Object, default: null },
@@ -41,6 +42,12 @@ const form = reactive({
   phone: '',
   dateOfBirth: '',
   gender: '',
+  isDiscoverable: true,
+  emailNotificationsEnabled: true,
+  businessName: '',
+  businessDescription: '',
+  businessLocation: '',
+  businessContact: '',
   // Location
   addressLine: '',
   cityArea: '',
@@ -72,6 +79,12 @@ function hydrate() {
   form.phone = u.phone || ''
   form.dateOfBirth = u.dateOfBirth || ''
   form.gender = u.gender || ''
+  form.isDiscoverable = u.isDiscoverable !== false
+  form.emailNotificationsEnabled = u.emailNotificationsEnabled !== false
+  form.businessName = u.businessName || ''
+  form.businessDescription = u.businessDescription || ''
+  form.businessLocation = u.businessLocation || ''
+  form.businessContact = u.businessContact || ''
   form.addressLine = u.addressLine || ''
   form.cityArea = u.cityArea || ''
   form.state = u.state || ''
@@ -127,7 +140,7 @@ const memberSince = computed(() => {
   if (!created) return ''
   const date = new Date(created)
   if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+  return formatDate(date, { month: 'long', year: 'numeric' })
 })
 
 const locationSummary = computed(() => {
@@ -255,6 +268,12 @@ function save() {
       phone: form.phone.trim(),
       dateOfBirth: form.dateOfBirth || null,
       gender: form.gender,
+      isDiscoverable: form.isDiscoverable,
+      emailNotificationsEnabled: form.emailNotificationsEnabled,
+      businessName: form.businessName.trim(),
+      businessDescription: form.businessDescription.trim(),
+      businessLocation: form.businessLocation.trim(),
+      businessContact: form.businessContact.trim(),
       addressLine: form.addressLine.trim(),
       cityArea: form.cityArea.trim(),
       state: form.state,
@@ -294,24 +313,24 @@ function goBack() {
         <h1 class="dash-welcome__title profile-hero__name">
           <ScrambleText class="dash-welcome__name" :text="form.name || props.user?.name || 'User'" />
         </h1>
-        <p class="profile-hero__headline">{{ isWorker ? 'Finding work locally on LocalHire' : 'Hiring locally on LocalHire' }}</p>
+        <p class="profile-hero__headline">{{ t(isWorker ? 'Finding work locally on LocalHire' : 'Hiring locally on LocalHire') }}</p>
         <div class="profile-hero__tags">
-          <span class="profile-badge profile-badge--role">{{ isWorker ? 'Looking for work' : 'Hiring' }}</span>
+          <span class="profile-badge profile-badge--role">{{ t(isWorker ? 'Looking for work' : 'Hiring') }}</span>
           <span v-if="isWorker" class="profile-badge profile-badge--score">{{ user?.profileCompletionPercent ?? 0 }}% profile</span>
           <span v-if="locationSummary" class="profile-badge">{{ locationSummary }}</span>
-          <span v-if="memberSince" class="profile-badge profile-badge--muted">Member since {{ memberSince }}</span>
+          <span v-if="memberSince" class="profile-badge profile-badge--muted">{{ t('Member since') }} {{ memberSince }}</span>
         </div>
       </div>
       <div class="profile-hero__actions">
         <template v-if="!editing">
-          <button type="button" class="dash-btn dash-btn--primary" @click="startEdit">Edit profile</button>
-          <button v-if="!isWorker || user?.isProfileComplete !== false" type="button" class="dash-btn dash-btn--outline" @click="goBack">Back</button>
+          <button type="button" class="dash-btn dash-btn--primary" @click="startEdit">{{ t('Edit profile') }}</button>
+          <button v-if="!isWorker || user?.isProfileComplete !== false" type="button" class="dash-btn dash-btn--outline" @click="goBack">{{ t('Back') }}</button>
         </template>
         <template v-else>
           <button type="button" class="dash-btn dash-btn--primary" :disabled="saving" @click="save">
-            {{ saving ? 'Saving...' : 'Save' }}
+            {{ t(saving ? 'Saving...' : 'Save') }}
           </button>
-          <button type="button" class="dash-btn dash-btn--outline" :disabled="saving" @click="cancelEdit">Cancel</button>
+          <button type="button" class="dash-btn dash-btn--outline" :disabled="saving" @click="cancelEdit">{{ t('Cancel') }}</button>
         </template>
       </div>
     </section>
@@ -329,31 +348,31 @@ function goBack() {
     <!-- Account & personal -->
     <section class="profile-card">
       <div class="profile-card__head">
-        <h2 class="dash-section__title">Personal information</h2>
-        <p class="profile-card__hint">Your basic account and contact details.</p>
+        <h2 class="dash-section__title">{{ t('Personal information') }}</h2>
+        <p class="profile-card__hint">{{ t('Your basic account and contact details.') }}</p>
       </div>
       <div class="profile-grid">
         <div class="profile-field">
-          <label for="profile-name">Full name</label>
+          <label for="profile-name">{{ t('Full name') }}</label>
           <input v-if="editing" id="profile-name" v-model="form.name" type="text" maxlength="100" required placeholder="Your full name" />
           <p v-else class="profile-value">{{ form.name || '—' }}</p>
         </div>
         <div class="profile-field">
-          <span class="profile-field__label">Email</span>
+          <span class="profile-field__label">{{ t('Email') }}</span>
           <p class="profile-value profile-value--locked">{{ form.email || '—' }}</p>
         </div>
         <div class="profile-field">
-          <label for="profile-phone">Phone</label>
+          <label for="profile-phone">{{ t('Phone') }}</label>
           <input v-if="editing" id="profile-phone" v-model="form.phone" type="tel" inputmode="tel" maxlength="30" pattern="[0-9+()\- ]{6,30}" placeholder="+91 98765 43210" />
           <p v-else class="profile-value">{{ form.phone || '—' }}</p>
         </div>
         <div class="profile-field">
-          <label for="profile-dob">Date of birth</label>
+          <label for="profile-dob">{{ t('Date of birth') }}</label>
           <DatePicker v-if="editing" id="profile-dob" v-model="form.dateOfBirth" aria-label="Choose date of birth" />
           <p v-else class="profile-value">{{ form.dateOfBirth || '—' }}</p>
         </div>
         <div class="profile-field">
-          <label for="profile-gender">Gender</label>
+          <label for="profile-gender">{{ t('Gender') }}</label>
           <select v-if="editing" id="profile-gender" v-model="form.gender">
             <option value="">Select</option>
             <option v-for="option in GENDER_OPTIONS" :key="option" :value="option">{{ option }}</option>
@@ -363,29 +382,64 @@ function goBack() {
       </div>
     </section>
 
+    <section class="profile-card">
+      <div class="profile-card__head">
+        <h2 class="dash-section__title">Email notifications</h2>
+        <p class="profile-card__hint">Receive invitations, application decisions, and appointment updates away from the website.</p>
+      </div>
+      <label v-if="editing" class="profile-visibility"><input v-model="form.emailNotificationsEnabled" type="checkbox" /> Email me important hiring updates</label>
+      <p v-else class="profile-value">{{ form.emailNotificationsEnabled ? 'Important email updates enabled' : 'Email updates disabled' }}</p>
+    </section>
+
+    <section v-if="!isWorker" class="profile-card">
+      <div class="profile-card__head">
+        <h2 class="dash-section__title">Public business profile</h2>
+        <p class="profile-card__hint">Workers see these details from your job pages. Your personal address and phone stay private.</p>
+      </div>
+      <div class="profile-grid">
+        <div class="profile-field"><label for="business-name">Business name</label><input v-if="editing" id="business-name" v-model="form.businessName" maxlength="200" /><p v-else class="profile-value">{{ form.businessName || '—' }}</p></div>
+        <div class="profile-field"><label for="business-location">Workplace location</label><input v-if="editing" id="business-location" v-model="form.businessLocation" maxlength="300" /><p v-else class="profile-value">{{ form.businessLocation || '—' }}</p></div>
+        <div class="profile-field profile-field--full"><label for="business-description">Description</label><textarea v-if="editing" id="business-description" v-model="form.businessDescription" maxlength="1000"></textarea><p v-else class="profile-value">{{ form.businessDescription || '—' }}</p></div>
+        <div class="profile-field profile-field--full"><label for="business-contact">Public contact route</label><input v-if="editing" id="business-contact" v-model="form.businessContact" maxlength="200" placeholder="careers@example.com or reception number" /><p v-else class="profile-value">{{ form.businessContact || '—' }}</p></div>
+      </div>
+    </section>
+
     <section v-if="isWorker" class="profile-card">
       <div class="profile-card__head">
-        <h2 class="dash-section__title">Professional details</h2>
-        <p class="profile-card__hint">Tell nearby employers what work fits you.</p>
+        <h2 class="dash-section__title">Employer visibility</h2>
+        <p class="profile-card__hint">Control whether employers can find this profile in talent search.</p>
+      </div>
+      <label v-if="editing" class="profile-visibility">
+        <input v-model="form.isDiscoverable" type="checkbox" />
+        Show my profile to employers
+      </label>
+      <p v-else class="profile-value">{{ form.isDiscoverable ? 'Visible to employers' : 'Hidden from employer search' }}</p>
+      <p class="profile-card__hint">Employers can still view your profile when you have applied to one of their jobs.</p>
+    </section>
+
+    <section v-if="isWorker" class="profile-card">
+      <div class="profile-card__head">
+        <h2 class="dash-section__title">{{ t('Professional details') }}</h2>
+        <p class="profile-card__hint">{{ t('Tell nearby employers what work fits you.') }}</p>
       </div>
       <div class="profile-grid">
         <div class="profile-field">
-          <label for="profile-job-title">Job title *</label>
+          <label for="profile-job-title">{{ t('Job title') }} *</label>
           <input v-if="editing" id="profile-job-title" v-model="form.jobTitle" type="text" maxlength="100" placeholder="e.g. Delivery partner" />
           <p v-else class="profile-value">{{ form.jobTitle || '—' }}</p>
         </div>
         <div class="profile-field">
-          <label for="profile-experience">Experience in years *</label>
+          <label for="profile-experience">{{ t('Experience in years') }} *</label>
           <input v-if="editing" id="profile-experience" v-model="form.experienceYears" type="number" min="0" max="60" step="1" />
           <p v-else class="profile-value">{{ form.experienceYears === '' ? '—' : `${form.experienceYears} years` }}</p>
         </div>
         <div class="profile-field profile-field--full">
-          <label for="profile-summary">Professional summary</label>
+          <label for="profile-summary">{{ t('Professional summary') }}</label>
           <textarea v-if="editing" id="profile-summary" v-model="form.professionalSummary" maxlength="1000" placeholder="A short summary of your work experience"></textarea>
           <p v-else class="profile-value">{{ form.professionalSummary || '—' }}</p>
         </div>
         <div class="profile-field">
-          <label for="profile-education">Highest education *</label>
+          <label for="profile-education">{{ t('Highest education') }} *</label>
           <input v-if="editing" id="profile-education" v-model="form.education" type="text" maxlength="200" placeholder="e.g. 12th pass, Diploma" />
           <p v-else class="profile-value">{{ form.education || '—' }}</p>
         </div>
@@ -408,22 +462,22 @@ function goBack() {
     <!-- Location -->
     <section class="profile-card">
       <div class="profile-card__head">
-        <h2 class="dash-section__title">Location</h2>
-        <p class="profile-card__hint">Helps us match you with nearby talent.</p>
+        <h2 class="dash-section__title">{{ t('Location') }}</h2>
+        <p class="profile-card__hint">{{ t('Helps us match you with nearby talent.') }}</p>
       </div>
       <div class="profile-grid">
         <div class="profile-field profile-field--full">
-          <label for="profile-address">Address line</label>
+          <label for="profile-address">{{ t('Address line') }}</label>
           <input v-if="editing" id="profile-address" v-model="form.addressLine" type="text" maxlength="300" placeholder="House / street / landmark" />
           <p v-else class="profile-value">{{ form.addressLine || '—' }}</p>
         </div>
         <div class="profile-field">
-          <label for="profile-city-area">City / Area</label>
+          <label for="profile-city-area">{{ t('City / Area') }}</label>
           <input v-if="editing" id="profile-city-area" v-model="form.cityArea" type="text" maxlength="200" placeholder="e.g. Indiranagar, Bengaluru" />
           <p v-else class="profile-value">{{ form.cityArea || '—' }}</p>
         </div>
         <div class="profile-field">
-          <label for="profile-state">State</label>
+          <label for="profile-state">{{ t('State') }}</label>
           <select v-if="editing" id="profile-state" v-model="form.state">
             <option value="">Select state</option>
             <option v-for="stateName in INDIAN_STATES" :key="stateName" :value="stateName">{{ stateName }}</option>
@@ -431,7 +485,7 @@ function goBack() {
           <p v-else class="profile-value">{{ form.state || '—' }}</p>
         </div>
         <div class="profile-field">
-          <label for="profile-pincode">Pincode</label>
+          <label for="profile-pincode">{{ t('Pincode') }}</label>
           <input v-if="editing" id="profile-pincode" v-model="form.pincode" inputmode="numeric" maxlength="6" pattern="\d{6}" placeholder="560038" />
           <p v-else class="profile-value">{{ form.pincode || '—' }}</p>
         </div>
@@ -629,6 +683,9 @@ function goBack() {
 .profile-value--locked {
   color: #5d7482;
 }
+
+.profile-visibility { display: flex; align-items: center; gap: 10px; color: #12324a; font-weight: 700; }
+.profile-visibility input { width: 18px; height: 18px; accent-color: var(--worker-role-green-end); }
 
 @media (max-width: 700px) {
   .profile-hero {

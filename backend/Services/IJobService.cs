@@ -20,7 +20,11 @@ public interface IJobService
 
     Task<JobPostResponse> GetJobAsync(Guid id, Guid employerId, CancellationToken ct);
 
+    Task<PublicJobResponse> GetPublicJobAsync(Guid id, CancellationToken ct);
+
     Task<JobPostResponse> UpdateJobAsync(Guid id, CreateJobPostRequest request, Guid employerId, CancellationToken ct);
+
+    Task<JobPostResponse> SetJobActiveAsync(Guid id, bool isActive, Guid employerId, CancellationToken ct);
 
     Task<IReadOnlyList<ApplicantResponse>> GetApplicationsAsync(Guid jobId, Guid employerId, CancellationToken ct);
 
@@ -66,13 +70,17 @@ public interface IJobService
     /// </summary>
     Task<IReadOnlyList<JobPostResponse>> GetNearbyJobsAsync(
         double? lat, double? lng, string? search, EmploymentType? employmentType,
+        decimal? salaryMin, decimal? salaryMax, SalaryPeriod? salaryPeriod,
+        int? experienceYears, double? maxDistanceKm,
         Guid workerId, CancellationToken ct);
 
     Task<PagedResponse<JobPostResponse>> SearchJobsAsync(
         double? lat, double? lng, string? search, EmploymentType? employmentType,
+        decimal? salaryMin, decimal? salaryMax, SalaryPeriod? salaryPeriod,
+        int? experienceYears, double? maxDistanceKm,
         Guid workerId, PagingRequest paging, CancellationToken ct);
 
-    Task<JobPostResponse> GetActiveJobAsync(Guid id, CancellationToken ct);
+    Task<JobPostResponse> GetWorkerJobAsync(Guid id, Guid workerId, CancellationToken ct);
 
     /// <summary>
     /// Returns workers ("candidates") for an employer's talent search. An optional
@@ -98,6 +106,7 @@ public interface IJobService
     Task RemoveSavedCandidateAsync(Guid workerId, Guid employerId, CancellationToken ct);
 
     Task<JobApplicationResponse> ApplyAsync(Guid jobId, Guid workerId, CancellationToken ct);
+    Task<JobApplicationResponse> WithdrawApplicationAsync(Guid applicationId, Guid workerId, CancellationToken ct);
 
     Task<IReadOnlyList<JobApplicationResponse>> GetMyApplicationsAsync(Guid workerId, CancellationToken ct);
 
@@ -109,4 +118,20 @@ public interface IJobService
         Guid workerId, PagingRequest paging, CancellationToken ct);
     Task SaveJobAsync(Guid jobId, Guid workerId, CancellationToken ct);
     Task RemoveSavedJobAsync(Guid jobId, Guid workerId, CancellationToken ct);
+
+    Task<InvitationResponse> CreateInvitationAsync(
+        Guid workerId, Guid jobId, Guid employerId, CancellationToken ct);
+    Task<IReadOnlyList<InvitationResponse>> GetMyInvitationsAsync(Guid workerId, CancellationToken ct);
+    Task<InvitationResponse> DeclineInvitationAsync(Guid invitationId, Guid workerId, CancellationToken ct);
+
+    Task<AppointmentResponse?> GetAppointmentAsync(
+        Guid applicationId, Guid userId, UserRole role, CancellationToken ct);
+    Task<AppointmentResponse> SetAppointmentAsync(
+        Guid applicationId, AppointmentRequest request, Guid userId, UserRole role, CancellationToken ct);
+    Task<AppointmentResponse> ConfirmAppointmentAsync(
+        Guid applicationId, Guid userId, UserRole role, CancellationToken ct);
+    Task<AppointmentResponse> CancelAppointmentAsync(
+        Guid applicationId, Guid userId, UserRole role, CancellationToken ct);
+
+    Task<BusinessProfileResponse> GetBusinessProfileAsync(Guid employerId, CancellationToken ct);
 }

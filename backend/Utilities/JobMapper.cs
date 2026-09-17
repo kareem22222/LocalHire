@@ -49,6 +49,9 @@ public static class JobMapper
         job.Pincode = NormalizeText(request.Pincode);
         job.Latitude = request.Latitude is not null ? Math.Round(request.Latitude.Value, 3) : null;
         job.Longitude = request.Longitude is not null ? Math.Round(request.Longitude.Value, 3) : null;
+        job.LocationSource = request.Latitude is not null && request.Longitude is not null
+            ? NormalizeText(request.LocationSource)
+            : null;
         job.EmploymentType = ParseEnum<EmploymentType>(request.EmploymentType);
         job.SalaryMin = request.SalaryMin;
         job.SalaryMax = request.SalaryMax;
@@ -66,15 +69,23 @@ public static class JobMapper
     }
 
     public static JobPostResponse ToResponse(JobPost j, int applicationCount, int shortlistedCount = 0) =>
-        new(j.Id, j.Title, j.Description, j.WorkplaceName,
-            j.CityArea, j.State, j.Pincode, j.Latitude, j.Longitude,
+        new(j.Id, j.EmployerId, j.Title, j.Description, j.WorkplaceName,
+            j.CityArea, j.State, j.Pincode, j.Latitude, j.Longitude, j.LocationSource,
             j.EmploymentType?.ToString(), j.SalaryMin, j.SalaryMax, j.SalaryPeriod?.ToString(),
             j.MinEducation, j.ExperienceMinYears, j.ExperienceMaxYears,
             j.WorkingDays,
             j.ShiftStartTime?.ToString("HH\\:mm", CultureInfo.InvariantCulture),
             j.ShiftEndTime?.ToString("HH\\:mm", CultureInfo.InvariantCulture),
             j.Openings, j.RequiredSkills, j.Languages, j.Benefits,
-            j.IsActive, j.CreatedAt, applicationCount, shortlistedCount);
+            j.IsActive, j.Version, j.CreatedAt, applicationCount, shortlistedCount);
+
+    public static PublicJobResponse ToPublicResponse(JobPost j) =>
+        new(j.Id, j.Title, j.Description, j.WorkplaceName, j.CityArea, j.State,
+            j.EmploymentType?.ToString(), j.SalaryMin, j.SalaryMax, j.SalaryPeriod?.ToString(),
+            j.MinEducation, j.ExperienceMinYears, j.ExperienceMaxYears, j.WorkingDays,
+            j.ShiftStartTime?.ToString("HH\\:mm", CultureInfo.InvariantCulture),
+            j.ShiftEndTime?.ToString("HH\\:mm", CultureInfo.InvariantCulture),
+            j.Openings, j.RequiredSkills, j.Languages, j.Benefits, j.CreatedAt);
 
     public static string? NormalizeText(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

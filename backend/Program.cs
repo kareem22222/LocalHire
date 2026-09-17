@@ -128,6 +128,9 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email"));
+if (!builder.Environment.IsEnvironment("Test"))
+    builder.Services.AddHostedService<EmailOutboxWorker>();
 IAmazonS3 CreateS3Client(string? serviceUrl)
 {
     var accessKey = builder.Configuration["AWS:AccessKey"];

@@ -3,6 +3,7 @@ import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { setAuth } from '../api'
 import { login, register } from '../api/auth'
 import Stepper from './Stepper.vue'
+import { t } from '../i18n'
 
 const props = defineProps({
   initialEmail: {
@@ -39,13 +40,13 @@ const form = ref({
 const isRegister = computed(() => mode.value === 'register')
 const steps = computed(() => isRegister.value
   ? [
-      { title: 'Choose your path', description: 'Tell us whether you are looking for work or hiring locally.' },
-      { title: 'Introduce yourself', description: 'Add the details people will recognise you by.' },
-      { title: 'Secure your account', description: 'Create a password and finish joining LocalHire.' },
+      { title: t('Choose your path'), description: t('Tell us whether you are looking for work or hiring locally.') },
+      { title: t('Introduce yourself'), description: t('Add the details people will recognise you by.') },
+      { title: t('Secure your account'), description: t('Create a password and finish joining LocalHire.') },
     ]
   : [
-      { title: 'Find your account', description: 'Choose your role and enter the email linked to it.' },
-      { title: 'Welcome back', description: 'Enter your password to continue to LocalHire.' },
+      { title: t('Find your account'), description: t('Choose your role and enter the email linked to it.') },
+      { title: t('Welcome back'), description: t('Enter your password to continue to LocalHire.') },
     ])
 const isLastStep = computed(() => currentStep.value === steps.value.length)
 
@@ -74,11 +75,11 @@ function validateCurrentStep() {
   else if (isRegister.value && currentStep.value === 2) fields = ['name', 'email']
 
   for (const field of fields) delete errors[field]
-  if (fields.includes('role') && !form.value.role) errors.role = ['Choose how you will use LocalHire.']
-  if (fields.includes('name') && !form.value.name.trim()) errors.name = ['Enter your full name.']
+  if (fields.includes('role') && !form.value.role) errors.role = [t('Choose how you will use LocalHire.')]
+  if (fields.includes('name') && !form.value.name.trim()) errors.name = [t('Enter your full name.')]
   if (fields.includes('email')) {
-    if (!form.value.email.trim()) errors.email = ['Enter your email address.']
-    else if (!isValidEmail(form.value.email)) errors.email = ['Enter a valid email address.']
+    if (!form.value.email.trim()) errors.email = [t('Enter your email address.')]
+    else if (!isValidEmail(form.value.email)) errors.email = [t('Enter a valid email address.')]
   }
   fieldErrors.value = errors
   return !fields.some(field => errors[field])
@@ -180,7 +181,7 @@ async function handleSubmit() {
 
     if (err.response?.status === 429) {
       serverError.value =
-        'Too many attempts. Please wait a moment and try again.'
+        t('Too many attempts. Please wait a moment and try again.')
 
     } else if (err.response?.status === 400 && err.response?.data?.errors) {
       const normalizedErrors = {}
@@ -202,7 +203,7 @@ async function handleSubmit() {
       revealFirstError(fieldErrors.value)
 
     } else if (err.response?.data?.title === 'Unauthorized') {
-      serverError.value = 'Invalid email, password, or role.'
+      serverError.value = t('Invalid email, password, or role.')
 
     } else if (err.response?.data?.error) {
       serverError.value = err.response.data.error
@@ -211,7 +212,7 @@ async function handleSubmit() {
       serverError.value = err.response.data.message
 
     } else {
-      serverError.value = 'Something went wrong. Please try again.'
+      serverError.value = t('Something went wrong. Please try again.')
     }
   } finally {
     loading.value = false
@@ -222,8 +223,8 @@ function submitOrAdvance() {
   if (!isLastStep.value) return advance(() => stepperRef.value?.next())
   const errors = { ...fieldErrors.value }
   delete errors.password
-  if (!form.value.password) errors.password = ['Enter your password.']
-  else if (isRegister.value && form.value.password.length < 8) errors.password = ['Use at least 8 characters.']
+  if (!form.value.password) errors.password = [t('Enter your password.')]
+  else if (isRegister.value && form.value.password.length < 8) errors.password = [t('Use at least 8 characters.')]
   fieldErrors.value = errors
   if (errors.password) return focusCurrentStep()
   return handleSubmit()
@@ -249,11 +250,11 @@ onUnmounted(() => {
       <button class="auth-modal__close" @click="close" aria-label="Close">&times;</button>
 
       <div class="auth-modal__header">
-        <h2 id="auth-modal-title" class="auth-modal__title">{{ isRegister ? 'Create your account' : 'Welcome back' }}</h2>
+        <h2 id="auth-modal-title" class="auth-modal__title">{{ t(isRegister ? 'Create your account' : 'Welcome back') }}</h2>
         <p class="auth-modal__subtitle">
           {{ isRegister
-            ? 'Join LocalHire and find the right opportunities near you.'
-            : 'Sign in to continue your journey.'
+            ? t('Join LocalHire and find the right opportunities near you.')
+            : t('Sign in to continue your journey.')
           }}
         </p>
       </div>
@@ -270,24 +271,24 @@ onUnmounted(() => {
         >
           <template #content="{ step, current }">
             <div class="auth-step__header">
-              <span>Step {{ current }} of {{ steps.length }}</span>
+              <span>{{ t('Step') }} {{ current }} {{ t('of') }} {{ steps.length }}</span>
               <h3>{{ step.title }}</h3>
               <p>{{ step.description }}</p>
             </div>
 
             <div v-if="current === 1" :data-auth-step="current" class="auth-step">
               <div class="auth-field">
-                <label class="auth-field__label" for="auth-role">I am</label>
+                <label class="auth-field__label" for="auth-role">{{ t('I am') }}</label>
                 <select id="auth-role" v-model="form.role" class="auth-field__input" :class="{ 'auth-field__input--error': fieldErrors.role }">
-                  <option value="">Select</option>
-                  <option value="LookingForWork">Looking for work</option>
-                  <option value="Hiring">Hiring</option>
+                  <option value="">{{ t('Select') }}</option>
+                  <option value="LookingForWork">{{ t('Looking for work') }}</option>
+                  <option value="Hiring">{{ t('Hiring') }}</option>
                 </select>
                 <span v-if="fieldErrors.role" class="auth-field__error">{{ fieldErrors.role[0] }}</span>
               </div>
 
               <div v-if="!isRegister" class="auth-field">
-                <label class="auth-field__label" for="auth-login-email">Email address</label>
+                <label class="auth-field__label" for="auth-login-email">{{ t('Email address') }}</label>
                 <input id="auth-login-email" v-model="form.email" class="auth-field__input" type="email" placeholder="you@example.com" autocomplete="email" :class="{ 'auth-field__input--error': fieldErrors.email }" />
                 <span v-if="fieldErrors.email" class="auth-field__error">{{ fieldErrors.email[0] }}</span>
               </div>
@@ -295,12 +296,12 @@ onUnmounted(() => {
 
             <div v-else-if="isRegister && current === 2" :data-auth-step="current" class="auth-step">
               <div class="auth-field">
-                <label class="auth-field__label" for="auth-name">Full name</label>
+                <label class="auth-field__label" for="auth-name">{{ t('Full name') }}</label>
                 <input id="auth-name" v-model="form.name" class="auth-field__input" type="text" placeholder="Your full name" autocomplete="name" :class="{ 'auth-field__input--error': fieldErrors.name }" />
                 <span v-if="fieldErrors.name" class="auth-field__error">{{ fieldErrors.name[0] }}</span>
               </div>
               <div class="auth-field">
-                <label class="auth-field__label" for="auth-register-email">Email address</label>
+                <label class="auth-field__label" for="auth-register-email">{{ t('Email address') }}</label>
                 <input id="auth-register-email" v-model="form.email" class="auth-field__input" type="email" placeholder="you@example.com" autocomplete="email" :class="{ 'auth-field__input--error': fieldErrors.email }" />
                 <span v-if="fieldErrors.email" class="auth-field__error">{{ fieldErrors.email[0] }}</span>
               </div>
@@ -308,7 +309,7 @@ onUnmounted(() => {
 
             <div v-else :data-auth-step="current" class="auth-step">
               <div class="auth-field">
-                <label class="auth-field__label" for="auth-password">Password</label>
+                <label class="auth-field__label" for="auth-password">{{ t('Password') }}</label>
                 <input id="auth-password" v-model="form.password" class="auth-field__input" type="password" :placeholder="isRegister ? 'Min. 8 characters' : 'Your password'" :autocomplete="isRegister ? 'new-password' : 'current-password'" :class="{ 'auth-field__input--error': fieldErrors.password }" />
                 <span v-if="fieldErrors.password" class="auth-field__error">{{ fieldErrors.password[0] }}</span>
               </div>
@@ -317,20 +318,20 @@ onUnmounted(() => {
           </template>
 
           <template #actions="{ current, back, next }">
-            <button v-if="current > 1" type="button" class="auth-step__back" @click="back">Previous</button>
-            <button v-if="current < steps.length" type="button" class="auth-form__submit" @click="advance(next)">Continue</button>
+            <button v-if="current > 1" type="button" class="auth-step__back" @click="back">{{ t('Previous') }}</button>
+            <button v-if="current < steps.length" type="button" class="auth-form__submit" @click="advance(next)">{{ t('Continue') }}</button>
             <button v-else type="submit" class="auth-form__submit" :disabled="loading">
               <span v-if="loading" class="auth-form__spinner"></span>
-              <span v-else>{{ isRegister ? 'Create account' : 'Sign in' }}</span>
+              <span v-else>{{ t(isRegister ? 'Create account' : 'Sign in') }}</span>
             </button>
           </template>
         </Stepper>
       </form>
 
       <div class="auth-modal__footer">
-        <span>{{ isRegister ? 'Already have an account?' : "Don't have an account?" }}</span>
+        <span>{{ t(isRegister ? 'Already have an account?' : "Don't have an account?") }}</span>
         <button class="auth-modal__toggle" @click="toggleMode">
-          {{ isRegister ? 'Sign in' : 'Create one' }}
+          {{ t(isRegister ? 'Sign in' : 'Create one') }}
         </button>
       </div>
     </div>

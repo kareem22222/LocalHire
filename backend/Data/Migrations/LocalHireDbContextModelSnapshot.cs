@@ -22,6 +22,148 @@ namespace LocalHire.Api.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("LocalHire.Api.Models.ApplicationAppointment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("JobApplicationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MeetingUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("ProposedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("StartsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Venue")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobApplicationId")
+                        .IsUnique();
+
+                    b.ToTable("ApplicationAppointments");
+                });
+
+            modelBuilder.Entity("LocalHire.Api.Models.CandidateInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EmployerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("JobPostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("RespondedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("WorkerId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobPostId");
+
+                    b.HasIndex("WorkerId");
+
+                    b.HasIndex("EmployerId", "WorkerId", "JobPostId")
+                        .IsUnique();
+
+                    b.ToTable("CandidateInvitations");
+                });
+
+            modelBuilder.Entity("LocalHire.Api.Models.EmailOutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DedupeKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Link")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTimeOffset>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DedupeKey")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("SentAt", "NextAttemptAt");
+
+                    b.ToTable("EmailOutboxMessages");
+                });
+
             modelBuilder.Entity("LocalHire.Api.Models.JobApplication", b =>
                 {
                     b.Property<Guid>("Id")
@@ -118,6 +260,10 @@ namespace LocalHire.Api.Migrations
                     b.Property<double?>("Latitude")
                         .HasColumnType("double precision");
 
+                    b.Property<string>("LocationSource")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
                     b.Property<double?>("Longitude")
                         .HasColumnType("double precision");
 
@@ -162,6 +308,12 @@ namespace LocalHire.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.Property<string>("WorkingDays")
                         .HasMaxLength(200)
@@ -313,6 +465,22 @@ namespace LocalHire.Api.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
+                    b.Property<string>("BusinessContact")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("BusinessDescription")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("BusinessLocation")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("BusinessName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<string>("CityArea")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
@@ -340,12 +508,27 @@ namespace LocalHire.Api.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<bool>("EmailNotificationsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
                     b.Property<int?>("ExperienceYears")
                         .HasColumnType("integer");
 
                     b.Property<string>("Gender")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("IsDiscoverable")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsTestAccount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("JobTitle")
                         .HasMaxLength(100)
@@ -434,6 +617,55 @@ namespace LocalHire.Api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("LocalHire.Api.Models.ApplicationAppointment", b =>
+                {
+                    b.HasOne("LocalHire.Api.Models.JobApplication", "JobApplication")
+                        .WithOne("Appointment")
+                        .HasForeignKey("LocalHire.Api.Models.ApplicationAppointment", "JobApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("JobApplication");
+                });
+
+            modelBuilder.Entity("LocalHire.Api.Models.CandidateInvitation", b =>
+                {
+                    b.HasOne("LocalHire.Api.Models.User", "Employer")
+                        .WithMany("SentInvitations")
+                        .HasForeignKey("EmployerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("LocalHire.Api.Models.JobPost", "JobPost")
+                        .WithMany("Invitations")
+                        .HasForeignKey("JobPostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("LocalHire.Api.Models.User", "Worker")
+                        .WithMany("ReceivedInvitations")
+                        .HasForeignKey("WorkerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Employer");
+
+                    b.Navigation("JobPost");
+
+                    b.Navigation("Worker");
+                });
+
+            modelBuilder.Entity("LocalHire.Api.Models.EmailOutboxMessage", b =>
+                {
+                    b.HasOne("LocalHire.Api.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("LocalHire.Api.Models.JobApplication", b =>
                 {
                     b.HasOne("LocalHire.Api.Models.JobPost", "JobPost")
@@ -518,9 +750,16 @@ namespace LocalHire.Api.Migrations
                     b.Navigation("Worker");
                 });
 
+            modelBuilder.Entity("LocalHire.Api.Models.JobApplication", b =>
+                {
+                    b.Navigation("Appointment");
+                });
+
             modelBuilder.Entity("LocalHire.Api.Models.JobPost", b =>
                 {
                     b.Navigation("Applications");
+
+                    b.Navigation("Invitations");
 
                     b.Navigation("SavedByWorkers");
                 });
@@ -533,11 +772,15 @@ namespace LocalHire.Api.Migrations
 
                     b.Navigation("Notifications");
 
+                    b.Navigation("ReceivedInvitations");
+
                     b.Navigation("SavedByEmployers");
 
                     b.Navigation("SavedCandidates");
 
                     b.Navigation("SavedJobs");
+
+                    b.Navigation("SentInvitations");
                 });
 #pragma warning restore 612, 618
         }

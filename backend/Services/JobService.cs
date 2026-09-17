@@ -1,3 +1,4 @@
+using System.Data;
 using System.Linq.Expressions;
 using LocalHire.Api.Data;
 using LocalHire.Api.DTOs;
@@ -12,7 +13,6 @@ namespace LocalHire.Api.Services;
 public sealed class JobService : IJobService
 {
     private const double NearbyRadiusKm = 50;
-    private const int SearchRankingLimit = 200;
     private const string JobPostNotFoundMessage = "Job post not found.";
 
     private readonly LocalHireDbContext _db;
@@ -106,13 +106,24 @@ public sealed class JobService : IJobService
         return JobMapper.ToResponse(result.Job, result.Count, result.Shortlisted);
     }
 
+    public async Task<PublicJobResponse> GetPublicJobAsync(Guid id, CancellationToken ct)
+    {
+        var job = await _db.JobPosts.AsNoTracking()
+            .FirstOrDefaultAsync(item => item.Id == id && item.IsActive, ct)
+            ?? throw new NotFoundException(JobPostNotFoundMessage);
+        return JobMapper.ToPublicResponse(job);
+    }
+
     public async Task<JobPostResponse> UpdateJobAsync(Guid id, CreateJobPostRequest request, Guid employerId, CancellationToken ct)
     {
         var jobPost = await _db.JobPosts.FirstOrDefaultAsync(j => j.Id == id && j.EmployerId == employerId, ct);
         if (jobPost is null)
             throw new NotFoundException(JobPostNotFoundMessage);
+        if (request.Version != jobPost.Version)
+            throw new ConflictException("This job changed after you opened it. Compare your edits with the latest version and reload before saving.");
 
         JobMapper.ApplyRequest(jobPost, request);
+        jobPost.Version++;
 
         _db.ChangeTracker.DetectChanges();
         if (_db.Entry(jobPost).State == EntityState.Modified)
@@ -131,6 +142,50 @@ public sealed class JobService : IJobService
         var shortlisted = await _db.JobApplications
             .CountAsync(a => a.JobPostId == id && a.Status == ApplicationStatus.Shortlisted, ct);
         return JobMapper.ToResponse(jobPost, count, shortlisted);
+    }
+
+    public async Task<JobPostResponse> SetJobActiveAsync(
+        Guid id, bool isActive, Guid employerId, CancellationToken ct)
+    {
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        var jobPost = await _db.JobPosts
+            .FirstOrDefaultAsync(job => job.Id == id && job.EmployerId == employerId, ct)
+            ?? throw new NotFoundException(JobPostNotFoundMessage);
+
+        try
+        {
+            if (jobPost.IsActive != isActive)
+            {
+                jobPost.IsActive = isActive;
+                jobPost.Version++;
+                if (!isActive)
+                {
+                    var workerIds = await _db.JobApplications
+                        .Where(application => application.JobPostId == id)
+                        .Select(application => application.WorkerId)
+                        .Distinct()
+                        .ToListAsync(ct);
+                    _notifications.NotifyJobClosed(workerIds, jobPost);
+                }
+                await _db.SaveChangesAsync(ct);
+            }
+
+            await transaction.CommitAsync(ct);
+        }
+        catch (Exception ex) when (IsTransactionConflict(ex))
+        {
+            throw new ConflictException("The vacancy changed while this request was being processed. Please try again.");
+        }
+
+        var counts = await _db.JobPosts
+            .Where(job => job.Id == id)
+            .Select(job => new
+            {
+                Applications = job.Applications.Count,
+                Shortlisted = job.Applications.Count(application => application.Status == ApplicationStatus.Shortlisted)
+            })
+            .SingleAsync(ct);
+        return JobMapper.ToResponse(jobPost, counts.Applications, counts.Shortlisted);
     }
 
     public async Task<IReadOnlyList<ApplicantResponse>> GetApplicationsAsync(Guid jobId, Guid employerId, CancellationToken ct)
@@ -210,6 +265,7 @@ public sealed class JobService : IJobService
             throw new NotFoundException(JobPostNotFoundMessage);
 
         var application = await _db.JobApplications
+            .Include(a => a.Appointment)
             .FirstOrDefaultAsync(a => a.Id == applicationId && a.JobPostId == jobId, ct);
         if (application is null)
             throw new NotFoundException("Application not found.");
@@ -220,10 +276,15 @@ public sealed class JobService : IJobService
 
         application.Status = target;
         application.StatusUpdatedAt = DateTimeOffset.UtcNow;
+        if (application.Appointment is not null && target is ApplicationStatus.Hired or ApplicationStatus.Rejected)
+        {
+            application.Appointment.Status = AppointmentStatus.Cancelled;
+            application.Appointment.UpdatedAt = application.StatusUpdatedAt.Value;
+        }
         if (target == ApplicationStatus.Shortlisted)
             _notifications.NotifyShortlisted(application.WorkerId, jobPost);
         else
-            _notifications.NotifyApplicationOutcome(application.WorkerId, jobPost, target);
+            _notifications.NotifyApplicationOutcome(application.WorkerId, jobPost, application.Id, target);
         try
         {
             await _db.SaveChangesAsync(ct);
@@ -264,6 +325,8 @@ public sealed class JobService : IJobService
             throw new NotFoundException("Candidate not found.");
 
         var hasApplied = await _candidateAccess.CanViewAsync(employerId, workerId, ct);
+        if (!worker.IsDiscoverable && !hasApplied)
+            throw new NotFoundException("Candidate not found.");
 
         return new CandidateDetailResponse(
             worker.Id,
@@ -271,14 +334,10 @@ public sealed class JobService : IJobService
             hasApplied ? worker.Email : null,
             hasApplied,
             worker.JobTitle,
-            worker.Gender,
-            worker.DateOfBirth,
             hasApplied ? worker.AddressLine : null,
             worker.CityArea,
             worker.State,
-            worker.Pincode,
-            worker.Latitude,
-            worker.Longitude,
+            hasApplied ? worker.Pincode : null,
             worker.CreatedAt,
             worker.ProfessionalSummary,
             worker.ExperienceYears,
@@ -313,78 +372,42 @@ public sealed class JobService : IJobService
 
     public async Task<IReadOnlyList<JobPostResponse>> GetNearbyJobsAsync(
         double? lat, double? lng, string? search, EmploymentType? employmentType,
+        decimal? salaryMin, decimal? salaryMax, SalaryPeriod? salaryPeriod,
+        int? experienceYears, double? maxDistanceKm,
         Guid workerId, CancellationToken ct)
-    {
-        var term = search?.Trim();
-        var hasSearch = !string.IsNullOrEmpty(term);
-        var query = ApplyJobFilters(_db.JobPosts.Where(j => j.IsActive), term, employmentType);
+        => (await SearchJobsAsync(
+            lat, lng, search, employmentType, salaryMin, salaryMax, salaryPeriod,
+            experienceYears, maxDistanceKm, workerId,
+            new PagingRequest(1, 60), ct)).Items;
 
-        if (lat is not null && lng is not null && !hasSearch)
-        {
-            var nearbyQuery = ApplyJobBoundingBox(query, lat.Value, lng.Value);
-
-            var jobs = await nearbyQuery
-                .Select(j => new { Job = j, Count = j.Applications.Count })
-                .ToListAsync(ct);
-
-            return jobs
-                .Select(x => new
-                {
-                    x.Job,
-                    x.Count,
-                    Distance = GeoCalculator.HaversineDistance(lat.Value, lng.Value, x.Job.Latitude, x.Job.Longitude)
-                })
-                .Where(x => x.Distance <= NearbyRadiusKm)
-                .OrderBy(x => x.Distance)
-                .Select(x => JobMapper.ToResponse(x.Job, x.Count))
-                .ToList();
-        }
-
-        if (!hasSearch && lat is null)
-            query = await ApplyWorkerStateDefaultAsync(query, workerId, ct);
-
-        // Keep the cap before the in-memory ranking: SQLite cannot order
-        // DateTimeOffset or translate the Haversine calculation, and the bound
-        // prevents an unbounded materialization. The final in-memory ranking
-        // and Take(60) below remain unchanged.
-        var matchedJobs = await query
-            .Select(j => new { Job = j, Count = j.Applications.Count })
-            .Take(SearchRankingLimit)
-            .ToListAsync(ct);
-
-        var ranked = lat is not null && lng is not null
-            ? matchedJobs.OrderBy(x => GeoCalculator.HaversineDistance(
-                lat.Value, lng.Value, x.Job.Latitude, x.Job.Longitude))
-            : matchedJobs.OrderByDescending(x => x.Job.CreatedAt);
-
-        return ranked
-            .Take(60)
-            .Select(x => JobMapper.ToResponse(x.Job, x.Count))
-            .ToList();
-    }
+    public Task<IReadOnlyList<JobPostResponse>> GetNearbyJobsAsync(
+        double? lat, double? lng, string? search, EmploymentType? employmentType,
+        Guid workerId, CancellationToken ct) =>
+        GetNearbyJobsAsync(lat, lng, search, employmentType, null, null, null, null, null, workerId, ct);
 
     public async Task<PagedResponse<JobPostResponse>> SearchJobsAsync(
         double? lat, double? lng, string? search, EmploymentType? employmentType,
+        decimal? salaryMin, decimal? salaryMax, SalaryPeriod? salaryPeriod,
+        int? experienceYears, double? maxDistanceKm,
         Guid workerId, PagingRequest paging, CancellationToken ct)
     {
         var term = search?.Trim();
         var hasSearch = !string.IsNullOrEmpty(term);
-        var query = ApplyJobFilters(_db.JobPosts.Where(job => job.IsActive), term, employmentType);
+        var query = ApplyJobFilters(
+            _db.JobPosts.Where(job => job.IsActive), term, employmentType,
+            salaryMin, salaryMax, salaryPeriod, experienceYears);
 
         if (!hasSearch && lat is null)
             query = await ApplyWorkerStateDefaultAsync(query, workerId, ct);
 
         if (lat is not null && lng is not null)
         {
-            if (!hasSearch)
-                query = ApplyJobBoundingBox(query, lat.Value, lng.Value);
-            else
-                query = query.Take(SearchRankingLimit);
-
             // ponytail: filtered in-memory distance sort; use PostGIS if measured volume makes it expensive.
             var matched = await query
                 .Select(job => new { Job = job, Count = job.Applications.Count })
                 .ToListAsync(ct);
+            var workerState = hasSearch ? null : await GetWorkerStateAsync(workerId, ct);
+            var radiusKm = maxDistanceKm ?? NearbyRadiusKm;
             var ranked = matched
                 .Select(item => new
                 {
@@ -393,7 +416,13 @@ public sealed class JobService : IJobService
                     Distance = GeoCalculator.HaversineDistance(
                         lat.Value, lng.Value, item.Job.Latitude, item.Job.Longitude)
                 })
-                .Where(item => hasSearch || item.Distance <= NearbyRadiusKm)
+                .Where(item => maxDistanceKm is not null
+                    ? item.Distance <= radiusKm
+                    : hasSearch
+                        || item.Distance <= radiusKm
+                        || item.Distance >= double.MaxValue
+                            && !string.IsNullOrWhiteSpace(workerState)
+                            && item.Job.State == workerState)
                 .OrderBy(item => item.Distance)
                 .ThenByDescending(item => item.Job.CreatedAt)
                 .ThenBy(item => item.Job.Id)
@@ -415,37 +444,28 @@ public sealed class JobService : IJobService
             paging, totalCount);
     }
 
-    private static IQueryable<JobPost> ApplyJobBoundingBox(
-        IQueryable<JobPost> query, double lat, double lng)
-    {
-        var box = GeoCalculator.GetBoundingBox(lat, lng, NearbyRadiusKm);
-        var nearbyQuery = query
-            .Where(j => j.Latitude != null && j.Longitude != null)
-            .Where(j => j.Latitude >= box.MinLat && j.Latitude <= box.MaxLat);
+    public Task<PagedResponse<JobPostResponse>> SearchJobsAsync(
+        double? lat, double? lng, string? search, EmploymentType? employmentType,
+        Guid workerId, PagingRequest paging, CancellationToken ct) =>
+        SearchJobsAsync(lat, lng, search, employmentType, null, null, null, null, null, workerId, paging, ct);
 
-        if (box.CoversAllLongitudes)
-            return nearbyQuery;
-        if (box.MinLng < -180)
-            return nearbyQuery.Where(j => j.Longitude >= box.MinLng + 360 || j.Longitude <= box.MaxLng);
-        if (box.MaxLng > 180)
-            return nearbyQuery.Where(j => j.Longitude >= box.MinLng || j.Longitude <= box.MaxLng - 360);
-        return nearbyQuery.Where(j => j.Longitude >= box.MinLng && j.Longitude <= box.MaxLng);
-    }
-
-    public async Task<JobPostResponse> GetActiveJobAsync(Guid id, CancellationToken ct)
+    public async Task<JobPostResponse> GetWorkerJobAsync(Guid id, Guid workerId, CancellationToken ct)
     {
         var result = await _db.JobPosts
-            .Where(j => j.Id == id && j.IsActive)
+            .Where(job => job.Id == id && (job.IsActive
+                || job.Applications.Any(application => application.WorkerId == workerId)))
             .Select(j => new { Job = j, Count = j.Applications.Count })
             .FirstOrDefaultAsync(ct);
 
         return result is null
-            ? throw new NotFoundException("Job post not found or no longer active.")
+            ? throw new NotFoundException("Job post not found.")
             : JobMapper.ToResponse(result.Job, result.Count);
     }
 
     private static IQueryable<JobPost> ApplyJobFilters(
-        IQueryable<JobPost> query, string? term, EmploymentType? employmentType)
+        IQueryable<JobPost> query, string? term, EmploymentType? employmentType,
+        decimal? salaryMin, decimal? salaryMax, SalaryPeriod? salaryPeriod,
+        int? experienceYears)
     {
         if (!string.IsNullOrEmpty(term))
         {
@@ -461,23 +481,31 @@ public sealed class JobService : IJobService
 #pragma warning restore CA1862
         }
 
-        return employmentType is null
-            ? query
-            : query.Where(j => j.EmploymentType == employmentType);
+        if (employmentType is not null)
+            query = query.Where(job => job.EmploymentType == employmentType);
+        if (salaryPeriod is not null)
+            query = query.Where(job => job.SalaryPeriod == salaryPeriod);
+        if (salaryMin is not null)
+            query = query.Where(job => (job.SalaryMax ?? job.SalaryMin) >= salaryMin);
+        if (salaryMax is not null)
+            query = query.Where(job => (job.SalaryMin ?? job.SalaryMax) <= salaryMax);
+        if (experienceYears is not null)
+            query = query.Where(job => job.ExperienceMinYears == null || job.ExperienceMinYears <= experienceYears);
+        return query;
     }
 
     private async Task<IQueryable<JobPost>> ApplyWorkerStateDefaultAsync(
         IQueryable<JobPost> query, Guid workerId, CancellationToken ct)
     {
-        var workerState = await _db.Users
-            .Where(u => u.Id == workerId)
-            .Select(u => u.State)
-            .FirstOrDefaultAsync(ct);
+        var workerState = await GetWorkerStateAsync(workerId, ct);
 
         return string.IsNullOrWhiteSpace(workerState)
             ? query
             : query.Where(j => j.State != null && j.State == workerState);
     }
+
+    private Task<string?> GetWorkerStateAsync(Guid workerId, CancellationToken ct) =>
+        _db.Users.Where(user => user.Id == workerId).Select(user => user.State).FirstOrDefaultAsync(ct);
 
     public async Task<IReadOnlyList<CandidateResponse>> GetNearbyCandidatesAsync(
         double? lat, double? lng, string? search, string? role, Guid employerId, CancellationToken ct)
@@ -486,7 +514,7 @@ public sealed class JobService : IJobService
         var hasSearch = !string.IsNullOrEmpty(term);
 
         var query = ApplyCandidateFilters(
-            _db.Users.Where(u => u.Role == UserRole.LookingForWork), term, role);
+            _db.Users.Where(u => u.Role == UserRole.LookingForWork && u.IsDiscoverable), term, role);
 
         // With coordinates and NO typed search term this is the "talent near your
         // business" default, so results are restricted to the local radius. A typed
@@ -505,15 +533,7 @@ public sealed class JobService : IJobService
             query = await ApplyEmployerStateDefaultAsync(query, employerId, ct);
         }
 
-        // Reaches here for a global search (typed term, with or without
-        // coordinates) or the state-default fallback. Cap the fetch, then rank by
-        // proximity when we have an origin so the nearest matches come first while
-        // still surfacing matches that lie outside the local radius. Ordering by
-        // CreatedAt is done in memory because SQLite cannot ORDER BY a
-        // DateTimeOffset (Postgres handles it either way).
-        var matchedWorkers = await query
-            .Take(SearchRankingLimit)
-            .ToListAsync(ct);
+        var matchedWorkers = await query.ToListAsync(ct);
 
         return RankCandidates(
             matchedWorkers.OrderByDescending(u => u.CreatedAt).ToList(), lat, lng);
@@ -526,7 +546,7 @@ public sealed class JobService : IJobService
         var term = search?.Trim();
         var hasSearch = !string.IsNullOrEmpty(term);
         var query = ApplyCandidateFilters(
-            _db.Users.Where(user => user.Role == UserRole.LookingForWork), term, role);
+            _db.Users.Where(user => user.Role == UserRole.LookingForWork && user.IsDiscoverable), term, role);
 
         if (!hasSearch && lat is null)
             query = await ApplyEmployerStateDefaultAsync(query, employerId, ct);
@@ -535,8 +555,6 @@ public sealed class JobService : IJobService
         {
             if (!hasSearch)
                 query = ApplyBoundingBox(query, lat.Value, lng.Value);
-            else
-                query = query.Take(SearchRankingLimit);
 
             // ponytail: filtered in-memory distance sort; use PostGIS if measured volume makes it expensive.
             var ranked = (await query.ToListAsync(ct))
@@ -618,6 +636,8 @@ public sealed class JobService : IJobService
             })
             .Where(x => x.Distance <= NearbyRadiusKm)
             .OrderBy(x => x.Distance)
+            .ThenByDescending(x => x.User.CreatedAt)
+            .ThenBy(x => x.User.Id)
             .Take(60)
             .Select(x => ToCandidateResponse(x.User, x.Distance))
             .ToList();
@@ -675,6 +695,8 @@ public sealed class JobService : IJobService
         if (lat is null || lng is null)
         {
             return workers
+                .OrderByDescending(user => user.CreatedAt)
+                .ThenBy(user => user.Id)
                 .Take(60)
                 .Select(u => ToCandidateResponse(u, null))
                 .ToList();
@@ -687,6 +709,8 @@ public sealed class JobService : IJobService
                 Distance = GeoCalculator.HaversineDistance(lat.Value, lng.Value, u.Latitude, u.Longitude)
             })
             .OrderBy(x => x.Distance)
+            .ThenByDescending(x => x.User.CreatedAt)
+            .ThenBy(x => x.User.Id)
             .Take(60)
             .Select(x => ToCandidateResponse(
                 x.User, x.Distance >= double.MaxValue ? null : x.Distance))
@@ -717,9 +741,6 @@ public sealed class JobService : IJobService
             worker.JobTitle,
             worker.CityArea,
             worker.State,
-            worker.Pincode,
-            worker.Latitude,
-            worker.Longitude,
             distanceKm is null || distanceKm.Value >= double.MaxValue
                 ? null
                 : Math.Round(distanceKm.Value, 1),
@@ -729,14 +750,20 @@ public sealed class JobService : IJobService
     public async Task<IReadOnlyList<Guid>> GetSavedCandidateIdsAsync(
         Guid employerId, CancellationToken ct) =>
         await _db.SavedCandidates
-            .Where(savedCandidate => savedCandidate.EmployerId == employerId)
+            .Where(savedCandidate => savedCandidate.EmployerId == employerId
+                && (savedCandidate.Worker.IsDiscoverable
+                    || savedCandidate.Worker.JobApplications.Any(application =>
+                        application.JobPost.EmployerId == employerId)))
             .Select(savedCandidate => savedCandidate.WorkerId)
             .ToListAsync(ct);
 
     public async Task<PagedResponse<CandidateResponse>> GetSavedCandidatesPagedAsync(
         Guid employerId, PagingRequest paging, CancellationToken ct)
     {
-        var query = _db.SavedCandidates.Where(item => item.EmployerId == employerId);
+        var query = _db.SavedCandidates.Where(item => item.EmployerId == employerId
+            && (item.Worker.IsDiscoverable
+                || item.Worker.JobApplications.Any(application =>
+                    application.JobPost.EmployerId == employerId)));
         var totalCount = await query.CountAsync(ct);
         var rows = await PageAsync(
             query.Include(item => item.Worker), item => item.CreatedAt, item => item.Id,
@@ -751,7 +778,9 @@ public sealed class JobService : IJobService
         Guid workerId, Guid employerId, CancellationToken ct)
     {
         if (!await _db.Users.AnyAsync(
-                user => user.Id == workerId && user.Role == UserRole.LookingForWork, ct))
+                user => user.Id == workerId
+                    && user.Role == UserRole.LookingForWork
+                    && user.IsDiscoverable, ct))
             throw new NotFoundException("Candidate not found.");
 
         if (await _db.SavedCandidates.AnyAsync(
@@ -794,6 +823,7 @@ public sealed class JobService : IJobService
 
     public async Task<JobApplicationResponse> ApplyAsync(Guid jobId, Guid workerId, CancellationToken ct)
     {
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         var jobPost = await _db.JobPosts.FirstOrDefaultAsync(j => j.Id == jobId && j.IsActive, ct)
             ?? throw new NotFoundException("Job post not found or no longer active.");
 
@@ -814,16 +844,29 @@ public sealed class JobService : IJobService
         };
 
         _db.JobApplications.Add(application);
+        var invitation = await _db.CandidateInvitations.FirstOrDefaultAsync(item =>
+            item.JobPostId == jobId && item.WorkerId == workerId &&
+            item.Status == InvitationStatus.Pending, ct);
+        if (invitation is not null)
+        {
+            invitation.Status = InvitationStatus.Accepted;
+            invitation.RespondedAt = now;
+        }
         _notifications.NotifyNewApplication(jobPost.EmployerId, jobPost);
         try
         {
             await _db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
         }
         catch (DbUpdateException ex) when (
             ex.InnerException is PostgresException pgEx &&
             pgEx.SqlState == PostgresErrorCodes.UniqueViolation)
         {
             throw new ConflictException("You have already applied to this job.");
+        }
+        catch (Exception ex) when (IsTransactionConflict(ex))
+        {
+            throw new ConflictException("The vacancy changed while your application was being processed. Please try again.");
         }
 
         return new JobApplicationResponse(
@@ -940,8 +983,259 @@ public sealed class JobService : IJobService
             return;
 
         _db.SavedJobs.Remove(savedJob);
-        await _db.SaveChangesAsync(ct);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("This job changed after you opened it. Compare your edits with the latest version and reload before saving.");
+        }
     }
+
+    public async Task<JobApplicationResponse> WithdrawApplicationAsync(
+        Guid applicationId, Guid workerId, CancellationToken ct)
+    {
+        var application = await _db.JobApplications
+            .Include(item => item.JobPost)
+            .Include(item => item.Appointment)
+            .FirstOrDefaultAsync(item => item.Id == applicationId && item.WorkerId == workerId, ct)
+            ?? throw new NotFoundException("Application not found.");
+
+        if (application.Status == ApplicationStatus.Withdrawn)
+            return ToApplicationResponse(application);
+        if (application.Status is ApplicationStatus.Hired or ApplicationStatus.Rejected)
+            throw new ConflictException($"A {application.Status.ToString().ToLowerInvariant()} application cannot be withdrawn.");
+
+        application.Status = ApplicationStatus.Withdrawn;
+        application.StatusUpdatedAt = DateTimeOffset.UtcNow;
+        if (application.Appointment is not null)
+        {
+            application.Appointment.Status = AppointmentStatus.Cancelled;
+            application.Appointment.UpdatedAt = application.StatusUpdatedAt.Value;
+        }
+        _notifications.NotifyWithdrawal(application.JobPost.EmployerId, application.JobPost, application.Id);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("Application status changed while the withdrawal was being processed.");
+        }
+
+        return ToApplicationResponse(application);
+    }
+
+    public async Task<InvitationResponse> CreateInvitationAsync(
+        Guid workerId, Guid jobId, Guid employerId, CancellationToken ct)
+    {
+        var job = await _db.JobPosts.FirstOrDefaultAsync(item =>
+            item.Id == jobId && item.EmployerId == employerId && item.IsActive, ct)
+            ?? throw new NotFoundException("Active job post not found.");
+        if (!await _db.Users.AnyAsync(user =>
+                user.Id == workerId && user.Role == UserRole.LookingForWork && user.IsDiscoverable, ct))
+            throw new NotFoundException("Candidate not found.");
+        if (await _db.CandidateInvitations.AnyAsync(item =>
+                item.EmployerId == employerId && item.WorkerId == workerId && item.JobPostId == jobId, ct))
+            throw new ConflictException("This candidate has already been invited to that role.");
+        if (await _db.CandidateInvitations.CountAsync(item =>
+                item.EmployerId == employerId && item.Status == InvitationStatus.Pending, ct) >= 20)
+            throw new ConflictException("Respond to existing invitations before sending more.");
+
+        var invitation = new CandidateInvitation
+        {
+            Id = Guid.NewGuid(),
+            EmployerId = employerId,
+            WorkerId = workerId,
+            JobPostId = jobId,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _db.CandidateInvitations.Add(invitation);
+        _notifications.NotifyInvitation(workerId, job, invitation.Id);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            throw new ConflictException("This candidate has already been invited to that role.");
+        }
+        return ToInvitationResponse(invitation, job);
+    }
+
+    public async Task<IReadOnlyList<InvitationResponse>> GetMyInvitationsAsync(
+        Guid workerId, CancellationToken ct) =>
+        await _db.CandidateInvitations
+            .Where(item => item.WorkerId == workerId)
+            .OrderByDescending(item => item.CreatedAt)
+            .Select(item => new InvitationResponse(
+                item.Id, item.JobPostId, item.JobPost.Title, item.JobPost.WorkplaceName,
+                item.Status.ToString(), item.CreatedAt))
+            .ToListAsync(ct);
+
+    public async Task<InvitationResponse> DeclineInvitationAsync(
+        Guid invitationId, Guid workerId, CancellationToken ct)
+    {
+        var invitation = await _db.CandidateInvitations
+            .Include(item => item.JobPost)
+            .FirstOrDefaultAsync(item => item.Id == invitationId && item.WorkerId == workerId, ct)
+            ?? throw new NotFoundException("Invitation not found.");
+        if (invitation.Status == InvitationStatus.Accepted)
+            throw new ConflictException("An accepted invitation cannot be declined.");
+        if (invitation.Status == InvitationStatus.Pending)
+        {
+            invitation.Status = InvitationStatus.Declined;
+            invitation.RespondedAt = DateTimeOffset.UtcNow;
+            await _db.SaveChangesAsync(ct);
+        }
+        return ToInvitationResponse(invitation, invitation.JobPost);
+    }
+
+    public async Task<AppointmentResponse?> GetAppointmentAsync(
+        Guid applicationId, Guid userId, UserRole role, CancellationToken ct)
+    {
+        var application = await FindParticipantApplicationAsync(applicationId, userId, role, ct);
+        return application.Appointment is null ? null : ToAppointmentResponse(application.Appointment);
+    }
+
+    public async Task<AppointmentResponse> SetAppointmentAsync(
+        Guid applicationId, AppointmentRequest request, Guid userId, UserRole role, CancellationToken ct)
+    {
+        var application = await FindParticipantApplicationAsync(applicationId, userId, role, ct);
+        if (application.Status is not (ApplicationStatus.Applied or ApplicationStatus.Shortlisted))
+            throw new ConflictException("This application cannot receive a new appointment.");
+        if (application.Appointment?.Status == AppointmentStatus.Cancelled)
+            throw new ConflictException("A cancelled appointment cannot be reactivated.");
+        ValidateAppointment(request);
+
+        var appointment = application.Appointment ?? new ApplicationAppointment
+        {
+            Id = Guid.NewGuid(),
+            JobApplicationId = application.Id,
+            TimeZone = request.TimeZone.Trim()
+        };
+        if (application.Appointment is null)
+            _db.ApplicationAppointments.Add(appointment);
+        appointment.ProposedById = userId;
+        appointment.StartsAt = request.StartsAt;
+        appointment.TimeZone = request.TimeZone.Trim();
+        appointment.Venue = NormalizeOptional(request.Venue);
+        appointment.MeetingUrl = NormalizeOptional(request.MeetingUrl);
+        appointment.Notes = NormalizeOptional(request.Notes);
+        appointment.Status = AppointmentStatus.Proposed;
+        appointment.UpdatedAt = DateTimeOffset.UtcNow;
+        NotifyOtherParticipant(application, userId, "Proposed");
+        await _db.SaveChangesAsync(ct);
+        return ToAppointmentResponse(appointment);
+    }
+
+    public async Task<AppointmentResponse> ConfirmAppointmentAsync(
+        Guid applicationId, Guid userId, UserRole role, CancellationToken ct)
+    {
+        var application = await FindParticipantApplicationAsync(applicationId, userId, role, ct);
+        var appointment = application.Appointment ?? throw new NotFoundException("Appointment not found.");
+        if (appointment.Status != AppointmentStatus.Proposed)
+            throw new ConflictException("Only a proposed appointment can be confirmed.");
+        if (appointment.ProposedById == userId)
+            throw new ConflictException("The other participant must confirm this proposal.");
+        appointment.Status = AppointmentStatus.Confirmed;
+        appointment.UpdatedAt = DateTimeOffset.UtcNow;
+        NotifyOtherParticipant(application, userId, "Confirmed");
+        await _db.SaveChangesAsync(ct);
+        return ToAppointmentResponse(appointment);
+    }
+
+    public async Task<AppointmentResponse> CancelAppointmentAsync(
+        Guid applicationId, Guid userId, UserRole role, CancellationToken ct)
+    {
+        var application = await FindParticipantApplicationAsync(applicationId, userId, role, ct);
+        var appointment = application.Appointment ?? throw new NotFoundException("Appointment not found.");
+        if (appointment.Status != AppointmentStatus.Cancelled)
+        {
+            appointment.Status = AppointmentStatus.Cancelled;
+            appointment.UpdatedAt = DateTimeOffset.UtcNow;
+            NotifyOtherParticipant(application, userId, "Cancelled");
+            await _db.SaveChangesAsync(ct);
+        }
+        return ToAppointmentResponse(appointment);
+    }
+
+    public async Task<BusinessProfileResponse> GetBusinessProfileAsync(
+        Guid employerId, CancellationToken ct)
+    {
+        var business = await _db.Users
+            .Where(user => user.Id == employerId && user.Role == UserRole.Hiring)
+            .Select(user => new BusinessProfileResponse(
+                user.Id,
+                user.BusinessName ?? user.Name,
+                user.BusinessDescription,
+                user.BusinessLocation ?? user.CityArea,
+                user.BusinessContact))
+            .FirstOrDefaultAsync(ct);
+        return business ?? throw new NotFoundException("Business profile not found.");
+    }
+
+    private async Task<JobApplication> FindParticipantApplicationAsync(
+        Guid applicationId, Guid userId, UserRole role, CancellationToken ct)
+    {
+        var query = _db.JobApplications
+            .Include(application => application.JobPost)
+            .Include(application => application.Appointment)
+            .Where(application => application.Id == applicationId);
+        query = role == UserRole.Hiring
+            ? query.Where(application => application.JobPost.EmployerId == userId)
+            : query.Where(application => application.WorkerId == userId);
+        return await query.FirstOrDefaultAsync(ct)
+            ?? throw new NotFoundException("Application not found.");
+    }
+
+    private static void ValidateAppointment(AppointmentRequest request)
+    {
+        if (request.StartsAt <= DateTimeOffset.UtcNow)
+            throw new BadRequestException("Appointment time must be in the future.");
+        if (string.IsNullOrWhiteSpace(request.TimeZone))
+            throw new BadRequestException("Time zone is required.");
+        if (request.TimeZone.Length > 100 || request.Venue?.Length > 300 ||
+            request.MeetingUrl?.Length > 500 || request.Notes?.Length > 1000)
+            throw new BadRequestException("Appointment details are too long.");
+        try { _ = TimeZoneInfo.FindSystemTimeZoneById(request.TimeZone.Trim()); }
+        catch (TimeZoneNotFoundException) { throw new BadRequestException("Time zone is invalid."); }
+        catch (InvalidTimeZoneException) { throw new BadRequestException("Time zone is invalid."); }
+        if (string.IsNullOrWhiteSpace(request.Venue) && string.IsNullOrWhiteSpace(request.MeetingUrl))
+            throw new BadRequestException("Add a venue or meeting URL.");
+        if (!string.IsNullOrWhiteSpace(request.MeetingUrl) &&
+            (!Uri.TryCreate(request.MeetingUrl, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")))
+            throw new BadRequestException("Meeting URL must use http or https.");
+    }
+
+    private static string? NormalizeOptional(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private void NotifyOtherParticipant(JobApplication application, Guid userId, string status)
+    {
+        var recipientId = application.WorkerId == userId
+            ? application.JobPost.EmployerId
+            : application.WorkerId;
+        _notifications.NotifyAppointment(
+            recipientId, application.JobPost, application.Id, status,
+            recipientId == application.WorkerId);
+    }
+
+    private static JobApplicationResponse ToApplicationResponse(JobApplication application) => new(
+        application.Id, application.JobPostId, application.JobPost.Title,
+        application.JobPost.WorkplaceName, application.JobPost.CityArea,
+        application.Status.ToString(), application.CreatedAt,
+        application.StatusUpdatedAt ?? application.CreatedAt);
+
+    private static InvitationResponse ToInvitationResponse(CandidateInvitation invitation, JobPost job) => new(
+        invitation.Id, invitation.JobPostId, job.Title, job.WorkplaceName,
+        invitation.Status.ToString(), invitation.CreatedAt);
+
+    private static AppointmentResponse ToAppointmentResponse(ApplicationAppointment appointment) => new(
+        appointment.Id, appointment.JobApplicationId, appointment.ProposedById,
+        appointment.StartsAt, appointment.TimeZone, appointment.Venue,
+        appointment.MeetingUrl, appointment.Notes, appointment.Status.ToString(), appointment.UpdatedAt);
 
     private async Task<List<T>> PageAsync<T, TOrder, TThen>(
         IQueryable<T> source,
@@ -968,4 +1262,15 @@ public sealed class JobService : IJobService
 
     private bool IsSqlite =>
         _db.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite";
+
+    private static bool IsTransactionConflict(Exception exception) =>
+        exception is DbUpdateConcurrencyException
+        || exception is PostgresException
+        {
+            SqlState: PostgresErrorCodes.SerializationFailure or PostgresErrorCodes.DeadlockDetected
+        }
+        || exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.SerializationFailure or PostgresErrorCodes.DeadlockDetected
+        };
 }

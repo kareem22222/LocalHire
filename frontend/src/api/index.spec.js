@@ -44,7 +44,7 @@ describe('api auth persistence', () => {
     expect(candidates.isSaved('candidate-1')).toBe(false)
     expect(jobs.isSaved('job-1')).toBe(false)
     expect(localStorage.getItem('dashboard_tab')).toBeNull()
-    expect(window.location.pathname).toBe('/')
+    expect(window.location.pathname).toBe('/hiring/roles')
   })
 
   it('rehydrates the token from localStorage on module load (simulates refresh)', async () => {

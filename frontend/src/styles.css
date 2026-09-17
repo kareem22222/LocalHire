@@ -1184,3 +1184,26 @@ input { font: inherit; }
   .job-form__row { grid-template-columns: 1fr; }
   .location-prompt { flex-direction: column; align-items: stretch; text-align: center; }
 }
+/* Recoverable request states shared by the authenticated shell. */
+.dash-load-error,
+.auth-check-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: min(1100px, calc(100% - 40px));
+  margin: 20px auto;
+  padding: 16px 18px;
+  color: #7f1d1d;
+  border: 1px solid #fecaca;
+  border-radius: 14px;
+  background: #fff7f7;
+}
+
+.auth-check-error { display: grid; justify-items: center; max-width: 640px; margin-top: 80px; text-align: center; }
+.auth-check-error h1 { color: #0b3658; }
+@media (max-width: 600px) { .dash-load-error { align-items: stretch; flex-direction: column; } }
+/* Persistent, keyboard-accessible locale control used across public and signed-in routes. */
+.language-switcher { position: fixed; z-index: 1001; right: 18px; bottom: 18px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; color: #12324a; border: 1px solid rgba(18,50,74,.14); border-radius: 12px; background: rgba(255,255,255,.96); box-shadow: 0 8px 28px rgba(18,50,74,.12); font-size: 12px; font-weight: 800; }
+.language-switcher select { min-height: 34px; padding: 0 28px 0 10px; color: inherit; border: 1px solid rgba(18,50,74,.18); border-radius: 8px; background: #fff; }
+.language-switcher :focus-visible { outline: 3px solid rgba(7,85,154,.2); outline-offset: 2px; }

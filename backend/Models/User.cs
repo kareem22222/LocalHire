@@ -40,6 +40,15 @@ public sealed class User
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
     public DateTimeOffset? LocationUpdatedAt { get; set; }
+    public bool IsDiscoverable { get; set; } = true;
+    public bool EmailNotificationsEnabled { get; set; } = true;
+    public bool IsTestAccount { get; set; }
+
+    // Public hiring-account details. Personal phone/address fields remain private.
+    public string? BusinessName { get; set; }
+    public string? BusinessDescription { get; set; }
+    public string? BusinessLocation { get; set; }
+    public string? BusinessContact { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 
     public ICollection<JobPost> JobPosts { get; set; } = new List<JobPost>();
@@ -48,4 +57,6 @@ public sealed class User
     public ICollection<SavedCandidate> SavedCandidates { get; set; } = new List<SavedCandidate>();
     public ICollection<SavedCandidate> SavedByEmployers { get; set; } = new List<SavedCandidate>();
     public ICollection<SavedJob> SavedJobs { get; set; } = new List<SavedJob>();
+    public ICollection<CandidateInvitation> SentInvitations { get; set; } = new List<CandidateInvitation>();
+    public ICollection<CandidateInvitation> ReceivedInvitations { get; set; } = new List<CandidateInvitation>();
 }

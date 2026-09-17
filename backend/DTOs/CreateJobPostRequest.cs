@@ -9,6 +9,7 @@ public sealed record CreateJobPostRequest(
     string? Pincode = null,
     double? Latitude = null,
     double? Longitude = null,
+    string? LocationSource = null,
     string? EmploymentType = null,
     decimal? SalaryMin = null,
     decimal? SalaryMax = null,
@@ -22,5 +23,6 @@ public sealed record CreateJobPostRequest(
     int? Openings = null,
     List<string>? RequiredSkills = null,
     List<string>? Languages = null,
-    List<string>? Benefits = null
+    List<string>? Benefits = null,
+    int? Version = null
 );

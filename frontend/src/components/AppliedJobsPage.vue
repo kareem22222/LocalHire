@@ -8,13 +8,16 @@ import BrandLogo from './BrandLogo.vue'
 import CountUp from './CountUp.vue'
 import Pagination from './ui/Pagination.vue'
 import SkeletonShimmer from './ui/SkeletonShimmer.vue'
+import AppointmentPanel from './AppointmentPanel.vue'
 import '../hiring-dashboard.css'
+import { formatDate, t } from '../i18n'
 
 const route = useRoute()
 const router = useRouter()
 const jobsStore = useJobsStore()
 const loading = ref(true)
 const error = ref('')
+const withdrawing = ref(null)
 
 const applications = computed(() => jobsStore.myApplicationsPage.items)
 const totalPages = computed(() => jobsStore.myApplicationsPage.totalPages)
@@ -42,6 +45,18 @@ watch(currentPage, load)
 function changePage(page) {
   router.push({ query: { ...route.query, page: page === 1 ? undefined : String(page) } })
 }
+
+async function withdraw(application) {
+  if (!window.confirm(`Withdraw your application for ${application.jobTitle}? You cannot reapply to this role.`)) return
+  withdrawing.value = application.id
+  error.value = ''
+  try {
+    await jobsStore.withdrawApplication(application.id)
+    await load()
+  } catch (requestError) {
+    error.value = requestError.response?.data?.message || 'Could not withdraw the application.'
+  } finally { withdrawing.value = null }
+}
 </script>
 
 <template>
@@ -53,33 +68,36 @@ function changePage(page) {
     <main class="applied-page">
       <section class="applied-hero">
         <div class="applied-hero__copy">
-          <span class="applied-kicker">Application journey</span>
-          <h1>Applied jobs</h1>
+          <span class="applied-kicker">{{ t('Application journey') }}</span>
+          <h1>{{ t('Applied jobs') }}</h1>
           <p>Every application, every update, and your next opportunity—all in one clear timeline.</p>
           <button type="button" class="dash-btn applied-outline" @click="router.push('/')">
-            <span aria-hidden="true">←</span> Back to jobs
+            <span aria-hidden="true">←</span> {{ t('Back to jobs') }}
           </button>
         </div>
       </section>
 
       <section class="applied-metrics" aria-label="Application totals">
-        <div style="--metric-index: 0"><span>Total applications</span><strong><CountUp :to="jobsStore.myApplicationsPage.totalCount" separator="" /></strong><i></i></div>
-        <div style="--metric-index: 1"><span>Shortlisted</span><strong><CountUp :to="shortlisted" separator="" /></strong><i></i></div>
-        <div style="--metric-index: 2"><span>Hired</span><strong><CountUp :to="hired" separator="" /></strong><i></i></div>
+        <div style="--metric-index: 0"><span>{{ t('Total applications') }}</span><strong><CountUp :to="jobsStore.myApplicationsPage.totalCount" separator="" /></strong><i></i></div>
+        <div style="--metric-index: 1"><span>{{ t('Shortlisted') }}</span><strong><CountUp :to="shortlisted" separator="" /></strong><i></i></div>
+        <div style="--metric-index: 2"><span>{{ t('Hired') }}</span><strong><CountUp :to="hired" separator="" /></strong><i></i></div>
       </section>
 
       <SkeletonShimmer v-if="loading" variant="job" :count="applications.length || 3" label="Loading applications" />
       <p v-else-if="error" class="applied-error" role="alert">{{ error }}</p>
       <section v-else-if="applications.length" class="applied-journey" aria-label="Your application timeline">
         <div class="applied-journey__head">
-          <div><span class="applied-kicker">Live status</span><h2>Your journey so far</h2></div>
-          <p>{{ jobsStore.myApplicationsPage.totalCount }} {{ jobsStore.myApplicationsPage.totalCount === 1 ? 'role' : 'roles' }} tracked</p>
+          <div><span class="applied-kicker">{{ t('Live status') }}</span><h2>{{ t('Your journey so far') }}</h2></div>
+          <p>{{ jobsStore.myApplicationsPage.totalCount }} {{ t(jobsStore.myApplicationsPage.totalCount === 1 ? 'role' : 'roles') }}</p>
         </div>
 
         <div class="applied-list">
-          <a
+          <div
             v-for="(application, index) in applications"
             :key="application.id"
+            class="applied-entry"
+          >
+          <a
             class="applied-card spotlight-card spotlight-card--worker"
             :class="`applied-card--${application.status.toLowerCase()}`"
             :href="`/work/jobs/${application.jobPostId}`"
@@ -92,7 +110,7 @@ function changePage(page) {
             <div class="applied-card__identity">
               <div class="applied-card__topline">
                 <span class="applied-card__number">{{ String((currentPage - 1) * MAX_VISIBLE_JOBS + index + 1).padStart(2, '0') }}</span>
-                <span class="applied-card__status" :class="`applied-card__status--${application.status.toLowerCase()}`">{{ application.status }}</span>
+                <span class="applied-card__status" :class="`applied-card__status--${application.status.toLowerCase()}`">{{ t(application.status) }}</span>
               </div>
               <h2>{{ application.jobTitle }}</h2>
               <p>{{ application.workplaceName }} · {{ application.cityArea }}</p>
@@ -105,24 +123,29 @@ function changePage(page) {
                 max="100"
                 :value="applicationStatusDisplay(application.status).progress"
               ></progress>
-              <div class="applied-card__milestones"><span>Applied</span><strong>{{ applicationStatusDisplay(application.status).milestone }}</strong></div>
+              <div class="applied-card__milestones"><span>{{ t('Applied') }}</span><strong>{{ applicationStatusDisplay(application.status).milestone }}</strong></div>
             </div>
 
             <div class="applied-card__summary">
-              <span><strong>Latest update</strong><small>Updated {{ new Date(application.statusUpdatedAt || application.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' }) }}</small></span>
+              <span><strong>{{ t('Latest update') }}</strong><small>{{ t('Updated') }} {{ formatDate(application.statusUpdatedAt || application.createdAt) }}</small></span>
               <p>{{ applicationStatusDisplay(application.status).summary }}</p>
-              <b class="applied-card__link">View job <span aria-hidden="true">→</span></b>
+              <b class="applied-card__link">{{ t('View job') }} <span aria-hidden="true">→</span></b>
             </div>
           </a>
+          <div v-if="['Applied', 'Shortlisted'].includes(application.status)" class="applied-entry__actions">
+            <button type="button" class="applied-withdraw" :disabled="withdrawing === application.id" @click="withdraw(application)">{{ t(withdrawing === application.id ? 'Withdrawing' : 'Withdraw application') }}</button>
+            <AppointmentPanel :application-id="application.id" role="work" />
+          </div>
+          </div>
         </div>
         <Pagination :page="currentPage" :total-pages="totalPages" @change="changePage" />
       </section>
 
       <div v-else class="applied-empty">
         <span aria-hidden="true">◎</span>
-        <h2>No applications yet</h2>
-        <p>Find a nearby role that feels right and start your journey.</p>
-        <button type="button" class="dash-btn applied-primary" @click="router.push('/')">Explore local jobs</button>
+        <h2>{{ t('No applications yet') }}</h2>
+        <p>{{ t('Find a nearby role that feels right and start your journey.') }}</p>
+        <button type="button" class="dash-btn applied-primary" @click="router.push('/')">{{ t('Explore local jobs') }}</button>
       </div>
     </main>
   </div>
@@ -144,8 +167,10 @@ function changePage(page) {
 .applied-journey { --pagination-accent: var(--worker-role-green-text); display: grid; gap: 16px; padding: 24px; border: 1px solid rgba(18,50,74,.08); border-radius: 24px; background: rgba(248,252,253,.72); }
 .applied-journey__head { display: flex; align-items: end; justify-content: space-between; gap: 20px; padding: 4px 4px 10px; }.applied-journey__head h2 { margin-top: 5px; color: #0b3658; font: 800 25px/1.2 Manrope,sans-serif; letter-spacing: -.035em; }.applied-journey__head > p { color: #708794; font-size: 12px; font-weight: 800; }
 .applied-list { display: grid; gap: 14px; }
+.applied-entry { display: grid; gap: 8px; }.applied-entry__actions { padding: 0 14px 10px; }
 .applied-card { --status-start: #07559a; --status-end: #168caa; --status-rgb: 7,85,154; --spotlight-rgb: var(--status-rgb); display: grid; grid-template-columns: minmax(210px,.85fr) minmax(210px,.7fr) minmax(260px,1fr); gap: 26px; align-items: center; padding: 24px; color: inherit; text-decoration: none; border: 1px solid rgba(18,50,74,.08); border-radius: 20px; background: #fff; box-shadow: 0 12px 34px rgba(18,50,74,.06); cursor: pointer; animation: application-enter .55s cubic-bezier(.22,1,.36,1) backwards; animation-delay: calc(var(--card-index) * 65ms); transition: border-color .25s ease,box-shadow .25s ease,transform .25s ease,opacity .25s ease; }
-.applied-card--shortlisted { --status-start: #5145b5; --status-end: #7c3aed; --status-rgb: 81,69,181; }.applied-card--hired { --status-start: #0b7a4b; --status-end: #20a875; --status-rgb: 11,122,75; }.applied-card--rejected { --status-start: #b42318; --status-end: #e5484d; --status-rgb: 180,35,24; }
+.applied-card--shortlisted { --status-start: #5145b5; --status-end: #7c3aed; --status-rgb: 81,69,181; }.applied-card--hired { --status-start: #0b7a4b; --status-end: #20a875; --status-rgb: 11,122,75; }.applied-card--rejected,.applied-card--withdrawn { --status-start: #b42318; --status-end: #e5484d; --status-rgb: 180,35,24; }
+.applied-withdraw { justify-self: start; padding: 7px 0; color: #b42318; border: 0; background: none; font-size: 11px; font-weight: 800; cursor: pointer; }
 .applied-card:hover { border-color: rgba(var(--status-rgb),.32); box-shadow: 0 20px 46px rgba(var(--status-rgb),.12); }.applied-card:focus-visible { outline: 3px solid rgba(var(--status-rgb),.25); outline-offset: 2px; }.applied-list:has(.applied-card:hover) .applied-card:not(:hover) { opacity: .58; transform: scale(.98); }
 .applied-card__topline { display: flex; align-items: center; gap: 9px; }.applied-card__number { color: #91a3ab; font: 800 10px ui-monospace,monospace; letter-spacing: .08em; }.applied-card h2 { margin-top: 12px; color: #0b3658; font: 800 21px/1.2 Manrope,sans-serif; letter-spacing: -.025em; }.applied-card__identity > p { margin-top: 6px; color: #526977; font-size: 13px; }
 .applied-card__status { display: inline-flex; padding: 6px 10px; color: #fff; border-radius: 999px; background: linear-gradient(135deg,var(--status-start),var(--status-end)); box-shadow: 0 7px 18px rgba(var(--status-rgb),.22); font-size: 11px; font-weight: 800; text-transform: uppercase; }

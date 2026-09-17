@@ -13,6 +13,7 @@ public sealed class JobPost
     public string? Pincode { get; set; }
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
+    public string? LocationSource { get; set; }
 
     // Role details
     public EmploymentType? EmploymentType { get; set; }
@@ -31,9 +32,11 @@ public sealed class JobPost
     public List<string> Benefits { get; set; } = new();
 
     public bool IsActive { get; set; } = true;
+    public int Version { get; set; } = 1;
     public DateTimeOffset CreatedAt { get; set; }
 
     public User Employer { get; set; } = null!;
     public ICollection<JobApplication> Applications { get; set; } = new List<JobApplication>();
     public ICollection<SavedJob> SavedByWorkers { get; set; } = new List<SavedJob>();
+    public ICollection<CandidateInvitation> Invitations { get; set; } = new List<CandidateInvitation>();
 }

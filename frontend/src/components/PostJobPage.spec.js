@@ -253,4 +253,24 @@ describe('PostJobPage', () => {
     expect(wrapper.props('jobForm').state).toBe('')
     expect(wrapper.props('jobForm').cityArea).toBe('')
   })
+
+  it('removes captured coordinates when workplace confirmation is withdrawn', async () => {
+    const wrapper = mountPostJobPage({
+      jobForm: createJobForm({
+        workplaceConfirmed: true,
+        latitude: 19.076,
+        longitude: 72.878,
+        locationSource: 'Device',
+      }),
+    })
+
+    await wrapper.find('.job-form__confirmation input').setValue(false)
+
+    expect(wrapper.props('jobForm')).toMatchObject({
+      workplaceConfirmed: false,
+      latitude: null,
+      longitude: null,
+      locationSource: null,
+    })
+  })
 })

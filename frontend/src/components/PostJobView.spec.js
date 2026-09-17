@@ -36,11 +36,23 @@ function mockPincodeLookup(postOffices = [
 describe('PostJobView', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    localStorage.clear()
     vi.stubGlobal('fetch', vi.fn())
     api.get.mockReset()
     api.post.mockReset()
     api.get.mockResolvedValue({ data: { name: 'Pat', role: 'Hiring' } })
     api.post.mockResolvedValue({ data: {} })
+  })
+
+  it('resumes and discards a device-local draft', async () => {
+    localStorage.setItem('localhire.jobDraft', JSON.stringify({ title: 'Saved cashier draft' }))
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.find('.draft-notice').exists()).toBe(true)
+    await wrapper.find('.draft-notice .dash-btn--primary').trigger('click')
+    expect(wrapper.find('#job-title').element.value).toBe('Saved cashier draft')
+    expect(wrapper.find('.draft-notice').exists()).toBe(false)
   })
 
   it('renders the job form without duplicating account controls', async () => {

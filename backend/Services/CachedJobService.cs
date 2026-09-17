@@ -1,4 +1,3 @@
-using System.Globalization;
 using LocalHire.Api.DTOs;
 using LocalHire.Api.Models;
 using Microsoft.Extensions.Caching.Memory;
@@ -50,10 +49,21 @@ public sealed class CachedJobService : IJobService
         GetOrCreateAsync($"employer:{employerId}:job:{id}",
             () => _inner.GetJobAsync(id, employerId, ct));
 
+    public Task<PublicJobResponse> GetPublicJobAsync(Guid id, CancellationToken ct) =>
+        GetOrCreateAsync($"public-job:{id}", () => _inner.GetPublicJobAsync(id, ct));
+
     public async Task<JobPostResponse> UpdateJobAsync(
         Guid id, CreateJobPostRequest request, Guid employerId, CancellationToken ct)
     {
         var result = await _inner.UpdateJobAsync(id, request, employerId, ct);
+        _version.Invalidate();
+        return result;
+    }
+
+    public async Task<JobPostResponse> SetJobActiveAsync(
+        Guid id, bool isActive, Guid employerId, CancellationToken ct)
+    {
+        var result = await _inner.SetJobActiveAsync(id, isActive, employerId, ct);
         _version.Invalidate();
         return result;
     }
@@ -94,8 +104,7 @@ public sealed class CachedJobService : IJobService
 
     public Task<CandidateDetailResponse> GetCandidateDetailAsync(
         Guid workerId, Guid employerId, CancellationToken ct) =>
-        GetOrCreateAsync($"candidate-detail:{employerId}:{workerId}",
-            () => _inner.GetCandidateDetailAsync(workerId, employerId, ct));
+        _inner.GetCandidateDetailAsync(workerId, employerId, ct);
 
     // Recheck authorization and metadata for every short-lived URL the endpoint signs.
     public Task<ResumeFileReference> GetCandidateResumeAsync(
@@ -104,54 +113,33 @@ public sealed class CachedJobService : IJobService
 
     public Task<IReadOnlyList<JobPostResponse>> GetNearbyJobsAsync(
         double? lat, double? lng, string? search, EmploymentType? employmentType,
-        Guid workerId, CancellationToken ct)
-    {
-        var location = LocationKey(lat, lng);
-        var term = Normalized(search);
-        var scope = location == "all" && term.Length == 0 ? workerId.ToString() : "global";
-        return GetOrCreateAsync($"nearby:{scope}:{location}:{term}:{employmentType}",
-            () => _inner.GetNearbyJobsAsync(lat, lng, search, employmentType, workerId, ct));
-    }
+        decimal? salaryMin, decimal? salaryMax, SalaryPeriod? salaryPeriod,
+        int? experienceYears, double? maxDistanceKm,
+        Guid workerId, CancellationToken ct) =>
+        _inner.GetNearbyJobsAsync(
+            lat, lng, search, employmentType, salaryMin, salaryMax, salaryPeriod,
+            experienceYears, maxDistanceKm, workerId, ct);
 
     public Task<PagedResponse<JobPostResponse>> SearchJobsAsync(
         double? lat, double? lng, string? search, EmploymentType? employmentType,
-        Guid workerId, PagingRequest paging, CancellationToken ct)
-    {
-        var location = LocationKey(lat, lng);
-        var term = Normalized(search);
-        var scope = location == "all" && term.Length == 0 ? workerId.ToString() : "global";
-        return GetOrCreateAsync(
-            $"job-search:{scope}:{location}:{term}:{employmentType}:{paging.Page}:{paging.PageSize}",
-            () => _inner.SearchJobsAsync(
-                lat, lng, search, employmentType, workerId, paging, ct));
-    }
+        decimal? salaryMin, decimal? salaryMax, SalaryPeriod? salaryPeriod,
+        int? experienceYears, double? maxDistanceKm,
+        Guid workerId, PagingRequest paging, CancellationToken ct) =>
+        _inner.SearchJobsAsync(
+            lat, lng, search, employmentType, salaryMin, salaryMax, salaryPeriod,
+            experienceYears, maxDistanceKm, workerId, paging, ct);
 
-    public Task<JobPostResponse> GetActiveJobAsync(Guid id, CancellationToken ct) =>
-        GetOrCreateAsync($"active-job:{id}", () => _inner.GetActiveJobAsync(id, ct));
+    public Task<JobPostResponse> GetWorkerJobAsync(Guid id, Guid workerId, CancellationToken ct) =>
+        _inner.GetWorkerJobAsync(id, workerId, ct);
 
     public Task<IReadOnlyList<CandidateResponse>> GetNearbyCandidatesAsync(
-        double? lat, double? lng, string? search, string? role, Guid employerId, CancellationToken ct)
-    {
-        var location = LocationKey(lat, lng);
-        var term = Normalized(search);
-        var roleKey = Normalized(role);
-        var scope = location == "all" && term.Length == 0 ? employerId.ToString() : "global";
-        return GetOrCreateAsync($"candidates:{scope}:{location}:{term}:{roleKey}",
-            () => _inner.GetNearbyCandidatesAsync(lat, lng, search, role, employerId, ct));
-    }
+        double? lat, double? lng, string? search, string? role, Guid employerId, CancellationToken ct) =>
+        _inner.GetNearbyCandidatesAsync(lat, lng, search, role, employerId, ct);
 
     public Task<PagedResponse<CandidateResponse>> SearchCandidatesAsync(
         double? lat, double? lng, string? search, string? role,
-        Guid employerId, PagingRequest paging, CancellationToken ct)
-    {
-        var location = LocationKey(lat, lng);
-        var term = Normalized(search);
-        var scope = location == "all" && term.Length == 0 ? employerId.ToString() : "global";
-        return GetOrCreateAsync(
-            $"candidate-search:{scope}:{location}:{term}:{Normalized(role)}:{paging.Page}:{paging.PageSize}",
-            () => _inner.SearchCandidatesAsync(
-                lat, lng, search, role, employerId, paging, ct));
-    }
+        Guid employerId, PagingRequest paging, CancellationToken ct) =>
+        _inner.SearchCandidatesAsync(lat, lng, search, role, employerId, paging, ct);
 
     public async Task<JobApplicationResponse> ApplyAsync(
         Guid jobId, Guid workerId, CancellationToken ct)
@@ -161,14 +149,20 @@ public sealed class CachedJobService : IJobService
         return result;
     }
 
+    public async Task<JobApplicationResponse> WithdrawApplicationAsync(
+        Guid applicationId, Guid workerId, CancellationToken ct)
+    {
+        var result = await _inner.WithdrawApplicationAsync(applicationId, workerId, ct);
+        _version.Invalidate();
+        return result;
+    }
+
     public Task<IReadOnlyList<Guid>> GetSavedCandidateIdsAsync(Guid employerId, CancellationToken ct) =>
         _inner.GetSavedCandidateIdsAsync(employerId, ct);
 
     public Task<PagedResponse<CandidateResponse>> GetSavedCandidatesPagedAsync(
         Guid employerId, PagingRequest paging, CancellationToken ct) =>
-        GetOrCreateAsync(
-            $"employer:{employerId}:saved-candidates:{paging.Page}:{paging.PageSize}",
-            () => _inner.GetSavedCandidatesPagedAsync(employerId, paging, ct));
+        _inner.GetSavedCandidatesPagedAsync(employerId, paging, ct);
 
     public async Task SaveCandidateAsync(Guid workerId, Guid employerId, CancellationToken ct)
     {
@@ -214,13 +208,57 @@ public sealed class CachedJobService : IJobService
         _version.Invalidate();
     }
 
-    private static string LocationKey(double? lat, double? lng) =>
-        lat is null || lng is null
-            ? "all"
-            : $"{lat.Value.ToString("R", CultureInfo.InvariantCulture)}:{lng.Value.ToString("R", CultureInfo.InvariantCulture)}";
+    public async Task<InvitationResponse> CreateInvitationAsync(
+        Guid workerId, Guid jobId, Guid employerId, CancellationToken ct)
+    {
+        var result = await _inner.CreateInvitationAsync(workerId, jobId, employerId, ct);
+        _version.Invalidate();
+        return result;
+    }
 
-    private static string Normalized(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim().ToLowerInvariant();
+    public Task<IReadOnlyList<InvitationResponse>> GetMyInvitationsAsync(
+        Guid workerId, CancellationToken ct) =>
+        _inner.GetMyInvitationsAsync(workerId, ct);
+
+    public async Task<InvitationResponse> DeclineInvitationAsync(
+        Guid invitationId, Guid workerId, CancellationToken ct)
+    {
+        var result = await _inner.DeclineInvitationAsync(invitationId, workerId, ct);
+        _version.Invalidate();
+        return result;
+    }
+
+    public Task<AppointmentResponse?> GetAppointmentAsync(
+        Guid applicationId, Guid userId, UserRole role, CancellationToken ct) =>
+        _inner.GetAppointmentAsync(applicationId, userId, role, ct);
+
+    public async Task<AppointmentResponse> SetAppointmentAsync(
+        Guid applicationId, AppointmentRequest request, Guid userId, UserRole role, CancellationToken ct)
+    {
+        var result = await _inner.SetAppointmentAsync(applicationId, request, userId, role, ct);
+        _version.Invalidate();
+        return result;
+    }
+
+    public async Task<AppointmentResponse> ConfirmAppointmentAsync(
+        Guid applicationId, Guid userId, UserRole role, CancellationToken ct)
+    {
+        var result = await _inner.ConfirmAppointmentAsync(applicationId, userId, role, ct);
+        _version.Invalidate();
+        return result;
+    }
+
+    public async Task<AppointmentResponse> CancelAppointmentAsync(
+        Guid applicationId, Guid userId, UserRole role, CancellationToken ct)
+    {
+        var result = await _inner.CancelAppointmentAsync(applicationId, userId, role, ct);
+        _version.Invalidate();
+        return result;
+    }
+
+    public Task<BusinessProfileResponse> GetBusinessProfileAsync(
+        Guid employerId, CancellationToken ct) =>
+        _inner.GetBusinessProfileAsync(employerId, ct);
 
     private async Task<T> GetOrCreateAsync<T>(string key, Func<Task<T>> factory)
     {
